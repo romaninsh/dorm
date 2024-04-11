@@ -8,3 +8,4 @@ edition = "2021"
 doctest = false
 
 [dependencies]
+rusqlite = "0.31.0"
