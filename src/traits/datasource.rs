@@ -1,4 +1,9 @@
-trait DataSource {
-    fn execute_query(&self, query: Query) -> Result<DataSourceResult, Error>;
-    fn fetch_data(&self, query: DataSourceResult) -> Result<Vec<Vec<String>>, Error>;
+use std::error::Error;
+use std::result::Result;
+
+use crate::Query;
+
+pub trait DataSource {
+    fn query_fetch(&self, query: Query) -> Result<Vec<Vec<String>>, Box<dyn Error>>;
+    fn query_exec(&self, query: Query) -> Result<(), Box<dyn Error>>;
 }
