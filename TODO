@@ -1,0 +1,5 @@
+DataSet API
+
+- [x] create a basic query type
+- [x] have query ability to render into a SQL query
+- [ ] add ability to have where conditions
