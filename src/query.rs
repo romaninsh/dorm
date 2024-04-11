@@ -1,17 +1,13 @@
-#[allow(dead_code)]
-use crate::{field::Field, traits::renderable::Renderable};
+use crate::{expression::Expression, field::Field, traits::renderable::Renderable};
 
 pub enum QueryType {
     Select,
-    Insert,
-    Update,
-    Delete,
 }
 
 pub struct Query {
     table: String,
     query_type: QueryType,
-    fields: Vec<Field>,
+    columns: Vec<Box<dyn Renderable>>,
 }
 
 impl Query {
@@ -19,7 +15,7 @@ impl Query {
         Query {
             table: table.to_string(),
             query_type: QueryType::Select,
-            fields: Vec::new(),
+            columns: Vec::new(),
         }
     }
 
@@ -28,13 +24,19 @@ impl Query {
         self
     }
 
-    pub fn fields(&mut self, fields: Vec<&str>) -> &mut Query {
-        self.fields = fields.iter().map(|f| Field::new(f)).collect();
+    pub fn add_column(&mut self, field: Box<dyn Renderable>) -> &mut Query {
+        self.columns.push(field);
         self
     }
 
-    pub fn field(&mut self, field: &str) -> &mut Query {
-        self.fields.push(Field::new(field));
+    // Simplified ways to define a field with a string
+    pub fn add_column_field(&mut self, field: &str) -> &mut Query {
+        self.add_column(Box::new(Field::new(field)));
+        self
+    }
+
+    pub fn add_column_expr(&mut self, expression: Expression) -> &mut Query {
+        self.add_column(Box::new(expression));
         self
     }
 }
@@ -42,7 +44,7 @@ impl Query {
 impl Renderable for Query {
     fn render(&self) -> String {
         let fields = self
-            .fields
+            .columns
             .iter()
             .map(|f| f.render())
             .collect::<Vec<String>>()

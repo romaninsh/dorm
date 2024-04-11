@@ -1,23 +1,26 @@
+mod expression;
 mod field;
 mod query;
+// mod table;
 mod traits;
 
+pub use expression::Expression;
 pub use field::Field;
 pub use query::Query;
 pub use traits::renderable::Renderable;
-
-// Trait is implemented by a physical field or a expression inside a query
-// which can be built as a part of a query and has a specific type
-trait Column {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_query() {
-        let query = Query::new("users").fields(vec!["id", "name"]).render();
+    fn test_expression() {
+        let query = Query::new("users")
+            .add_column_field("id")
+            .add_column_field("name")
+            .add_column_expr(expr!("1 + 1"))
+            .render();
 
-        assert_eq!(query, "SELECT id, name FROM users");
+        assert_eq!(query, "SELECT id, name, (1 + 1) FROM users");
     }
 }

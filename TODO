@@ -2,4 +2,5 @@ DataSet API
 
 - [x] create a basic query type
 - [x] have query ability to render into a SQL query
+- [x] add ability to have expressions
 - [ ] add ability to have where conditions
