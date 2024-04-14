@@ -1,7 +1,7 @@
 use crate::Query;
 
 // Represents a dataset that may generate query to fetch data
-pub trait ReadableDataSet {
+pub trait ReadableDataSet: IntoIterator<Item = Vec<String>> {
     fn select_query(&self) -> Query;
 }
 

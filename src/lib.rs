@@ -1,8 +1,8 @@
 mod expression;
 mod field;
-mod query;
-// mod table;
 mod mocks;
+mod query;
+mod table;
 mod traits;
 
 pub use expression::Expression;
