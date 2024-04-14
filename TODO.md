@@ -3,10 +3,10 @@ DataSet API
 - [x] create a basic query type
 - [x] have query ability to render into a SQL query
 - [x] add ability to have expressions
-- [ ] add ability to have where conditions
-- [ ] add support for datasource
-- [ ] add support for dataset
-- [ ] add integration with sqlite
+- [x] add ability to have where conditions
+- [x] add support for datasource
+- [x] add support for dataset
+- [x] add integration with sqlite
 - [ ] add integration with postgres
 - [ ] add sql table as a dataset
 

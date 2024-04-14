@@ -13,13 +13,13 @@ impl Field {
     }
 }
 
-impl Renderable for Field {
+impl<'a> Renderable<'a> for Field {
     fn render(&self) -> String {
         self.name.clone()
     }
 }
 
-impl Column for Field {
+impl<'a> Column<'a> for Field {
     fn render_column(&self, alias: &str) -> String {
         format!("{} AS {}", self.render(), alias)
     }

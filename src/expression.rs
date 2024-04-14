@@ -6,38 +6,38 @@ macro_rules! expr {
         Expression::new(
             $fmt,
             vec![
-                $( $arg.to_string(), )*
+                $( $arg, )*
             ]
         )
     }}
 }
-pub struct Expression {
-    expression: String,
-    parameters: Vec<String>,
+pub struct Expression<'a> {
+    expression: &'a str,
+    parameters: Vec<&'a dyn Renderable<'a>>,
 }
 
-impl Expression {
-    pub fn new(expression: &str, parameters: Vec<String>) -> Expression {
+impl<'a> Expression<'a> {
+    pub fn new(expression: &'a str, parameters: Vec<&'a dyn Renderable<'a>>) -> Expression<'a> {
         Expression {
-            expression: expression.to_string(),
-            parameters: parameters.iter().map(|p| p.to_string()).collect(),
+            expression,
+            parameters,
         }
     }
 }
 
-impl Renderable for Expression {
+impl<'a> Renderable<'a> for Expression<'a> {
     fn render(&self) -> String {
-        let mut result = self.expression.clone();
+        let mut result = self.expression.to_string();
         for param in &self.parameters {
             // This is a simple placeholder replacement that assumes the '{}' placeholders are in the order of parameters.
             // It's a naive implementation and should be improved for real use.
-            result = result.replacen("{}", &format!("'{}'", param.replace("'", "''")), 1);
+            result = result.replacen("{}", &format!("{}", param.render()), 1);
         }
         format!("({})", result)
     }
 }
 
-impl Column for Expression {
+impl<'a> Column<'a> for Expression<'a> {
     fn render_column(&self, alias: &str) -> String {
         format!("({}) AS {}", self.render(), alias)
     }
@@ -49,19 +49,25 @@ mod tests {
 
     #[test]
     fn test_simple_expression() {
-        let expression = expr!("{} + {}", "3", "5");
+        let a = "3".to_owned();
+        let b = "5".to_owned();
+        let expression = expr!("{} + {}", &a, &b);
         assert_eq!(expression.render(), "('3' + '5')");
     }
 
     #[test]
     fn test_sql_quoting() {
-        let expression = expr!("Hello {}", "O'Reilly");
+        let name = "O'Reilly".to_owned();
+        let expression = expr!("Hello {}", &name);
         assert_eq!(expression.render(), "(Hello 'O''Reilly')");
     }
 
     #[test]
     fn test_multiple_replacements() {
-        let expression = expr!("{} - {} = {}", "10", "5", "5");
+        let a = "10".to_owned();
+        let b = "5".to_owned();
+        let c = "5".to_owned();
+        let expression = expr!("{} - {} = {}", &a, &b, &c);
         assert_eq!(expression.render(), "('10' - '5' = '5')");
     }
 }

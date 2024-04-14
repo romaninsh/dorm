@@ -64,8 +64,9 @@ mod tests {
     fn test_rusqlite() {
         let conn = setup();
 
-        let mut query = Query::new("person");
-        query.add_column_field("name").add_column_field("surname");
+        let query = Query::new("person")
+            .add_column_field("name")
+            .add_column_field("surname");
         let result = conn.query_fetch(&query).unwrap();
         assert_eq!(result, vec![vec!["Steven", "Test"]]);
     }
@@ -74,8 +75,7 @@ mod tests {
     fn test_expressions() {
         let conn = setup();
 
-        let mut query = Query::new("person");
-        query.add_column_expr(expr!("name || ' ' || surname"));
+        let query = Query::new("person").add_column_expr(expr!("name || ' ' || surname"));
         let result = conn.query_fetch(&query).unwrap();
         assert_eq!(result, vec![vec!["Steven Test"]]);
     }

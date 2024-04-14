@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::traits::datasource::DataSource;
 use crate::Query;
 use async_trait::async_trait;
@@ -39,10 +40,11 @@ mod tests {
     #[tokio::test]
     async fn test_mock_data_source() {
         let data = vec![vec!["1", "2"]];
-        let mut data_source = MockDataSource::new(data.clone());
+        let data_source = MockDataSource::new(data.clone());
 
-        let mut query = Query::new("users");
-        query.add_column_field("name").add_column_field("surname");
+        let query = Query::new("users")
+            .add_column_field("name")
+            .add_column_field("surname");
         let result = data_source.query_fetch(&query);
 
         assert_eq!(result.unwrap(), data);
