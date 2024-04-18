@@ -27,6 +27,14 @@ impl<'a> Table<'a> {
         }
     }
 
+    pub fn id(&self) -> &Field {
+        self.fields.get("id").unwrap()
+    }
+
+    pub fn fields(&self) -> &IndexMap<String, Field> {
+        &self.fields
+    }
+
     pub fn add_field(mut self, field: &str) -> Self {
         self.fields.insert(field.to_string(), Field::new(field));
         self

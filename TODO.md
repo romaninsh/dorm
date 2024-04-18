@@ -7,13 +7,15 @@ DataSet API
 - [x] add support for datasource
 - [x] add support for dataset
 - [x] add integration with sqlite
-- [ ] add integration with postgres
+- [x] add integration with postgres
+- [x] implement insert query
+- [x] implement delete query
 - [ ] add sql table as a dataset
 
 Implementing examples:
 
-- [ ] Add query filters
-- [ ] Add sum() function
+- [x] Add query filters
+- [x] Add sum() function
 
 ```rust
 let vip_client = Table::new('client', db)
