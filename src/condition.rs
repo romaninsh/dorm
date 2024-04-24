@@ -1,7 +1,5 @@
 use std::ops::Deref;
 
-use crate::Renderable;
-
 pub struct Condition {
     field: &'static str,
     operation: &'static str,
@@ -26,26 +24,30 @@ impl Deref for Condition {
     }
 }
 
-impl<'a> Renderable<'a> for Condition {
-    fn render(&self) -> String {
-        format!("{} {} '{}'", self.field, self.operation, self.value)
-    }
-}
+// impl<'a> Renderable<'a> for Condition {
+//     fn render(&self) -> String {
+//         format!("{} {} '{}'", self.field, self.operation, self.value)
+//     }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+//     fn params(&self) -> Vec<Box<dyn tokio_postgres::types::ToSql + Sync>> {
+//         vec![]
+//     }
+// }
 
-    #[test]
-    fn test_condition() {
-        let field = "id";
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-        let condition = Condition {
-            field: &field,
-            operation: "=",
-            value: "1".to_string(),
-        };
+//     #[test]
+//     fn test_condition() {
+//         let field = "id";
 
-        assert_eq!(condition.render(), "id = '1'");
-    }
-}
+//         let condition = Condition {
+//             field: &field,
+//             operation: "=",
+//             value: "1".to_string(),
+//         };
+
+//         assert_eq!(condition.render(), "id = '1'");
+//     }
+// }

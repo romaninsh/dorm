@@ -8,13 +8,21 @@ doctest = false
 
 [dependencies]
 async-trait = "0.1.80"
-indexmap = "2.2.6"
-postgres = "0.19.7"
+indexmap = { version = "2", features = ["serde"] }
 rusqlite = "0.31.0"
-tokio = { version = "1.37.0", features = ["tokio-macros", "full"] }
+tokio = { version = "1", features = ["full"] }
 tokio-postgres = "0.7.10"
 rust_decimal = { version = "1", features = ["db-diesel-postgres"] }
 rust_decimal_macros = "1"
+serde_json = { version = "1", features = [
+    "preserve_order",
+    "raw_value",
+    "arbitrary_precision",
+] }
+serde = { version = "1", features = ["derive"] }
+chrono = "0.4.38"
+anyhow = "1.0.82"
+futures = "0.3.30"
 
 # [[example]]
 # name = "basic-dorm"

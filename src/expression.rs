@@ -1,23 +1,30 @@
-use crate::traits::{column::Column, renderable::Renderable};
+use serde_json::Value;
+
+use crate::traits::{
+    column::Column,
+    sql_chunk::{PreRender, SqlChunk},
+};
 
 #[macro_export]
 macro_rules! expr {
     ($fmt:expr $(, $arg:expr)*) => {{
         Expression::new(
-            $fmt,
+            $fmt.to_string(),
             vec![
-                $( $arg, )*
+                $( &$arg as &dyn crate::traits::sql_chunk::SqlChunk, )*
             ]
         )
     }}
 }
+
+#[derive(Debug)]
 pub struct Expression<'a> {
-    expression: &'a str,
-    parameters: Vec<&'a dyn Renderable<'a>>,
+    expression: String,
+    parameters: Vec<&'a dyn SqlChunk<'a>>,
 }
 
 impl<'a> Expression<'a> {
-    pub fn new(expression: &'a str, parameters: Vec<&'a dyn Renderable<'a>>) -> Expression<'a> {
+    pub fn new(expression: String, parameters: Vec<&'a dyn SqlChunk<'a>>) -> Expression<'a> {
         Expression {
             expression,
             parameters,
@@ -25,49 +32,129 @@ impl<'a> Expression<'a> {
     }
 }
 
-impl<'a> Renderable<'a> for Expression<'a> {
-    fn render(&self) -> String {
-        let mut result = self.expression.to_string();
-        for param in &self.parameters {
-            // This is a simple placeholder replacement that assumes the '{}' placeholders are in the order of parameters.
-            // It's a naive implementation and should be improved for real use.
-            result = result.replacen("{}", &format!("{}", param.render()), 1);
+impl<'a> SqlChunk<'a> for Expression<'a> {
+    fn render_chunk(&self) -> PreRender {
+        let mut param_iter = self.parameters.iter();
+        let mut sql = self.expression.to_string().clone();
+
+        let mut param_out = Vec::new();
+
+        let token = "{}";
+
+        while let Some(index) = sql.find(token) {
+            if let Some(param) = param_iter.next() {
+                let (param_sql, param_values) = param.render_chunk().split();
+
+                sql.replace_range(index..index + token.len(), &param_sql);
+                param_out.extend(param_values);
+            } else {
+                break;
+            }
         }
-        format!("({})", result)
+
+        PreRender::new((sql, param_out))
     }
 }
 
 impl<'a> Column<'a> for Expression<'a> {
-    fn render_column(&self, alias: &str) -> String {
-        format!("({}) AS {}", self.render(), alias)
+    fn render_column(&self, alias: &str) -> PreRender {
+        let expression = format!("({}) AS `{}`", self.expression, alias);
+
+        Expression::new(expression, self.parameters.clone()).render_chunk()
+    }
+    fn calculated(&self) -> bool {
+        true
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
-    fn test_simple_expression() {
-        let a = "3".to_owned();
-        let b = "5".to_owned();
-        let expression = expr!("{} + {}", &a, &b);
-        assert_eq!(expression.render(), "('3' + '5')");
+    fn test_expression() {
+        let expression = Expression::new("Hello World".to_string(), vec![]);
+        let (sql, params) = expression.render_chunk().split();
+
+        assert_eq!(sql, "Hello World");
+        assert_eq!(params.len(), 0);
     }
 
     #[test]
-    fn test_sql_quoting() {
-        let name = "O'Reilly".to_owned();
-        let expression = expr!("Hello {}", &name);
-        assert_eq!(expression.render(), "(Hello 'O''Reilly')");
+    fn test_expr_without_parameters() {
+        let expression = expr!("Hello World");
+        let (sql, params) = expression.render_chunk().split();
+
+        assert_eq!(sql, "Hello World");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_nested_expr_without_parameters() {
+        let nested = expr!("Nested");
+        let expression = expr!("Hello {} World", nested);
+        let (sql, params) = expression.render_chunk().split();
+
+        assert_eq!(sql, "Hello Nested World");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_nested_expression() {
+        let nested = Expression::new("Nested".to_string(), vec![]);
+        let expression =
+            Expression::new("Hello {} World".to_string(), vec![&nested as &dyn SqlChunk]);
+
+        let (sql, params) = expression.render_chunk().split();
+
+        assert_eq!(sql, "Hello Nested World");
+        assert_eq!(params.len(), 0);
     }
 
     #[test]
     fn test_multiple_replacements() {
+        let a = json!(10);
+        let b = json!(5);
+        let c = json!(5);
+        let expression = expr!("{} - {} = {}", a, b, c);
+        let (sql, params) = expression.render_chunk().split();
+
+        assert_eq!(sql, "{} - {} = {}");
+        assert_eq!(params.len(), 3);
+        assert_eq!(params, vec![json!(10), json!(5), json!(5)]);
+    }
+
+    #[test]
+    fn test_nested_expr() {
         let a = "10".to_owned();
-        let b = "5".to_owned();
-        let c = "5".to_owned();
-        let expression = expr!("{} - {} = {}", &a, &b, &c);
-        assert_eq!(expression.render(), "('10' - '5' = '5')");
+        let b = "5";
+        let c = 4;
+
+        let expr2 = expr!("{} + {}", b, c);
+        let expr1 = expr!("{} + {}", a, expr2);
+
+        let (sql, params) = expr1.render_chunk().split();
+
+        assert_eq!(sql, "{} + {} + {}");
+        assert_eq!(params.len(), 3);
+        assert_eq!(params, vec![json!("10"), json!("5"), json!(4)]);
+    }
+
+    #[test]
+    fn test_column() {
+        let a = "10".to_owned();
+        let b = "5";
+        let c = 4;
+
+        let expr2 = expr!("{} + {}", b, c);
+        let expr1 = expr!("{} + {}", a, expr2);
+
+        let column = expr1.render_column("result");
+        let (sql, params) = column.split();
+
+        assert_eq!(sql, "({} + {} + {}) AS `result`");
+        assert_eq!(params.len(), 3);
+        assert_eq!(params, vec![json!("10"), json!("5"), json!(4)]);
     }
 }

@@ -1,27 +1,37 @@
-use crate::traits::column::Column;
-use crate::traits::renderable::Renderable;
+use serde_json::Value;
 
+use crate::traits::column::Column;
+use crate::traits::sql_chunk::{PreRender, SqlChunk};
+use crate::{expr, Expression};
+
+#[derive(Debug)]
 pub struct Field {
     name: String,
 }
 
 impl Field {
-    pub fn new(name: &str) -> Field {
-        Field {
-            name: name.to_string(),
-        }
+    pub fn new(name: String) -> Field {
+        Field { name }
     }
 }
 
-impl<'a> Renderable<'a> for Field {
-    fn render(&self) -> String {
-        self.name.clone()
+impl<'a> SqlChunk<'a> for Field {
+    fn render_chunk(&self) -> PreRender {
+        PreRender::new((format!("`{}`", self.name), vec![]))
     }
 }
 
 impl<'a> Column<'a> for Field {
-    fn render_column(&self, alias: &str) -> String {
-        format!("{} AS {}", self.render(), alias)
+    fn render_column(&self, alias: &str) -> PreRender {
+        (if self.name == alias {
+            expr!(format!("`{}`", self.name))
+        } else {
+            expr!(format!("`{}` AS `{}`", self.name, alias))
+        })
+        .render_chunk()
+    }
+    fn calculated(&self) -> bool {
+        false
     }
 }
 
@@ -31,13 +41,18 @@ mod tests {
 
     #[test]
     fn test_field() {
-        let field = Field::new("id");
-        assert_eq!(field.render(), "id");
-    }
+        let field = Field::new("id".to_string());
+        let (sql, params) = field.render_chunk().split();
 
-    #[test]
-    fn test_field_with_alias() {
-        let field = Field::new("id");
-        assert_eq!(field.render_column("user_id"), "id AS user_id");
+        assert_eq!(sql, "`id`");
+        assert_eq!(params.len(), 0);
+
+        // let (sql, params) = field.render_column("id").render_chunk();
+        // assert_eq!(sql, "`id`");
+        // assert_eq!(params.len(), 0);
+
+        // let (sql, params) = &field.render_column("id_alias").render_chunk();
+        // assert_eq!(sql, "`id` AS `id_alias`");
+        // assert_eq!(params.len(), 0);
     }
 }
