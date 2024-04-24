@@ -1,4 +1,5 @@
-use crate::{Query, Renderable};
+use crate::query::Query;
+use crate::traits::sql_chunk::SqlChunk;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
@@ -24,9 +25,9 @@ impl Postgres<'_> {
             Value::Bool(b) => Box::new(b),
             Value::Number(n) => {
                 if n.is_i64() {
-                    Box::new(n.as_i64().unwrap())
+                    Box::new(n.as_i64().unwrap() as i32)
                 } else {
-                    Box::new(n.as_f64().unwrap())
+                    Box::new(n.as_f64().unwrap() as i32)
                 }
             }
             Value::String(s) => Box::new(s),
@@ -68,21 +69,10 @@ impl Postgres<'_> {
         Ok(json!(json_map))
     }
 
-    pub async fn prepare(&self, query: &str) -> Result<Statement> {
-        self.client
-            .prepare(query)
-            .await
-            .context("Failed to prepare SQL query")
-    }
-
-    pub async fn query(&self, statement: &Statement, params: Value) -> Result<Vec<Value>> {
-        if !params.is_array() {
-            return Err(anyhow!("Params must be an array"));
-        }
-
-        let params_tosql = params
-            .as_array()
-            .unwrap()
+    pub async fn query_raw(&self, query: &Query<'_>) -> Result<Vec<Value>> {
+        let query_rendered = query.render_chunk();
+        let params_tosql = query_rendered
+            .params()
             .iter()
             .map(|v| self.convert_value_tosql(v.clone()))
             .collect::<Vec<_>>();
@@ -94,7 +84,7 @@ impl Postgres<'_> {
 
         let result = self
             .client
-            .query(statement, params_tosql_refs.as_slice())
+            .query(&query_rendered.sql_final(), params_tosql_refs.as_slice())
             .await
             .context(anyhow!("Error in query"))?;
 
@@ -106,55 +96,69 @@ impl Postgres<'_> {
         Ok(results)
     }
 
-    pub async fn query_one(&self, statement: &Statement, params: Value) -> Result<Value> {
-        if !params.is_array() {
-            return Err(anyhow!("Params must be an array"));
-        }
-
-        let params_tosql = params
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| self.convert_value_tosql(v.clone()))
-            .collect::<Vec<_>>();
-
-        let params_tosql_refs = params_tosql
-            .iter()
-            .map(|b| b.as_ref())
-            .collect::<Vec<&(dyn ToSql + Sync)>>();
-
-        let result = self
-            .client
-            .query_one(statement, params_tosql_refs.as_slice())
-            .await
-            .context(anyhow!("Error in query"))?;
-
-        self.convert_value_fromsql(result)
+    pub async fn query_one(&self, query: &Query<'_>) -> Result<Value> {
+        let Some(res) = self.query_raw(query).await?.into_iter().next() else {
+            return Err(anyhow!("No rows for query_one"));
+        };
+        Ok(res)
+    }
+    pub async fn query_opt(&self, query: &Query<'_>) -> Result<Option<Value>> {
+        Ok(self.query_raw(query).await?.into_iter().next())
     }
 }
 
-type Cell = dyn tokio_postgres::types::ToSql + Sync + 'static;
-type IRow<'a> = Vec<&'a Cell>;
-
 trait InsertRows<'a> {
-    async fn insert_rows(
-        &self,
-        query: Query<'a>,
-        rows: Box<dyn Iterator<Item = Value>>,
-    ) -> Result<Vec<Value>>;
+    async fn insert_rows(&self, query: &Query<'a>, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>>;
 }
 
 impl<'a> InsertRows<'a> for Postgres<'a> {
-    async fn insert_rows(
-        &self,
-        query: Query<'a>,
-        rows: Box<dyn Iterator<Item = Value>>,
-    ) -> Result<Vec<Value>> {
-        let statement = self.prepare(&query.render()).await?;
+    async fn insert_rows(&self, query: &Query<'a>, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>> {
+        // no rows to insert
+        if rows.len() == 0 {
+            return Ok(vec![]);
+        }
 
+        let query_rendered = query.render_chunk();
+        let num_rows = query_rendered.params().len();
+
+        if rows.len() == 0 {
+            return Err(anyhow!("Insert query contains zero fields"));
+        }
+
+        let statement = self
+            .client
+            .prepare(&query_rendered.sql_final())
+            .await
+            .context("Attempting to execute an insert query")?;
+
+        let mut row_cnt = 0;
         let mut ids = Vec::new();
         for row_set in rows {
-            let row = self.query_one(&statement, row_set).await?;
+            row_cnt += 1;
+            if row_set.len() != num_rows {
+                return Err(anyhow!(
+                    "Number of columns in a row {} does not match number of fields in a query {} at row {}",
+                    row_set.len(), num_rows, row_cnt
+                ));
+            }
+
+            let params_tosql = row_set
+                .iter()
+                .map(|v| self.convert_value_tosql(v.clone()))
+                .collect::<Vec<_>>();
+
+            let params_tosql_refs = params_tosql
+                .iter()
+                .map(|b| b.as_ref())
+                .collect::<Vec<&(dyn ToSql + Sync)>>();
+
+            let row = self
+                .client
+                .query_one(&statement, params_tosql_refs.as_slice())
+                .await?;
+
+            let row = self.convert_value_fromsql(row)?;
+
             let row = if let Value::Object(obj) = row {
                 obj
             } else {
@@ -175,14 +179,13 @@ impl<'a> InsertRows<'a> for Postgres<'a> {
 }
 
 trait SelectRows<'a> {
-    async fn select_rows(&self, query: Query<'a>) -> Result<Vec<Value>>;
+    async fn select_rows(&self, query: &Query<'a>) -> Result<Vec<Value>>;
 }
 
 impl<'a> SelectRows<'a> for Postgres<'a> {
-    async fn select_rows(&self, query: Query<'a>) -> Result<Vec<Value>> {
+    async fn select_rows(&self, query: &Query<'a>) -> Result<Vec<Value>> {
         // let (sql, params) = query.render_chunks();
-        let statement = self.prepare(&query.render()).await?;
-        self.query(&statement, query.param_values()).await
+        self.query_raw(query).await
     }
 }
 
@@ -191,7 +194,7 @@ mod tests {
     use super::*;
     use crate::query::QueryType;
     use crate::Expression;
-    use crate::{expr, Query, Renderable};
+    use crate::{expr, query::Query};
     use tokio_postgres::NoTls;
 
     #[tokio::test]
@@ -206,32 +209,33 @@ mod tests {
             }
         });
 
+        let postgres = Postgres::new(&client);
+
         let query = Query::new("client")
             .set_type(QueryType::Insert)
             .add_column_field("name")
             .add_column_field("email")
             .add_column_field("is_vip");
 
-        let rows: Vec<IRow> = vec![
-            vec![&"John", &"john@gmail.com", &true as &Cell],
-            vec![&"Jane", &"jane@gmail.com", &false as &Cell],
+        let rows: Vec<Vec<Value>> = vec![
+            vec![json!("John"), json!("john@gamil.com"), json!(true)],
+            vec![json!("Jane"), json!("jave@ffs.org"), json!(true)],
         ];
 
-        let row_iter = Box::new(rows.into_iter());
-
-        let ids = client.insert_rows(query, row_iter).await.unwrap();
+        dbg!(&query.render_chunk());
+        let ids = postgres.insert_rows(&query, &rows).await.unwrap();
 
         // should be sequential
-        assert!(ids[0] + 1 == ids[1]);
+        assert!(ids[0].as_i64().unwrap() + 1 == ids[1].as_i64().unwrap());
+        let id0 = ids[0].as_i64().unwrap() as i32;
+        let id1 = ids[1].as_i64().unwrap() as i32;
 
-        let id1 = ids[0].to_string();
-        let id2 = ids[1].to_string();
-        let expr = expr!("id in ({}, {})", &id1, &id2);
+        let expr = expr!("id in ({}, {})", id0, id1);
 
         let delete_query = Query::new("client")
             .set_type(QueryType::Delete)
-            .add_condition(&expr);
+            .add_condition(Box::new(expr));
 
-        client.query(&delete_query.render(), &vec![]).await.unwrap();
+        postgres.query_raw(&delete_query).await.unwrap();
     }
 }

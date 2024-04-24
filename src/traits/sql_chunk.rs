@@ -142,6 +142,26 @@ impl PreRender {
         }
     }
 
+    pub fn sql(&self) -> &String {
+        &self.sql
+    }
+
+    pub fn sql_final(&self) -> String {
+        let mut sql_final = self.sql.clone();
+
+        let token = "{}";
+        let mut num = 0;
+        while let Some(index) = sql_final.find(token) {
+            num += 1;
+            sql_final.replace_range(index..index + token.len(), &format!("${}", num));
+        }
+        sql_final
+    }
+
+    pub fn params(&self) -> &Vec<Value> {
+        &self.params
+    }
+
     pub fn from_vec(vec: Vec<PreRender>, delimiter: &str) -> Self {
         let sql = vec
             .iter()
@@ -191,6 +211,7 @@ mod tests {
         let join = PreRender::from_vec(pre_vec, " + ");
 
         assert_eq!(join.sql, "{} + {} + {} + {}");
+        assert_eq!(join.sql_final(), "$1 + $2 + $3 + $4");
         assert_eq!(join.params.len(), 4);
         assert_eq!(join.params, vec![json!(1), json!(2), json!(3), json!(4)]);
     }

@@ -121,7 +121,7 @@ impl<'a> Query<'a> {
 
         expr!(
             format!(
-                "INSERT INTO `{}` ({}) VALUES ({{}}) returning id",
+                "INSERT INTO {} ({}) VALUES ({{}}) returning id",
                 self.table, fields
             ),
             Expression::new(
@@ -133,8 +133,11 @@ impl<'a> Query<'a> {
     }
 
     fn render_delete(&self) -> PreRender {
-        todo!();
-        // expr!("DELETE FROM {}{}", self.table, self.render_where()).render_chunk()
+        expr!(
+            format!("DELETE FROM {}{{}}", self.table),
+            self.render_where()
+        )
+        .render_chunk()
     }
 }
 
@@ -196,7 +199,7 @@ mod tests {
 
         assert_eq!(
             sql,
-            "INSERT INTO `users` (name, surname, age) VALUES ({}, {}, {}) returning id"
+            "INSERT INTO users (name, surname, age) VALUES ({}, {}, {}) returning id"
         );
         assert_eq!(params.len(), 3);
         assert_eq!(params[0], Value::Null);

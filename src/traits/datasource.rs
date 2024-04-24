@@ -1,9 +1,16 @@
-use std::error::Error;
-use std::result::Result;
+use anyhow::Result;
+use serde_json::Map;
+use serde_json::Value;
 
-use crate::Query;
+use crate::query::Query;
 
 pub trait DataSource {
-    fn query_fetch(&self, query: &Query) -> Result<Vec<Vec<String>>, Box<dyn Error>>;
-    fn query_exec(&self, query: &Query) -> Result<(), Box<dyn Error>>;
+    // Provided with an arbitrary query, fetch the results and return (Value = arbytrary )
+    fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>>;
+
+    // Execute a query without returning any results (e.g. DELETE, UPDATE, ALTER, etc.)
+    fn query_exec(&self, query: &Query) -> Result<()>;
+
+    // Insert ordered list of rows into a table as described by query columns
+    fn query_insert(&self, query: &Query, rows: Vec<Vec<Value>>) -> Result<()>;
 }
