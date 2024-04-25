@@ -6,6 +6,7 @@ mod mocks;
 pub mod prelude;
 mod query;
 // mod table;
+mod operations;
 mod traits;
 
 pub use expression::Expression;

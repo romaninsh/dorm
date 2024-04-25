@@ -1,6 +1,8 @@
 use serde_json::Value;
 use std::fmt::Debug;
 
+use crate::operations::Operations;
+
 /// A `SqlChunk` trait for generating SQL queries and their associated parameters
 ///
 /// This trait is designed to allow various types of SQL statements or sub-queries
@@ -182,6 +184,8 @@ impl PreRender {
         (self.sql, self.params)
     }
 }
+
+impl<'a> Operations<'a> for PreRender {}
 
 #[cfg(test)]
 mod tests {

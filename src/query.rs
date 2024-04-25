@@ -116,7 +116,7 @@ impl<'a> Query<'a> {
             .columns
             .iter()
             .filter(|f| !f.1.calculated())
-            .map(|f| json!(None as Option<Value>))
+            .map(|_| json!(None as Option<Value>))
             .collect::<Vec<Value>>();
 
         expr!(

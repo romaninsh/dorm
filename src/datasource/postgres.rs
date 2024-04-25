@@ -8,7 +8,6 @@ use serde_json::Value;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::Client;
 use tokio_postgres::Row;
-use tokio_postgres::Statement;
 
 struct Postgres<'a> {
     client: &'a Client,

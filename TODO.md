@@ -10,9 +10,13 @@ DataSet API
 - [x] add integration with postgres
 - [x] implement insert query
 - [x] implement delete query
-- [ ] implement parametric queries
+- [x] implement operations: (field.eq(otherfield))
+- [ ] implement functions: (concat(field, " ", otherfield))
+- [ ] implement type constraints for expressions and fields
+- [ ] add tests for table conditions (add_condition(field1.eq(field2))
+- [x] implement parametric queries
 - [ ] implement sub-library for datasource, supporting serde
-- [ ] datasource should convert query into result (traited)
+- [x] datasource should convert query into result (traited)
 - [ ] select where a field is a sub-query
 - [ ] insert where a field value is an expression
 - [ ] insert where a field is a sub-query

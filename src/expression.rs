@@ -1,6 +1,9 @@
-use crate::traits::{
-    column::Column,
-    sql_chunk::{PreRender, SqlChunk},
+use crate::{
+    operations::Operations,
+    traits::{
+        column::Column,
+        sql_chunk::{PreRender, SqlChunk},
+    },
 };
 
 #[macro_export]
@@ -64,6 +67,8 @@ impl<'a> Column<'a> for Expression<'a> {
         true
     }
 }
+
+impl<'a> Operations<'a> for Expression<'a> {}
 
 #[cfg(test)]
 mod tests {
