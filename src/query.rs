@@ -43,7 +43,7 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn add_column(mut self, name: String, field: Box<dyn Column<'a> + 'a>) -> Self {
+    pub fn add_column<'b: 'a>(mut self, name: String, field: Box<dyn Column<'b> + 'b>) -> Self {
         self.columns.insert(name, field);
         self
     }

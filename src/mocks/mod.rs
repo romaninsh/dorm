@@ -1,3 +1,3 @@
-// pub mod datasource;
+pub mod datasource;
 // mod postgres;
 // mod rusqlite;

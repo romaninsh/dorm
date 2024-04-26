@@ -1,13 +1,19 @@
-use std::ops::Deref;
+use crate::expression::Expression;
+use crate::traits::sql_chunk::SqlChunk;
 
-pub struct Condition {
+#[derive(Debug)]
+pub struct Condition<'a> {
     field: &'static str,
     operation: &'static str,
-    value: String,
+    value: Box<dyn SqlChunk<'a>>,
 }
 
-impl Condition {
-    pub fn new(field: &'static str, operation: &'static str, value: String) -> Condition {
+impl<'a> Condition<'a> {
+    pub fn new(
+        field: &'static str,
+        operation: &'static str,
+        value: Box<dyn SqlChunk<'a>>,
+    ) -> Condition<'a> {
         Condition {
             field,
             operation,
@@ -16,23 +22,19 @@ impl Condition {
     }
 }
 
-impl Deref for Condition {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.field
+impl<'a> SqlChunk<'a> for Condition<'a> {
+    fn render_chunk(&self) -> crate::traits::sql_chunk::PreRender {
+        let pr = self.value.as_ref().render_chunk();
+        Expression::new(format!("{} {} {{}}", self.field, self.operation), vec![&pr]).render_chunk()
     }
 }
 
-// impl<'a> Renderable<'a> for Condition {
-//     fn render(&self) -> String {
-//         format!("{} {} '{}'", self.field, self.operation, self.value)
-//     }
-
-//     fn params(&self) -> Vec<Box<dyn tokio_postgres::types::ToSql + Sync>> {
-//         vec![]
-//     }
-// }
+impl<'a> SqlChunk<'a> for &Condition<'a> {
+    fn render_chunk(&self) -> crate::traits::sql_chunk::PreRender {
+        let pr = self.value.as_ref().render_chunk();
+        Expression::new(format!("{} {} {{}}", self.field, self.operation), vec![&pr]).render_chunk()
+    }
+}
 
 // #[cfg(test)]
 // mod tests {

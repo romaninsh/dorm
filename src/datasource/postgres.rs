@@ -1,4 +1,5 @@
 use crate::query::Query;
+use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
@@ -185,6 +186,20 @@ impl<'a> SelectRows<'a> for Postgres<'a> {
     async fn select_rows(&self, query: &Query<'a>) -> Result<Vec<Value>> {
         // let (sql, params) = query.render_chunks();
         self.query_raw(query).await
+    }
+}
+
+impl<'a> DataSource<'a> for Postgres<'a> {
+    async fn query_fetch(&self, query: &Query<'a>) -> Result<Vec<serde_json::Map<String, Value>>> {
+        todo!()
+    }
+
+    async fn query_exec(&self, query: &Query<'a>) -> Result<()> {
+        todo!()
+    }
+
+    async fn query_insert(&self, query: &Query<'a>, rows: Vec<Vec<Value>>) -> Result<()> {
+        todo!()
     }
 }
 

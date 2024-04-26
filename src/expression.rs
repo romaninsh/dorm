@@ -104,6 +104,26 @@ mod tests {
     }
 
     #[test]
+    fn test_nested_expr_without_parameters_lifetimes() {
+        let a = String::from("Nested");
+
+        let expression = Expression::new("{} World".to_string(), vec![&a]);
+        let nested = Expression::new("Hello {}".to_string(), vec![&expression]);
+        let (sql, params) = nested.render_chunk().split();
+
+        assert_eq!(sql, "Hello World");
+        assert_eq!(params.len(), 0);
+
+        drop(nested);
+
+        let nested = Expression::new("Hello {}".to_string(), vec![&expression]);
+        let (sql, params) = nested.render_chunk().split();
+
+        assert_eq!(sql, "Hello World");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
     fn test_nested_expression() {
         let nested = Expression::new("Nested".to_string(), vec![]);
         let expression =
@@ -159,5 +179,16 @@ mod tests {
         assert_eq!(sql, "({} + {} + {}) AS `result`");
         assert_eq!(params.len(), 3);
         assert_eq!(params, vec![json!("10"), json!("5"), json!(4)]);
+    }
+
+    #[test]
+    fn test_lifetimes() {
+        let expr2 = Expression::new("Hello".to_string(), vec![]);
+        {
+            let expr1 = Expression::new("{}".to_string(), vec![&expr2]);
+            drop(expr1);
+        }
+
+        let test = expr2;
     }
 }
