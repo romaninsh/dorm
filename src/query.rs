@@ -1,14 +1,13 @@
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::{
-    expr,
-    expression::Expression,
+    expr_arc,
+    expression::{Expression, ExpressionArc},
     field::Field,
-    traits::{
-        column::Column,
-        sql_chunk::{PreRender, SqlChunk},
-    },
+    traits::{column::Column, sql_chunk::SqlChunk},
 };
 
 #[derive(Debug)]
@@ -19,22 +18,20 @@ pub enum QueryType {
 }
 
 #[derive(Debug)]
-pub struct Query<'a> {
+pub struct Query {
     table: String,
     query_type: QueryType,
-    columns: IndexMap<String, Box<dyn Column<'a> + 'a>>,
-    conditions: Vec<Box<dyn SqlChunk<'a> + 'a>>,
-    _marker: std::marker::PhantomData<&'a ()>,
+    columns: IndexMap<String, Arc<Box<dyn Column>>>,
+    conditions: Vec<Arc<Box<dyn SqlChunk>>>,
 }
 
-impl<'a> Query<'a> {
+impl Query {
     pub fn new(table: &str) -> Query {
         Query {
             table: table.to_string(),
             query_type: QueryType::Select,
             columns: IndexMap::new(),
             conditions: Vec::new(),
-            _marker: std::marker::PhantomData,
         }
     }
 
@@ -43,43 +40,40 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn add_column<'b: 'a>(mut self, name: String, field: Box<dyn Column<'b> + 'b>) -> Self {
+    pub fn add_column(self, name: String, field: impl Column + 'static) -> Self {
+        self.add_column_arc(name, Arc::new(Box::new(field)))
+    }
+
+    pub fn add_column_arc(mut self, name: String, field: Arc<Box<dyn Column>>) -> Self {
         self.columns.insert(name, field);
         self
     }
 
-    pub fn add_condition(mut self, cond: Box<dyn SqlChunk<'a> + 'a>) -> Self {
+    pub fn add_condition(self, cond: impl SqlChunk + 'static) -> Self {
+        self.add_condition_arc(Arc::new(Box::new(cond)))
+    }
+
+    pub fn add_condition_arc(mut self, cond: Arc<Box<dyn SqlChunk>>) -> Self {
         self.conditions.push(cond);
         self
     }
 
     // Simplified ways to define a field with a string
     pub fn add_column_field(self, name: &str) -> Self {
-        self.add_column(name.to_string(), Box::new(Field::new(name.to_string())))
+        self.add_column(name.to_string(), Field::new(name.to_string()))
     }
 
-    pub fn add_column_expr(self, name: String, expression: Expression<'a>) -> Self {
-        self.add_column(name, Box::new(expression))
-    }
-
-    fn render_where(&self) -> PreRender {
+    fn render_where(&self) -> Expression {
         if self.conditions.is_empty() {
-            PreRender::empty()
+            Expression::empty()
         } else {
-            let conditions = PreRender::from_vec(
-                self.conditions
-                    .iter()
-                    .map(|c| c.render_chunk())
-                    .collect::<Vec<PreRender>>(),
-                " AND ",
-            );
-
-            expr!(" WHERE {}", conditions).render_chunk()
+            let conditions = ExpressionArc::from_vec(self.conditions.clone(), " AND ");
+            expr_arc!(" WHERE {}", conditions).render_chunk()
         }
     }
 
-    fn render_select(&self) -> PreRender {
-        let fields = PreRender::from_vec(
+    fn render_select(&self) -> Expression {
+        let fields = Expression::from_vec(
             self.columns
                 .iter()
                 .map(|f| f.1.render_column(f.0).render_chunk())
@@ -87,7 +81,7 @@ impl<'a> Query<'a> {
             ", ",
         );
 
-        expr!(
+        expr_arc!(
             format!("SELECT {{}} FROM `{}`{{}}", self.table),
             fields,
             self.render_where()
@@ -95,7 +89,7 @@ impl<'a> Query<'a> {
         .render_chunk()
     }
 
-    fn render_insert(&self) -> PreRender {
+    fn render_insert(&self) -> Expression {
         let fields = self
             .columns
             .iter()
@@ -119,21 +113,18 @@ impl<'a> Query<'a> {
             .map(|_| json!(None as Option<Value>))
             .collect::<Vec<Value>>();
 
-        expr!(
+        expr_arc!(
             format!(
                 "INSERT INTO {} ({}) VALUES ({{}}) returning id",
                 self.table, fields
             ),
-            Expression::new(
-                values_str,
-                values.iter().map(|v| v as &dyn SqlChunk).collect()
-            )
+            Expression::new(values_str, values)
         )
         .render_chunk()
     }
 
-    fn render_delete(&self) -> PreRender {
-        expr!(
+    fn render_delete(&self) -> Expression {
+        expr_arc!(
             format!("DELETE FROM {}{{}}", self.table),
             self.render_where()
         )
@@ -141,8 +132,8 @@ impl<'a> Query<'a> {
     }
 }
 
-impl<'a> SqlChunk<'a> for Query<'a> {
-    fn render_chunk(&self) -> PreRender {
+impl SqlChunk for Query {
+    fn render_chunk(&self) -> Expression {
         match self.query_type {
             QueryType::Select => self.render_select(),
             QueryType::Insert => self.render_insert(),
@@ -153,12 +144,14 @@ impl<'a> SqlChunk<'a> for Query<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::expr;
+
     use super::*;
 
     #[test]
     fn test_where() {
-        let expr1 = Box::new(expr!("name = {}", "John"));
-        let expr2 = Box::new(expr!("age > {}", 30));
+        let expr1 = expr!("name = {}", "John");
+        let expr2 = expr!("age > {}", 30);
 
         let query = Query::new("users")
             .add_condition(expr1)
@@ -179,7 +172,7 @@ mod tests {
         let (sql, params) = Query::new("users")
             .add_column_field("id")
             .add_column_field("name")
-            .add_column_expr("calc".to_string(), expr!("1 + 1"))
+            .add_column("calc".to_string(), expr_arc!("1 + 1"))
             .render_chunk()
             .split();
 

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::query::Query;
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -14,8 +16,8 @@ struct Postgres<'a> {
     client: &'a Client,
 }
 
-impl Postgres<'_> {
-    pub fn new(client: &Client) -> Postgres {
+impl<'a> Postgres<'a> {
+    pub fn new(client: &'a Client) -> Postgres<'a> {
         Postgres { client }
     }
 
@@ -69,7 +71,7 @@ impl Postgres<'_> {
         Ok(json!(json_map))
     }
 
-    pub async fn query_raw(&self, query: &Query<'_>) -> Result<Vec<Value>> {
+    pub async fn query_raw(&self, query: &Query) -> Result<Vec<Value>> {
         let query_rendered = query.render_chunk();
         let params_tosql = query_rendered
             .params()
@@ -96,23 +98,23 @@ impl Postgres<'_> {
         Ok(results)
     }
 
-    pub async fn query_one(&self, query: &Query<'_>) -> Result<Value> {
+    pub async fn query_one(&self, query: &Query) -> Result<Value> {
         let Some(res) = self.query_raw(query).await?.into_iter().next() else {
             return Err(anyhow!("No rows for query_one"));
         };
         Ok(res)
     }
-    pub async fn query_opt(&self, query: &Query<'_>) -> Result<Option<Value>> {
+    pub async fn query_opt(&self, query: &Query) -> Result<Option<Value>> {
         Ok(self.query_raw(query).await?.into_iter().next())
     }
 }
 
-trait InsertRows<'a> {
-    async fn insert_rows(&self, query: &Query<'a>, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>>;
+trait InsertRows {
+    async fn insert_rows(&self, query: &Query, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>>;
 }
 
-impl<'a> InsertRows<'a> for Postgres<'a> {
-    async fn insert_rows(&self, query: &Query<'a>, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>> {
+impl<'a> InsertRows for Postgres<'a> {
+    async fn insert_rows(&self, query: &Query, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>> {
         // no rows to insert
         if rows.len() == 0 {
             return Ok(vec![]);
@@ -178,36 +180,37 @@ impl<'a> InsertRows<'a> for Postgres<'a> {
     }
 }
 
-trait SelectRows<'a> {
-    async fn select_rows(&self, query: &Query<'a>) -> Result<Vec<Value>>;
+trait SelectRows {
+    async fn select_rows(&self, query: &Query) -> Result<Vec<Value>>;
 }
 
-impl<'a> SelectRows<'a> for Postgres<'a> {
-    async fn select_rows(&self, query: &Query<'a>) -> Result<Vec<Value>> {
+impl<'a> SelectRows for Postgres<'a> {
+    async fn select_rows(&self, query: &Query) -> Result<Vec<Value>> {
         // let (sql, params) = query.render_chunks();
         self.query_raw(query).await
     }
 }
 
-impl<'a> DataSource<'a> for Postgres<'a> {
-    async fn query_fetch(&self, query: &Query<'a>) -> Result<Vec<serde_json::Map<String, Value>>> {
+impl<'a> DataSource for Postgres<'a> {
+    async fn query_fetch(&self, _query: &Query) -> Result<Vec<serde_json::Map<String, Value>>> {
         todo!()
     }
 
-    async fn query_exec(&self, query: &Query<'a>) -> Result<()> {
+    async fn query_exec(&self, _query: &Query) -> Result<()> {
         todo!()
     }
 
-    async fn query_insert(&self, query: &Query<'a>, rows: Vec<Vec<Value>>) -> Result<()> {
+    async fn query_insert(&self, _query: &Query, _rows: Vec<Vec<Value>>) -> Result<()> {
         todo!()
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+    use crate::expression::Expression;
     use crate::query::QueryType;
-    use crate::Expression;
     use crate::{expr, query::Query};
     use tokio_postgres::NoTls;
 
@@ -248,7 +251,7 @@ mod tests {
 
         let delete_query = Query::new("client")
             .set_type(QueryType::Delete)
-            .add_condition(Box::new(expr));
+            .add_condition(expr);
 
         postgres.query_raw(&delete_query).await.unwrap();
     }

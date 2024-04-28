@@ -1,7 +1,8 @@
+use crate::expression::Expression;
 use serde_json::Value;
 use std::fmt::Debug;
 
-use crate::operations::Operations;
+// use crate::operations::Operations;
 
 /// A `SqlChunk` trait for generating SQL queries and their associated parameters
 ///
@@ -61,7 +62,7 @@ use crate::operations::Operations;
 ///
 /// Standard types such as String, Vec<String>, or ToSql are implementing SqlChunk and can be used
 /// as a part of a query, typically resulting in
-pub trait SqlChunk<'a>: Debug {
+pub trait SqlChunk: Debug {
     /// Generates an SQL statement.
     ///
     /// The method should return a complete SQL statement as a `String`. An `offset`
@@ -72,120 +73,50 @@ pub trait SqlChunk<'a>: Debug {
     ///
     /// # Returns
     /// - Returns a `String` that contains the SQL statement.
-    fn render_chunk(&self) -> PreRender;
+    fn render_chunk(&self) -> Expression;
 }
 
-impl<'a> SqlChunk<'a> for String {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::String(self.clone())]))
-    }
-}
-
-impl<'a> SqlChunk<'a> for Value {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![self.clone()]))
+impl SqlChunk for String {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::String(self.clone())])
     }
 }
 
-impl<'a> SqlChunk<'a> for i64 {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::Number((*self).into())]))
+impl SqlChunk for Value {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![self.clone()])
     }
 }
 
-impl<'a> SqlChunk<'a> for u64 {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::Number((*self).into())]))
+impl SqlChunk for i64 {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl<'a> SqlChunk<'a> for i32 {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::Number((*self).into())]))
+impl SqlChunk for u64 {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl<'a> SqlChunk<'a> for u32 {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::Number((*self).into())]))
+impl SqlChunk for i32 {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl<'a> SqlChunk<'a> for &str {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new(("{}".to_owned(), vec![Value::String(self.to_string())]))
+impl SqlChunk for u32 {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PreRender {
-    sql: String,
-    params: Vec<Value>,
-}
-
-impl SqlChunk<'_> for PreRender {
-    fn render_chunk(&self) -> PreRender {
-        self.clone()
+impl SqlChunk for &str {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::String(self.to_string())])
     }
 }
-
-impl PreRender {
-    pub fn new(input: (String, Vec<Value>)) -> Self {
-        Self {
-            sql: input.0,
-            params: input.1,
-        }
-    }
-
-    pub fn empty() -> Self {
-        Self {
-            sql: "".to_owned(),
-            params: vec![],
-        }
-    }
-
-    pub fn sql(&self) -> &String {
-        &self.sql
-    }
-
-    pub fn sql_final(&self) -> String {
-        let mut sql_final = self.sql.clone();
-
-        let token = "{}";
-        let mut num = 0;
-        while let Some(index) = sql_final.find(token) {
-            num += 1;
-            sql_final.replace_range(index..index + token.len(), &format!("${}", num));
-        }
-        sql_final
-    }
-
-    pub fn params(&self) -> &Vec<Value> {
-        &self.params
-    }
-
-    pub fn from_vec(vec: Vec<PreRender>, delimiter: &str) -> Self {
-        let sql = vec
-            .iter()
-            .map(|pre| pre.sql.clone())
-            .collect::<Vec<String>>()
-            .join(delimiter);
-
-        let params = vec
-            .into_iter()
-            .map(|pre| pre.params)
-            .flatten()
-            .collect::<Vec<Value>>();
-
-        Self { sql, params }
-    }
-
-    pub fn split(self) -> (String, Vec<Value>) {
-        (self.sql, self.params)
-    }
-}
-
-impl<'a> Operations<'a> for PreRender {}
 
 #[cfg(test)]
 mod tests {
@@ -212,11 +143,11 @@ mod tests {
         let pre_render2 = expr!("{} + {}", 3, 4).render_chunk();
 
         let pre_vec = vec![pre_render1, pre_render2];
-        let join = PreRender::from_vec(pre_vec, " + ");
+        let join = Expression::from_vec(pre_vec, " + ");
 
-        assert_eq!(join.sql, "{} + {} + {} + {}");
+        assert_eq!(join.sql(), "{} + {} + {} + {}");
         assert_eq!(join.sql_final(), "$1 + $2 + $3 + $4");
-        assert_eq!(join.params.len(), 4);
-        assert_eq!(join.params, vec![json!(1), json!(2), json!(3), json!(4)]);
+        assert_eq!(join.params().len(), 4);
+        assert_eq!(*join.params(), vec![json!(1), json!(2), json!(3), json!(4)]);
     }
 }

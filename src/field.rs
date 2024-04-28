@@ -1,9 +1,10 @@
+use crate::expression::{Expression, ExpressionArc};
 use crate::operations::Operations;
 use crate::traits::column::Column;
-use crate::traits::sql_chunk::{PreRender, SqlChunk};
-use crate::{expr, Expression};
+use crate::traits::sql_chunk::SqlChunk;
+use crate::{expr, expr_arc};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Field {
     name: String,
 }
@@ -14,26 +15,26 @@ impl Field {
     }
 }
 
-impl<'a> Operations<'a> for Field {
-    fn eq(&self, other: impl SqlChunk<'a>) -> PreRender {
+impl Operations for Field {
+    fn eq(&self, other: impl SqlChunk) -> Expression {
         let chunk = other.render_chunk();
-        expr!(format!("`{}` = {{}}", &self.name), chunk).render_chunk()
+        expr_arc!(format!("`{}` = {{}}", &self.name), chunk).render_chunk()
     }
 
-    fn add(&self, other: impl SqlChunk<'a>) -> PreRender {
+    fn add(&self, other: impl SqlChunk) -> Expression {
         let chunk = other.render_chunk();
-        expr!(format!("`{}` + {{}}", &self.name), chunk).render_chunk()
+        expr_arc!(format!("`{}` + {{}}", &self.name), chunk).render_chunk()
     }
 }
 
-impl<'a> SqlChunk<'a> for Field {
-    fn render_chunk(&self) -> PreRender {
-        PreRender::new((format!("`{}`", self.name), vec![]))
+impl SqlChunk for Field {
+    fn render_chunk(&self) -> Expression {
+        Expression::new(format!("`{}`", self.name), vec![])
     }
 }
 
-impl<'a> Column<'a> for Field {
-    fn render_column(&self, alias: &str) -> PreRender {
+impl Column for Field {
+    fn render_column(&self, alias: &str) -> Expression {
         (if self.name == alias {
             expr!(format!("`{}`", self.name))
         } else {

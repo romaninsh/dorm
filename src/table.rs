@@ -1,25 +1,30 @@
+#![allow(dead_code)]
+
+use std::sync::Arc;
+
 use crate::condition::Condition;
+use crate::expr_arc;
+use crate::expression::ExpressionArc;
+use crate::field::Field;
 use crate::query::Query;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
-use crate::{Expression, Field};
 use anyhow::Result;
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 
 // Generic implementation of SQL table. We don't really want to use this extensively,
 // instead we want to use 3rd party SQL builders, that cary table schema information.
-pub struct Table<'a, T: DataSource<'a>> {
+pub struct Table<'a, T: DataSource> {
     data_source: &'a T,
     table_name: String,
     fields: IndexMap<String, Field>,
     title_field: Option<String>,
-    conditions: Vec<Condition<'a>>,
-    _marker: std::marker::PhantomData<&'a ()>,
+    conditions: Vec<Condition>,
 }
 
-impl<'a, T: DataSource<'a>> Table<'a, T> {
+impl<'a, T: DataSource> Table<'a, T> {
     pub fn new(table_name: &str, data_source: &'a T) -> Table<'a, T> {
         Table {
             table_name: table_name.to_string(),
@@ -27,7 +32,6 @@ impl<'a, T: DataSource<'a>> Table<'a, T> {
             title_field: None,
             conditions: Vec::new(),
             fields: IndexMap::new(),
-            _marker: std::marker::PhantomData,
         }
     }
 
@@ -50,62 +54,63 @@ impl<'a, T: DataSource<'a>> Table<'a, T> {
         self.add_field(field)
     }
 
-    pub fn add_condition(
-        mut self,
-        field: &'static str,
-        op: &'static str,
-        value: Box<dyn SqlChunk<'a>>,
-    ) -> Self {
-        self.conditions.push(Condition::new(field, op, value));
+    pub fn add_condition(mut self, condition: Condition) -> Self {
+        self.conditions.push(condition);
         self
     }
 
-    pub fn get_select_query<'b>(&'a self) -> Query<'b>
-    where
-        'b: 'a, // 'a is longer than 'b
-    {
+    pub fn add_condition_on_field(
+        mut self,
+        field: &'static str,
+        op: &'static str,
+        value: impl SqlChunk + 'static,
+    ) -> Self {
+        self.add_condition(Condition::new(field, op, Arc::new(Box::new(value))))
+    }
+
+    pub fn get_select_query(&self) -> Query {
         let mut query = Query::new(&self.table_name);
         for (field, _) in &self.fields {
             let field_object = Field::new(field.clone());
-            query = query.add_column(field.clone(), Box::new(field_object));
+            query = query.add_column(field.clone(), field_object);
         }
         for condition in self.conditions.iter() {
-            query = query.add_condition(Box::new(condition));
+            query = query.add_condition(condition.clone());
         }
         query
     }
 
-    pub async fn get_all_data(&'a self) -> Result<Vec<Map<String, Value>>> {
+    pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn sum(&'a self, expr: &str) -> Expression<'a> {
+    pub fn sum(&'a self, expr: &str) -> ExpressionArc {
         let field = self.fields.get(expr).unwrap();
-        Expression::new("SUM({})".to_string(), vec![field])
+        expr_arc!("SUM({})", field.clone())
     }
 }
-impl<'a, T: DataSource<'a>> ReadableDataSet<'a> for Table<'a, T> {
-    fn select_query(&'a self) -> Query<'a> {
+impl<'a, T: DataSource> ReadableDataSet for Table<'a, T> {
+    fn select_query(&self) -> Query {
         self.get_select_query()
     }
 
-    async fn get_all_data(&'a self) -> Result<Vec<Map<String, Value>>> {
+    async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         let q = self.select_query();
         let x = self.data_source.query_fetch(&q).await;
         x
     }
 }
 
-impl<'a, T: DataSource<'a>> WritableDataSet<'a> for Table<'a, T> {
-    fn insert_query(&'a self) -> Query {
+impl<'a, T: DataSource> WritableDataSet for Table<'a, T> {
+    fn insert_query(&self) -> Query {
         todo!()
     }
 
-    fn update_query(&'a self) -> Query {
+    fn update_query(&self) -> Query {
         todo!()
     }
 
-    fn delete_query(&'a self) -> Query {
+    fn delete_query(&self) -> Query {
         todo!()
     }
 }
@@ -144,11 +149,14 @@ mod tests {
         let table = Table::new("users", &data_source)
             .add_field("name")
             .add_field("surname")
-            .add_condition("name", "=", Box::new("John".to_owned()));
+            .add_condition_on_field("name", "=", "John".to_owned());
 
         let query = table.get_select_query().render_chunk().split();
 
-        assert_eq!(query.0, "SELECT name, surname FROM users WHERE name = {}");
+        assert_eq!(
+            query.0,
+            "SELECT `name`, `surname` FROM `users` WHERE name = {}"
+        );
         assert_eq!(query.1[0], json!("John"));
 
         let result = table.get_all_data().await;
@@ -166,12 +174,12 @@ mod tests {
             .add_title_field("name")
             .add_field("is_vip")
             .add_field("total_spent")
-            .add_condition("is_vip", "is", Box::new("true".to_owned()));
+            .add_condition_on_field("is_vip", "is", "true".to_owned());
 
         let sum = vip_client.sum("total_spent");
         assert_eq!(
             sum.render_chunk().sql().deref(),
-            "(SUM(total_spent))".to_owned()
+            "SUM(`total_spent`)".to_owned()
         );
     }
 }

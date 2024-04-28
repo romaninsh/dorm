@@ -24,19 +24,19 @@ impl MockDataSource {
     }
 }
 
-impl<'a> DataSource<'a> for MockDataSource {
-    async fn query_fetch(&self, _query: &Query<'a>) -> Result<Vec<Map<String, Value>>> {
+impl DataSource for MockDataSource {
+    async fn query_fetch(&self, _query: &Query) -> Result<Vec<Map<String, Value>>> {
         Ok(self.data.clone())
     }
 
-    async fn query_exec(&self, _query: &Query<'a>) -> Result<()> {
+    async fn query_exec(&self, _query: &Query) -> Result<()> {
         Ok(())
     }
 
     async fn query_insert(
         &self,
-        query: &Query<'a>,
-        rows: Vec<Vec<serde_json::Value>>,
+        _query: &Query,
+        _rows: Vec<Vec<serde_json::Value>>,
     ) -> anyhow::Result<()> {
         todo!()
     }

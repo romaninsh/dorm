@@ -1,6 +1,8 @@
-use super::sql_chunk::{PreRender, SqlChunk};
+use crate::expression::Expression;
 
-pub trait Column<'a>: SqlChunk<'a> {
-    fn render_column(&self, alias: &str) -> PreRender;
+use super::sql_chunk::SqlChunk;
+
+pub trait Column: SqlChunk {
+    fn render_column(&self, alias: &str) -> Expression;
     fn calculated(&self) -> bool;
 }

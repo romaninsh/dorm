@@ -308,6 +308,7 @@ dependencies = [
  "chrono",
  "futures",
  "indexmap",
+ "pretty_dbg",
  "rusqlite",
  "rust_decimal",
  "rust_decimal_macros",
@@ -771,6 +772,12 @@ checksum = "31c0052426df997c0cbd30789eb44ca097e3541717a7b8fa36b1c464ee7edebd"
 dependencies = [
  "vcpkg",
 ]
+
+[[package]]
+name = "pretty_dbg"
+version = "1.0.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20d4d8446f2c978b7e89d58579ed7ff5e3d7cca208674c8a6272477adcb73a50"
 
 [[package]]
 name = "proc-macro-crate"
