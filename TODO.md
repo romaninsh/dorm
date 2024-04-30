@@ -13,7 +13,8 @@ MVP:
 - [x] implement operations: (field.eq(otherfield))
 - [x] implement parametric queries
 - [x] properly handle nested queries
-- [ ] table should own DataSource, which should be cloneable and use Arc for client
+- [x] table should own DataSource, which should be cloneable and use Arc for client
+- [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet
 - [ ] implement functions: (concat(field, " ", otherfield))
