@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::model::product::ProductSet;
+use dorm::prelude::*;
 use tokio_postgres::{Error, NoTls};
 
 mod model;
@@ -13,6 +17,10 @@ async fn main() -> Result<(), Error> {
             eprintln!("connection error: {}", e);
         }
     });
+
+    let postgres = Postgres::new(Arc::new(Box::new(client)));
+
+    let product_set = ProductSet::new(postgres.clone());
 
     println!("Hello from Basic Dorm example!");
     Ok(())

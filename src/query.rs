@@ -14,6 +14,7 @@ use crate::{
 pub enum QueryType {
     Select,
     Insert,
+    Replace,
     Delete,
 }
 
@@ -115,8 +116,14 @@ impl Query {
 
         expr_arc!(
             format!(
-                "INSERT INTO {} ({}) VALUES ({{}}) returning id",
-                self.table, fields
+                "{} INTO {} ({}) VALUES ({{}}) returning id",
+                match self.query_type {
+                    QueryType::Insert => "INSERT",
+                    QueryType::Replace => "REPLACE",
+                    _ => panic!("Invalid query type"),
+                },
+                self.table,
+                fields
             ),
             Expression::new(values_str, values)
         )
@@ -136,7 +143,7 @@ impl SqlChunk for Query {
     fn render_chunk(&self) -> Expression {
         match self.query_type {
             QueryType::Select => self.render_select(),
-            QueryType::Insert => self.render_insert(),
+            QueryType::Insert | QueryType::Replace => self.render_insert(),
             QueryType::Delete => self.render_delete(),
         }
     }

@@ -1,10 +1,13 @@
+use std::{ops::Deref, sync::Arc};
+
 use crate::query::Query;
 use crate::traits::datasource::DataSource;
 use anyhow::Result;
 use serde_json::{Map, Value};
 
+#[derive(Clone)]
 pub struct MockDataSource {
-    data: Vec<Map<String, Value>>,
+    data: Arc<Vec<Map<String, Value>>>,
 }
 
 impl MockDataSource {
@@ -16,7 +19,9 @@ impl MockDataSource {
             .into_iter()
             .map(|x| x.as_object().unwrap().clone())
             .collect();
-        MockDataSource { data }
+        MockDataSource {
+            data: Arc::new(data),
+        }
     }
 
     pub fn data(&self) -> &Vec<Map<String, Value>> {
@@ -26,7 +31,7 @@ impl MockDataSource {
 
 impl DataSource for MockDataSource {
     async fn query_fetch(&self, _query: &Query) -> Result<Vec<Map<String, Value>>> {
-        Ok(self.data.clone())
+        Ok(self.data.deref().clone())
     }
 
     async fn query_exec(&self, _query: &Query) -> Result<()> {

@@ -1,3 +1,5 @@
+#![allow(async_fn_in_trait)]
+
 use anyhow::Result;
 use serde_json::Map;
 use serde_json::Value;

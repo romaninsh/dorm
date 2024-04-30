@@ -1,12 +1,10 @@
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use crate::condition::Condition;
 use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
-use crate::query::Query;
+use crate::query::{Query, QueryType};
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -16,16 +14,16 @@ use serde_json::{Map, Value};
 
 // Generic implementation of SQL table. We don't really want to use this extensively,
 // instead we want to use 3rd party SQL builders, that cary table schema information.
-pub struct Table<'a, T: DataSource> {
-    data_source: &'a T,
+pub struct Table<T: DataSource> {
+    data_source: T,
     table_name: String,
     fields: IndexMap<String, Field>,
     title_field: Option<String>,
     conditions: Vec<Condition>,
 }
 
-impl<'a, T: DataSource> Table<'a, T> {
-    pub fn new(table_name: &str, data_source: &'a T) -> Table<'a, T> {
+impl<T: DataSource> Table<T> {
+    pub fn new(table_name: &str, data_source: T) -> Table<T> {
         Table {
             table_name: table_name.to_string(),
             data_source,
@@ -80,16 +78,26 @@ impl<'a, T: DataSource> Table<'a, T> {
         query
     }
 
+    pub fn get_insert_query(&self) -> Query {
+        let mut query = Query::new(&self.table_name).set_type(QueryType::Insert);
+        for (field, _) in &self.fields {
+            let field_object = Field::new(field.clone());
+            query = query.add_column(field.clone(), field_object);
+        }
+        query
+    }
+
     pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn sum(&'a self, expr: &str) -> ExpressionArc {
+    pub fn sum(&self, expr: &str) -> ExpressionArc {
         let field = self.fields.get(expr).unwrap();
         expr_arc!("SUM({})", field.clone())
     }
 }
-impl<'a, T: DataSource> ReadableDataSet for Table<'a, T> {
+
+impl<T: DataSource> ReadableDataSet for Table<T> {
     fn select_query(&self) -> Query {
         self.get_select_query()
     }
@@ -101,7 +109,7 @@ impl<'a, T: DataSource> ReadableDataSet for Table<'a, T> {
     }
 }
 
-impl<'a, T: DataSource> WritableDataSet for Table<'a, T> {
+impl<T: DataSource> WritableDataSet for Table<T> {
     fn insert_query(&self) -> Query {
         todo!()
     }
@@ -131,7 +139,7 @@ mod tests {
 
         let data_source = MockDataSource::new(&data);
 
-        let table = Table::new("users", &data_source)
+        let table = Table::new("users", data_source.clone())
             .add_field("name")
             .add_field("surname");
 
@@ -146,7 +154,7 @@ mod tests {
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let data_source = MockDataSource::new(&data);
 
-        let table = Table::new("users", &data_source)
+        let table = Table::new("users", data_source.clone())
             .add_field("name")
             .add_field("surname")
             .add_condition_on_field("name", "=", "John".to_owned());
@@ -170,7 +178,7 @@ mod tests {
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let db = MockDataSource::new(&data);
 
-        let vip_client = Table::new("client", &db)
+        let vip_client = Table::new("client", db)
             .add_title_field("name")
             .add_field("is_vip")
             .add_field("total_spent")
@@ -181,5 +189,25 @@ mod tests {
             sum.render_chunk().sql().deref(),
             "SUM(`total_spent`)".to_owned()
         );
+    }
+
+    #[test]
+    fn test_insert_query() {
+        let data =
+            json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
+        let db = MockDataSource::new(&data);
+
+        let table = Table::new("users", db)
+            .add_field("name")
+            .add_field("surname");
+
+        let query = table.get_insert_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "INSERT INTO users (`name`, `surname`) VALUES ({}, {})"
+        );
+        assert_eq!(query.1[0], Value::Null);
+        assert_eq!(query.1[1], Value::Null);
     }
 }

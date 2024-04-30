@@ -78,6 +78,11 @@ mod tests {
         assert_eq!(params[0], 1);
 
         let f_age = Field::new("age".to_string());
-        let (sql, params) = field.add(5).eq(18).split();
+        let (sql, params) = f_age.add(5).eq(18).split();
+
+        assert_eq!(sql, "(`age` + {}) = ({})");
+        assert_eq!(params.len(), 2);
+        assert_eq!(params[0], 5);
+        assert_eq!(params[1], 18);
     }
 }

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::sync::Arc;
+
 use crate::query::Query;
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -12,12 +14,13 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::Client;
 use tokio_postgres::Row;
 
-struct Postgres<'a> {
-    client: &'a Client,
+#[derive(Clone)]
+pub struct Postgres {
+    client: Arc<Box<Client>>,
 }
 
-impl<'a> Postgres<'a> {
-    pub fn new(client: &'a Client) -> Postgres<'a> {
+impl Postgres {
+    pub fn new(client: Arc<Box<Client>>) -> Postgres {
         Postgres { client }
     }
 
@@ -113,7 +116,7 @@ trait InsertRows {
     async fn insert_rows(&self, query: &Query, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>>;
 }
 
-impl<'a> InsertRows for Postgres<'a> {
+impl InsertRows for Postgres {
     async fn insert_rows(&self, query: &Query, rows: &Vec<Vec<Value>>) -> Result<Vec<Value>> {
         // no rows to insert
         if rows.len() == 0 {
@@ -184,14 +187,14 @@ trait SelectRows {
     async fn select_rows(&self, query: &Query) -> Result<Vec<Value>>;
 }
 
-impl<'a> SelectRows for Postgres<'a> {
+impl SelectRows for Postgres {
     async fn select_rows(&self, query: &Query) -> Result<Vec<Value>> {
         // let (sql, params) = query.render_chunks();
         self.query_raw(query).await
     }
 }
 
-impl<'a> DataSource for Postgres<'a> {
+impl DataSource for Postgres {
     async fn query_fetch(&self, _query: &Query) -> Result<Vec<serde_json::Map<String, Value>>> {
         todo!()
     }
@@ -226,7 +229,7 @@ mod tests {
             }
         });
 
-        let postgres = Postgres::new(&client);
+        let postgres = Postgres::new(Arc::new(Box::new(client)));
 
         let query = Query::new("client")
             .set_type(QueryType::Insert)
