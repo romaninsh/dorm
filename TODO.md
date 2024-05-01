@@ -27,7 +27,8 @@ MVP:
 - [ ] insert where a field value is an expression
 - [ ] insert where a field is a sub-query
 - [ ] select from a subquery
-- [ ] add sql table as a dataset (+ clean up method naming)
+- [ ] add sql table as a dataset at a query level (+ clean up method naming)
+- [ ] postgres expressions should add type annotation into query ("$1::text")
 
 Implementing examples:
 
@@ -123,6 +124,9 @@ db.transaction(|_| {
 Basic implementation allows to use Table as an ORM data source. We can implement
 a read-only source that have a query as a source.
 
+TODO: query-based model can be a curious feature, but this example should be rewritten
+to use a different table-like construct, returned by table.group() method.
+
 ```rust
 struct GraphData {
     date: Date,
@@ -145,6 +149,9 @@ impl DailyDeployments {
             .group_by(td.date());
 
         Self { ds, table }
+    }
+    pub fn date(&self) -> Field {
+        self.query.field(0)
     }
 }
 
@@ -171,4 +178,20 @@ for item in basket.items()?.into_iter() {
     item.save();   // item data is stored in cache
 }
 basket.archive();  // stores archived basked into BigQuery
+```
+
+## Implement in-memory cache concept
+
+This allows to create in-memory cache of a dataset. Finding a record
+in a cache is faster. Cache will automatically invalidate items if
+they happen to change in the database, if the datasource allows
+subscription for the changes. There can also be other invalidation
+mechanics.
+
+Cache provides a transparent layer, so that the business logic code
+would not be affected.
+
+```rust
+let client_set = ClientSet::new(ClientCache::new(postgres));
+// use client_set as usual
 ```

@@ -1,5 +1,8 @@
 # DORM - the Dry Object-Relational Mapper
 
+DORM is focused at bringing abstraction layer suitable for your business/enterprise
+use-cases.
+
 While most ORM libraries are designed to work specifically with the data by proactively
 fetching it, DORM prefers to be lazy and focus on query-mapping and lazy hydration.
 

@@ -67,7 +67,7 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn get_select_query(&self) -> Query {
-        let mut query = Query::new(&self.table_name);
+        let mut query = Query::new().set_table(&self.table_name);
         for (field, _) in &self.fields {
             let field_object = Field::new(field.clone());
             query = query.add_column(field.clone(), field_object);
@@ -79,7 +79,9 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn get_insert_query(&self) -> Query {
-        let mut query = Query::new(&self.table_name).set_type(QueryType::Insert);
+        let mut query = Query::new()
+            .set_table(&self.table_name)
+            .set_type(QueryType::Insert);
         for (field, _) in &self.fields {
             let field_object = Field::new(field.clone());
             query = query.add_column(field.clone(), field_object);
@@ -161,10 +163,7 @@ mod tests {
 
         let query = table.get_select_query().render_chunk().split();
 
-        assert_eq!(
-            query.0,
-            "SELECT `name`, `surname` FROM `users` WHERE name = {}"
-        );
+        assert_eq!(query.0, "SELECT name, surname FROM users WHERE name = {}");
         assert_eq!(query.1[0], json!("John"));
 
         let result = table.get_all_data().await;
@@ -187,7 +186,7 @@ mod tests {
         let sum = vip_client.sum("total_spent");
         assert_eq!(
             sum.render_chunk().sql().deref(),
-            "SUM(`total_spent`)".to_owned()
+            "SUM(total_spent)".to_owned()
         );
     }
 
@@ -205,7 +204,7 @@ mod tests {
 
         assert_eq!(
             query.0,
-            "INSERT INTO users (`name`, `surname`) VALUES ({}, {})"
+            "INSERT INTO users (name, surname) VALUES ({}, {}) returning id"
         );
         assert_eq!(query.1[0], Value::Null);
         assert_eq!(query.1[1], Value::Null);

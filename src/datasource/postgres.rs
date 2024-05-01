@@ -24,6 +24,14 @@ impl Postgres {
         Postgres { client }
     }
 
+    pub fn escape(&self, expr: String) -> String {
+        format!("\"{}\"", expr)
+    }
+
+    pub fn annotate_type(&self, expr: String, as_type: String) -> String {
+        format!("{}::{}", expr, as_type)
+    }
+
     pub fn convert_value_tosql(&self, value: Value) -> Box<dyn ToSql + Sync> {
         match value {
             Value::Null => Box::new(None as Option<&[u8]>),
@@ -32,7 +40,7 @@ impl Postgres {
                 if n.is_i64() {
                     Box::new(n.as_i64().unwrap() as i32)
                 } else {
-                    Box::new(n.as_f64().unwrap() as i32)
+                    Box::new(n.as_f64().unwrap() as f32)
                 }
             }
             Value::String(s) => Box::new(s),
@@ -231,7 +239,8 @@ mod tests {
 
         let postgres = Postgres::new(Arc::new(Box::new(client)));
 
-        let query = Query::new("client")
+        let query = Query::new()
+            .set_table("client")
             .set_type(QueryType::Insert)
             .add_column_field("name")
             .add_column_field("email")
@@ -252,7 +261,8 @@ mod tests {
 
         let expr = expr!("id in ({}, {})", id0, id1);
 
-        let delete_query = Query::new("client")
+        let delete_query = Query::new()
+            .set_table("client")
             .set_type(QueryType::Delete)
             .add_condition(expr);
 

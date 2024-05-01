@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
@@ -20,20 +21,25 @@ pub enum QueryType {
 
 #[derive(Debug)]
 pub struct Query {
-    table: String,
+    table: Option<String>,
     query_type: QueryType,
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
     conditions: Vec<Arc<Box<dyn SqlChunk>>>,
 }
 
 impl Query {
-    pub fn new(table: &str) -> Query {
+    pub fn new() -> Query {
         Query {
-            table: table.to_string(),
+            table: None,
             query_type: QueryType::Select,
             columns: IndexMap::new(),
             conditions: Vec::new(),
         }
+    }
+
+    pub fn set_table(mut self, table: &str) -> Self {
+        self.table = Some(table.to_string());
+        self
     }
 
     pub fn set_type(mut self, query_type: QueryType) -> Self {
@@ -73,7 +79,7 @@ impl Query {
         }
     }
 
-    fn render_select(&self) -> Expression {
+    fn render_select(&self) -> Result<Expression> {
         let fields = Expression::from_vec(
             self.columns
                 .iter()
@@ -82,15 +88,26 @@ impl Query {
             ", ",
         );
 
-        expr_arc!(
-            format!("SELECT {{}} FROM `{}`{{}}", self.table),
+        Ok(expr_arc!(
+            format!(
+                "SELECT {{}} {}{{}}",
+                if let Some(table) = self.table.clone() {
+                    format!("FROM {}", table)
+                } else {
+                    "".to_string()
+                }
+            ),
             fields,
             self.render_where()
         )
-        .render_chunk()
+        .render_chunk())
     }
 
-    fn render_insert(&self) -> Expression {
+    fn render_insert(&self) -> Result<Expression> {
+        let Some(table) = self.table.clone() else {
+            return Err(anyhow!("Call set_table() for insert query"));
+        };
+
         let fields = self
             .columns
             .iter()
@@ -114,7 +131,7 @@ impl Query {
             .map(|_| json!(None as Option<Value>))
             .collect::<Vec<Value>>();
 
-        expr_arc!(
+        Ok(expr_arc!(
             format!(
                 "{} INTO {} ({}) VALUES ({{}}) returning id",
                 match self.query_type {
@@ -122,20 +139,24 @@ impl Query {
                     QueryType::Replace => "REPLACE",
                     _ => panic!("Invalid query type"),
                 },
-                self.table,
+                table,
                 fields
             ),
             Expression::new(values_str, values)
         )
-        .render_chunk()
+        .render_chunk())
     }
 
-    fn render_delete(&self) -> Expression {
-        expr_arc!(
-            format!("DELETE FROM {}{{}}", self.table),
-            self.render_where()
-        )
-        .render_chunk()
+    fn render_delete(&self) -> Result<Expression> {
+        let Some(table) = self.table.clone() else {
+            return Err(anyhow!("Call set_table() for insert query"));
+        };
+
+        Ok(expr_arc!(format!("DELETE FROM {}{{}}", table), self.render_where()).render_chunk())
+    }
+
+    pub fn preview(&self) -> String {
+        self.render_chunk().preview()
     }
 }
 
@@ -146,6 +167,7 @@ impl SqlChunk for Query {
             QueryType::Insert | QueryType::Replace => self.render_insert(),
             QueryType::Delete => self.render_delete(),
         }
+        .unwrap()
     }
 }
 
@@ -160,7 +182,8 @@ mod tests {
         let expr1 = expr!("name = {}", "John");
         let expr2 = expr!("age > {}", 30);
 
-        let query = Query::new("users")
+        let query = Query::new()
+            .set_table("users")
             .add_condition(expr1)
             .add_condition(expr2);
 
@@ -176,20 +199,22 @@ mod tests {
 
     #[test]
     fn test_select() {
-        let (sql, params) = Query::new("users")
+        let (sql, params) = Query::new()
+            .set_table("users")
             .add_column_field("id")
             .add_column_field("name")
             .add_column("calc".to_string(), expr_arc!("1 + 1"))
             .render_chunk()
             .split();
 
-        assert_eq!(sql, "SELECT `id`, `name`, (1 + 1) AS `calc` FROM `users`");
+        assert_eq!(sql, "SELECT id, name, (1 + 1) AS calc FROM users");
         assert_eq!(params.len(), 0);
     }
 
     #[test]
     fn test_insert() {
-        let (sql, params) = Query::new("users")
+        let (sql, params) = Query::new()
+            .set_table("users")
             .set_type(QueryType::Insert)
             .add_column_field("name")
             .add_column_field("surname")

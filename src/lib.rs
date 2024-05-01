@@ -1,6 +1,6 @@
 mod condition;
 mod datasource;
-mod expression;
+pub mod expression;
 mod field;
 mod mocks;
 mod operations;

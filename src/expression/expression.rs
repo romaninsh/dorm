@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use crate::{operations::Operations, traits::sql_chunk::SqlChunk};
+use crate::{
+    operations::Operations,
+    traits::{column::Column, sql_chunk::SqlChunk},
+};
 
 #[macro_export]
 macro_rules! expr {
@@ -18,6 +21,7 @@ macro_rules! expr {
 pub struct Expression {
     expression: String,
     parameters: Vec<Value>,
+    escape_char: Option<char>,
 }
 
 impl SqlChunk for Expression {
@@ -31,6 +35,7 @@ impl Expression {
         Self {
             expression,
             parameters,
+            escape_char: None,
         }
     }
 
@@ -38,6 +43,7 @@ impl Expression {
         Self {
             expression: "".to_owned(),
             parameters: vec![],
+            escape_char: None,
         }
     }
 
@@ -77,12 +83,31 @@ impl Expression {
         Self {
             expression,
             parameters,
+            escape_char: None,
         }
     }
 
     pub fn split(self) -> (String, Vec<Value>) {
         (self.expression, self.parameters)
     }
+
+    pub fn preview(&self) -> String {
+        let mut preview = self.expression.clone();
+        for param in &self.parameters {
+            preview = preview.replacen("{}", &param.to_string(), 1);
+        }
+        preview
+    }
 }
 
+impl Column for Expression {
+    fn render_column(&self, alias: &str) -> Expression {
+        let expression = format!("({}) AS {}", self.expression, alias);
+
+        Expression::new(expression, self.parameters.clone())
+    }
+    fn calculated(&self) -> bool {
+        true
+    }
+}
 impl Operations for Expression {}
