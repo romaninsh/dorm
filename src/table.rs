@@ -1,22 +1,28 @@
 use std::sync::Arc;
 
 use crate::condition::Condition;
+use crate::datasource::postgres::AssociatedExpressionArc;
 use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
+use crate::prelude::AssociatedQuery;
 use crate::query::{Query, QueryType};
+use crate::traits::column::Column;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 
 // Generic implementation of SQL table. We don't really want to use this extensively,
 // instead we want to use 3rd party SQL builders, that cary table schema information.
+
+#[derive(Clone)]
 pub struct Table<T: DataSource> {
     data_source: T,
     table_name: String,
+    table_alias: Option<String>,
     fields: IndexMap<String, Field>,
     title_field: Option<String>,
     conditions: Vec<Condition>,
@@ -26,11 +32,16 @@ impl<T: DataSource> Table<T> {
     pub fn new(table_name: &str, data_source: T) -> Table<T> {
         Table {
             table_name: table_name.to_string(),
+            table_alias: None,
             data_source,
             title_field: None,
             conditions: Vec::new(),
             fields: IndexMap::new(),
         }
+    }
+
+    fn new_field(&self, field: String) -> Field {
+        Field::new(field, self.table_alias.clone())
     }
 
     pub fn id(&self) -> &Field {
@@ -43,7 +54,7 @@ impl<T: DataSource> Table<T> {
 
     pub fn add_field(mut self, field: &str) -> Self {
         self.fields
-            .insert(field.to_string(), Field::new(field.to_string()));
+            .insert(field.to_string(), self.new_field(field.to_string()));
         self
     }
 
@@ -58,19 +69,31 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn add_condition_on_field(
-        mut self,
+        self,
         field: &'static str,
         op: &'static str,
         value: impl SqlChunk + 'static,
-    ) -> Self {
-        self.add_condition(Condition::new(field, op, Arc::new(Box::new(value))))
+    ) -> Result<Self> {
+        let field = self
+            .fields
+            .get(field)
+            .ok_or_else(|| anyhow!("Field not found: {}", field))?
+            .clone();
+        Ok(self.add_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
+    }
+
+    pub fn get_empty_query(&self) -> Query {
+        let mut query = Query::new().set_table(&self.table_name);
+        for condition in self.conditions.iter() {
+            query = query.add_condition(condition.clone());
+        }
+        query
     }
 
     pub fn get_select_query(&self) -> Query {
         let mut query = Query::new().set_table(&self.table_name);
-        for (field, _) in &self.fields {
-            let field_object = Field::new(field.clone());
-            query = query.add_column(field.clone(), field_object);
+        for (field_key, field_val) in &self.fields {
+            query = query.add_column(field_key.clone(), field_val.clone());
         }
         for condition in self.conditions.iter() {
             query = query.add_condition(condition.clone());
@@ -83,7 +106,7 @@ impl<T: DataSource> Table<T> {
             .set_table(&self.table_name)
             .set_type(QueryType::Insert);
         for (field, _) in &self.fields {
-            let field_object = Field::new(field.clone());
+            let field_object = Field::new(field.clone(), self.table_alias.clone());
             query = query.add_column(field.clone(), field_object);
         }
         query
@@ -93,9 +116,11 @@ impl<T: DataSource> Table<T> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn sum(&self, expr: &str) -> ExpressionArc {
-        let field = self.fields.get(expr).unwrap();
-        expr_arc!("SUM({})", field.clone())
+    pub fn sum(&self, field: &Field) -> AssociatedQuery<T> {
+        let query = self
+            .get_empty_query()
+            .add_column("sum".to_string(), expr_arc!("SUM({})", field.clone()));
+        AssociatedQuery::new(query, self.data_source.clone())
     }
 }
 
@@ -125,9 +150,22 @@ impl<T: DataSource> WritableDataSet for Table<T> {
     }
 }
 
+pub trait TableDelegate<T: DataSource> {
+    fn table(&self) -> &Table<T>;
+
+    fn id(&self) -> Field {
+        self.table().id().clone()
+    }
+    fn add_condition(&self, condition: Condition) -> Table<T> {
+        self.table().clone().add_condition(condition)
+    }
+    fn sum(&self, field: &Field) -> AssociatedQuery<T> {
+        self.table().sum(field)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
 
     use serde_json::json;
 
@@ -159,7 +197,8 @@ mod tests {
         let table = Table::new("users", data_source.clone())
             .add_field("name")
             .add_field("surname")
-            .add_condition_on_field("name", "=", "John".to_owned());
+            .add_condition_on_field("name", "=", "John".to_owned())
+            .unwrap();
 
         let query = table.get_select_query().render_chunk().split();
 
@@ -181,12 +220,13 @@ mod tests {
             .add_title_field("name")
             .add_field("is_vip")
             .add_field("total_spent")
-            .add_condition_on_field("is_vip", "is", "true".to_owned());
+            .add_condition_on_field("is_vip", "is", "true".to_owned())
+            .unwrap();
 
-        let sum = vip_client.sum("total_spent");
+        let sum = vip_client.sum(vip_client.fields.get("total_spent").unwrap());
         assert_eq!(
-            sum.render_chunk().sql().deref(),
-            "SUM(total_spent)".to_owned()
+            sum.render_chunk().sql().clone(),
+            "SELECT (SUM(total_spent)) AS sum FROM client WHERE is_vip is {}".to_owned()
         );
     }
 

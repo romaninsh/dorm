@@ -1,13 +1,16 @@
 #![allow(dead_code)]
 
+use std::ops::Deref;
 use std::sync::Arc;
 
+use crate::expression::ExpressionArc;
 use crate::query::Query;
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
+use rust_decimal::Decimal;
 use serde_json::json;
 use serde_json::Value;
 use tokio_postgres::types::ToSql;
@@ -61,6 +64,7 @@ impl Postgres {
                 "bool" => json!(row.get::<_, Option<bool>>(i)),               // bool as bool
                 "float4" => json!(row.get::<_, Option<f32>>(i)),              // float4 as f32
                 "float8" => json!(row.get::<_, Option<f64>>(i)),              // float8 as f64
+                "numeric" => json!(row.get::<_, Option<Decimal>>(i)),         // numeric as f64
                 // "date" => row
                 //     .get::<_, Option<chrono::NaiveDate>>(i)
                 //     .map(|d| json!(d.to_string())), // date as ISO8601 string
@@ -99,7 +103,7 @@ impl Postgres {
             .client
             .query(&query_rendered.sql_final(), params_tosql_refs.as_slice())
             .await
-            .context(anyhow!("Error in query"))?;
+            .context(anyhow!("Error in query {}", query.preview()))?;
 
         let mut results = Vec::new();
         for row in result {
@@ -109,12 +113,6 @@ impl Postgres {
         Ok(results)
     }
 
-    pub async fn query_one(&self, query: &Query) -> Result<Value> {
-        let Some(res) = self.query_raw(query).await?.into_iter().next() else {
-            return Err(anyhow!("No rows for query_one"));
-        };
-        Ok(res)
-    }
     pub async fn query_opt(&self, query: &Query) -> Result<Option<Value>> {
         Ok(self.query_raw(query).await?.into_iter().next())
     }
@@ -213,6 +211,62 @@ impl DataSource for Postgres {
 
     async fn query_insert(&self, _query: &Query, _rows: Vec<Vec<Value>>) -> Result<()> {
         todo!()
+    }
+    async fn query_one(&self, query: &Query) -> Result<Value> {
+        let Some(res) = self.query_raw(query).await?.into_iter().next() else {
+            return Err(anyhow!("No rows for query_one"));
+        };
+        Ok(res)
+    }
+}
+
+pub struct AssociatedExpressionArc<T: DataSource> {
+    pub expr: ExpressionArc,
+    pub ds: T,
+}
+
+impl<T: DataSource> Deref for AssociatedExpressionArc<T> {
+    type Target = ExpressionArc;
+
+    fn deref(&self) -> &Self::Target {
+        &self.expr
+    }
+}
+
+impl<T: DataSource> AssociatedExpressionArc<T> {
+    pub fn new(expr: ExpressionArc, ds: T) -> Self {
+        Self { expr, ds }
+    }
+    pub async fn get_one(&self) -> Result<Value> {
+        let one = self
+            .ds
+            .query_one(&Query::new().set_type(crate::query::QueryType::Expression(
+                self.expr.render_chunk(),
+            )))
+            .await?;
+        Ok(one)
+    }
+}
+pub struct AssociatedQuery<T: DataSource> {
+    pub query: Query,
+    pub ds: T,
+}
+impl<T: DataSource> Deref for AssociatedQuery<T> {
+    type Target = Query;
+
+    fn deref(&self) -> &Self::Target {
+        &self.query
+    }
+}
+impl<T: DataSource> AssociatedQuery<T> {
+    pub fn new(query: Query, ds: T) -> Self {
+        Self { query, ds }
+    }
+    pub async fn fetch(&self) -> Result<Vec<serde_json::Map<String, Value>>> {
+        self.ds.query_fetch(&self.query).await
+    }
+    pub async fn get_one(&self) -> Result<Value> {
+        self.ds.query_one(&self.query).await
     }
 }
 

@@ -17,6 +17,7 @@ pub enum QueryType {
     Insert,
     Replace,
     Delete,
+    Expression(Expression),
 }
 
 #[derive(Debug)]
@@ -67,7 +68,7 @@ impl Query {
 
     // Simplified ways to define a field with a string
     pub fn add_column_field(self, name: &str) -> Self {
-        self.add_column(name.to_string(), Field::new(name.to_string()))
+        self.add_column(name.to_string(), Field::new(name.to_string(), None))
     }
 
     fn render_where(&self) -> Expression {
@@ -162,10 +163,11 @@ impl Query {
 
 impl SqlChunk for Query {
     fn render_chunk(&self) -> Expression {
-        match self.query_type {
+        match &self.query_type {
             QueryType::Select => self.render_select(),
             QueryType::Insert | QueryType::Replace => self.render_insert(),
             QueryType::Delete => self.render_delete(),
+            QueryType::Expression(expr) => Ok(expr.clone()),
         }
         .unwrap()
     }
@@ -230,5 +232,16 @@ mod tests {
         assert_eq!(params[0], Value::Null);
         assert_eq!(params[1], Value::Null);
         assert_eq!(params[2], Value::Null);
+    }
+
+    #[test]
+    fn test_expression() {
+        let (sql, params) = Query::new()
+            .set_type(QueryType::Expression(expr!("CALL some_procedure()")))
+            .render_chunk()
+            .split();
+
+        assert_eq!(sql, "CALL some_procedure()");
+        assert_eq!(params.len(), 0);
     }
 }

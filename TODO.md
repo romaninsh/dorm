@@ -14,6 +14,11 @@ MVP:
 - [x] implement parametric queries
 - [x] properly handle nested queries
 - [x] table should own DataSource, which should be cloneable and use Arc for client
+- [x] implemented condition chaining
+- [x] implemented and/or conditions
+- [x] implemented expression query
+- [x] implemented table::sum()
+- [x] implemented TableDelegate trait
 - [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet

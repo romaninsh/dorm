@@ -24,12 +24,18 @@ pub struct ProductSet {
     table: Table<Postgres>,
 }
 
+impl TableDelegate<Postgres> for ProductSet {
+    fn table(&self) -> &Table<Postgres> {
+        &self.table
+    }
+}
+
 impl ProductSet {
     pub fn new(ds: Postgres) -> Self {
         let table = Table::new("product", ds)
             .add_field("name")
             .add_field("description")
-            .add_field("price");
+            .add_field("default_price");
         // .add_field(Field::new("id", Type::Serial).primary())
         // .add_field(Field::new("name", Type::Varchar(255)).not_null())
         // .add_field(Field::new("description", Type::Text))
@@ -47,7 +53,7 @@ impl ProductSet {
     }
 
     pub fn price(&self) -> &Field {
-        self.table.fields().get("price").unwrap()
+        self.table.fields().get("default_price").unwrap()
     }
 
     async fn map<T, F>(self, mut callback: F) -> Result<Self>

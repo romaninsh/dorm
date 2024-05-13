@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::model::product::ProductSet;
 use dorm::prelude::*;
+use rust_decimal::Decimal;
 use tokio_postgres::NoTls;
 
 use anyhow::Result;
@@ -24,13 +25,19 @@ async fn main() -> Result<()> {
 
     let product_set = ProductSet::new(postgres.clone());
 
-    let sum = expr!("{}::integer + {}::integer", 2, 2);
+    let product_with_certain_price = product_set.add_condition(
+        product_set
+            .price()
+            .gt(Decimal::new(10, 0))
+            .and(product_set.price().lt(Decimal::new(100, 0))),
+    );
 
-    let query = Query::new().add_column("sum".to_string(), sum);
+    let product_price_sum = product_set.sum(product_set.price()).get_one().await?;
+    let special_price_sum = product_with_certain_price
+        .sum(product_set.price())
+        .get_one()
+        .await?;
 
-    dbg!(&query.preview());
-    dbg!(postgres.query_raw(&query).await?);
-
-    println!("Hello from Basic Dorm example!");
+    println!("Sum of prices: {product_price_sum}, sum of special prices: {special_price_sum}");
     Ok(())
 }

@@ -45,6 +45,10 @@ impl DataSource for MockDataSource {
     ) -> anyhow::Result<()> {
         todo!()
     }
+
+    async fn query_one(&self, _query: &Query) -> Result<Value> {
+        todo!()
+    }
 }
 
 #[cfg(test)]

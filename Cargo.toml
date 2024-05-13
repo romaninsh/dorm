@@ -7,12 +7,12 @@ edition = "2021"
 doctest = false
 
 [dependencies]
+rust_decimal = { version = "1", features = ["db-postgres"] }
 async-trait = "0.1.80"
+tokio-postgres = { version = "*", features = ["with-serde_json-1"] }
 indexmap = { version = "2", features = ["serde"] }
 rusqlite = "0.31.0"
 tokio = { version = "1", features = ["full"] }
-tokio-postgres = "0.7.10"
-rust_decimal = { version = "1", features = [] }
 rust_decimal_macros = "1"
 serde_json = { version = "1", features = [
     "preserve_order",

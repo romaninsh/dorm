@@ -1,5 +1,6 @@
 use crate::expression::Expression;
-use serde_json::Value;
+use rust_decimal::Decimal;
+use serde_json::{to_value, Number, Value};
 use std::fmt::Debug;
 
 // use crate::operations::Operations;
@@ -115,6 +116,13 @@ impl SqlChunk for u32 {
 impl SqlChunk for &str {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::String(self.to_string())])
+    }
+}
+
+impl SqlChunk for Decimal {
+    fn render_chunk(&self) -> Expression {
+        let f = to_value(self).unwrap();
+        Expression::new("{}".to_owned(), vec![f])
     }
 }
 
