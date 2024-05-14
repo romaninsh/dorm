@@ -19,6 +19,8 @@ MVP:
 - [x] implemented expression query
 - [x] implemented table::sum()
 - [x] implemented TableDelegate trait
+- [x] implemented Query::add_join()
+- [x] add uniq id vendor
 - [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet

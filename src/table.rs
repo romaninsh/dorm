@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use crate::condition::Condition;
-use crate::datasource::postgres::AssociatedExpressionArc;
 use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
+// use crate::join::Join;
 use crate::prelude::AssociatedQuery;
 use crate::query::{Query, QueryType};
-use crate::traits::column::Column;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -23,6 +22,7 @@ pub struct Table<T: DataSource> {
     data_source: T,
     table_name: String,
     table_alias: Option<String>,
+    // joins: Vec<Join<T>>,
     fields: IndexMap<String, Field>,
     title_field: Option<String>,
     conditions: Vec<Condition>,
@@ -33,6 +33,7 @@ impl<T: DataSource> Table<T> {
         Table {
             table_name: table_name.to_string(),
             table_alias: None,
+            // joins: Vec::new(),
             data_source,
             title_field: None,
             conditions: Vec::new(),
@@ -81,6 +82,27 @@ impl<T: DataSource> Table<T> {
             .clone();
         Ok(self.add_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
     }
+
+    /*
+    // TODO: Need to allow self-join and provide unique alias
+    pub fn add_join(mut self, join: Join<T>) -> Self {
+        self.joins.push(join);
+        self
+    }
+
+    pub fn add_join_table(
+        mut self,
+        our_field: String,
+        other_table: String,
+        other_field: String,
+    ) -> Join<T> {
+        let join = Join::new(other_table);
+        let joined_field = join.add_field(other_field);
+        let condition = joined_field.eq(self.fields.get(our_field));
+        join.add_on_condition(condition);
+        join
+    }
+    */
 
     pub fn get_empty_query(&self) -> Query {
         let mut query = Query::new().set_table(&self.table_name);
@@ -202,7 +224,7 @@ mod tests {
 
         let query = table.get_select_query().render_chunk().split();
 
-        assert_eq!(query.0, "SELECT name, surname FROM users WHERE name = {}");
+        assert_eq!(query.0, "SELECT name, surname FROM users WHERE (name = {})");
         assert_eq!(query.1[0], json!("John"));
 
         let result = table.get_all_data().await;
@@ -226,7 +248,7 @@ mod tests {
         let sum = vip_client.sum(vip_client.fields.get("total_spent").unwrap());
         assert_eq!(
             sum.render_chunk().sql().clone(),
-            "SELECT (SUM(total_spent)) AS sum FROM client WHERE is_vip is {}".to_owned()
+            "SELECT (SUM(total_spent)) AS sum FROM client WHERE (is_vip is {})".to_owned()
         );
     }
 

@@ -25,7 +25,7 @@ impl Field {
 }
 
 impl Operations for Field {
-    fn eq(&self, other: impl SqlChunk) -> Condition {
+    fn eq(&self, other: &impl SqlChunk) -> Condition {
         Condition::from_field(self.clone(), "=", WrapArc::wrap_arc(other.render_chunk()))
     }
 
@@ -79,16 +79,16 @@ mod tests {
     #[test]
     fn test_eq() {
         let field = Field::new("id".to_string(), None);
-        let (sql, params) = field.eq(1).render_chunk().split();
+        let (sql, params) = field.eq(&1).render_chunk().split();
 
-        assert_eq!(sql, "id = {}");
+        assert_eq!(sql, "(id = {})");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], 1);
 
         let f_age = Field::new("age".to_string(), Some("u".to_string()));
-        let (sql, params) = f_age.add(5).eq(18).render_chunk().split();
+        let (sql, params) = f_age.add(5).eq(&18).render_chunk().split();
 
-        assert_eq!(sql, "(age) + ({}) = {}");
+        assert_eq!(sql, "((age) + ({}) = {})");
         assert_eq!(params.len(), 2);
         assert_eq!(params[0], 5);
         assert_eq!(params[1], 18);

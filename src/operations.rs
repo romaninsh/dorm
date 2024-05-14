@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub trait Operations: SqlChunk {
-    fn eq(&self, other: impl SqlChunk) -> Condition {
+    fn eq(&self, other: &impl SqlChunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             "=",

@@ -82,7 +82,7 @@ impl Condition {
 impl SqlChunk for Condition {
     fn render_chunk(&self) -> Expression {
         ExpressionArc::new(
-            format!("{{}} {} {{}}", self.operation),
+            format!("({{}} {} {{}})", self.operation),
             vec![
                 Arc::new(Box::new(self.render_operand())),
                 self.value.clone(),
@@ -110,7 +110,7 @@ mod tests {
         let condition = Condition::from_field(field, "=", Arc::new(Box::new("1".to_string())));
         let (sql, params) = condition.render_chunk().split();
 
-        assert_eq!(sql, "id = {}");
+        assert_eq!(sql, "(id = {})");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], "1");
     }
@@ -123,7 +123,7 @@ mod tests {
             Condition::from_expression(expression, "=", Arc::new(Box::new("1".to_string())));
         let (sql, params) = condition.render_chunk().split();
 
-        assert_eq!(sql, "1 + 1 = {}");
+        assert_eq!(sql, "(1 + 1 = {})");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], "1");
     }
@@ -140,7 +140,7 @@ mod tests {
 
         let (sql, params) = condition.render_chunk().split();
 
-        assert_eq!(sql, "married = {} AND divorced = {}");
+        assert_eq!(sql, "((married = {}) AND (divorced = {}))");
         assert_eq!(params.len(), 2);
         assert_eq!(params[0], "yes");
         assert_eq!(params[1], "yes");

@@ -5,41 +5,49 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::{
-    expr_arc,
+    expr, expr_arc,
     expression::{Expression, ExpressionArc},
     field::Field,
     traits::{column::Column, sql_chunk::SqlChunk},
 };
 
-#[derive(Debug)]
-pub enum QueryType {
-    Select,
-    Insert,
-    Replace,
-    Delete,
-    Expression(Expression),
-}
+mod parts;
+
+pub use parts::*;
 
 #[derive(Debug)]
 pub struct Query {
-    table: Option<String>,
+    table: QuerySource,
     query_type: QueryType,
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
     conditions: Vec<Arc<Box<dyn SqlChunk>>>,
+
+    where_conditions: QueryConditions,
+    having_conditions: QueryConditions,
+    joins: Vec<JoinQuery>,
+}
+
+#[derive(Debug)]
+pub enum UniqAlias {
+    FieldAlias,
+    TableAlias,
 }
 
 impl Query {
     pub fn new() -> Query {
         Query {
-            table: None,
+            table: QuerySource::None,
             query_type: QueryType::Select,
             columns: IndexMap::new(),
             conditions: Vec::new(),
+            where_conditions: QueryConditions::where_(),
+            having_conditions: QueryConditions::having(),
+            joins: Vec::new(),
         }
     }
 
     pub fn set_table(mut self, table: &str) -> Self {
-        self.table = Some(table.to_string());
+        self.table = QuerySource::Table(table.to_string(), None);
         self
     }
 
@@ -54,6 +62,21 @@ impl Query {
 
     pub fn add_column_arc(mut self, name: String, field: Arc<Box<dyn Column>>) -> Self {
         self.columns.insert(name, field);
+        self
+    }
+
+    pub fn add_where_condition(mut self, cond: Expression) -> Self {
+        self.where_conditions = self.where_conditions.add_condition(cond);
+        self
+    }
+
+    pub fn add_having_condition(mut self, cond: Expression) -> Self {
+        self.having_conditions = self.having_conditions.add_condition(cond);
+        self
+    }
+
+    pub fn add_join(mut self, join: JoinQuery) -> Self {
+        self.joins.push(join);
         self
     }
 
@@ -90,22 +113,17 @@ impl Query {
         );
 
         Ok(expr_arc!(
-            format!(
-                "SELECT {{}} {}{{}}",
-                if let Some(table) = self.table.clone() {
-                    format!("FROM {}", table)
-                } else {
-                    "".to_string()
-                }
-            ),
+            "SELECT {} {}{}{}",
             fields,
+            self.table.render_chunk(),
+            Expression::from_vec(self.joins.iter().map(|x| x.render_chunk()).collect(), ""),
             self.render_where()
         )
         .render_chunk())
     }
 
     fn render_insert(&self) -> Result<Expression> {
-        let Some(table) = self.table.clone() else {
+        let QuerySource::Table(table, _) = self.table.clone() else {
             return Err(anyhow!("Call set_table() for insert query"));
         };
 
@@ -149,7 +167,7 @@ impl Query {
     }
 
     fn render_delete(&self) -> Result<Expression> {
-        let Some(table) = self.table.clone() else {
+        let QuerySource::Table(table, _) = self.table.clone() else {
             return Err(anyhow!("Call set_table() for insert query"));
         };
 
@@ -242,6 +260,28 @@ mod tests {
             .split();
 
         assert_eq!(sql, "CALL some_procedure()");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_join_query() {
+        let query = Query::new()
+            .set_table("users")
+            .add_column_field("id")
+            .add_column_field("name");
+
+        let join = JoinQuery::new(
+            JoinType::Left,
+            QuerySource::Table("roles".to_string(), None),
+            QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
+        );
+
+        let (sql, params) = query.add_join(join).render_chunk().split();
+
+        assert_eq!(
+            sql,
+            "SELECT id, name FROM users LEFT JOIN roles ON users.role_id = roles.id"
+        );
         assert_eq!(params.len(), 0);
     }
 }
