@@ -6,7 +6,7 @@ mod field;
 mod mocks;
 mod operations;
 pub mod prelude;
-mod query;
+pub mod query;
 mod table;
 mod traits;
 mod uniqid;

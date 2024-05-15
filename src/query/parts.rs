@@ -19,19 +19,33 @@ pub enum QueryType {
 pub enum QuerySource {
     None,
     Table(String, Option<String>),
-    Query(Arc<Box<Query>>),
+    Query(Arc<Box<Query>>, Option<String>),
+    Expression(Expression, Option<String>),
 }
 impl QuerySource {
     pub fn render_prefix(&self, prefix: &str) -> Expression {
         match self {
             QuerySource::None => Expression::empty(),
-            QuerySource::Query(query) => {
+            QuerySource::Query(query, None) => {
                 expr_arc!(format!("{}({{}})", prefix), query.render_chunk()).render_chunk()
             }
+            QuerySource::Query(query, Some(alias)) => expr_arc!(
+                format!("{}({{}}) AS {}", prefix, alias),
+                query.render_chunk()
+            )
+            .render_chunk(),
             QuerySource::Table(table, None) => expr!(format!("{}{}", prefix, table)),
             QuerySource::Table(table, Some(alias)) => {
                 expr!(format!("{}{} AS {}", prefix, table, alias))
             }
+            QuerySource::Expression(expression, None) => {
+                expr_arc!(format!("{}{{}}", prefix), expression.render_chunk()).render_chunk()
+            }
+            QuerySource::Expression(expression, Some(alias)) => expr_arc!(
+                format!("{}{{}} AS {}", prefix, alias),
+                expression.render_chunk()
+            )
+            .render_chunk(),
         }
     }
 }

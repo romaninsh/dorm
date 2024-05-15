@@ -18,6 +18,8 @@ pub use parts::*;
 #[derive(Debug)]
 pub struct Query {
     table: QuerySource,
+    with: IndexMap<String, QuerySource>,
+    distinct: bool,
     query_type: QueryType,
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
     conditions: Vec<Arc<Box<dyn SqlChunk>>>,
@@ -25,6 +27,9 @@ pub struct Query {
     where_conditions: QueryConditions,
     having_conditions: QueryConditions,
     joins: Vec<JoinQuery>,
+
+    group_by: Vec<Expression>,
+    order_by: Vec<Expression>,
 }
 
 #[derive(Debug)]
@@ -37,17 +42,44 @@ impl Query {
     pub fn new() -> Query {
         Query {
             table: QuerySource::None,
+            with: IndexMap::new(),
+            distinct: false,
             query_type: QueryType::Select,
             columns: IndexMap::new(),
             conditions: Vec::new(),
             where_conditions: QueryConditions::where_(),
             having_conditions: QueryConditions::having(),
             joins: Vec::new(),
+            group_by: Vec::new(),
+            order_by: Vec::new(),
         }
+    }
+
+    pub fn distinct(mut self) -> Self {
+        self.distinct = true;
+        self
     }
 
     pub fn set_table(mut self, table: &str) -> Self {
         self.table = QuerySource::Table(table.to_string(), None);
+        self
+    }
+
+    pub fn add_with(mut self, alias: &str, subquery: Query) -> Self {
+        self.with.insert(
+            alias.to_string(),
+            QuerySource::Query(Arc::new(Box::new(subquery)), None),
+        );
+        self
+    }
+
+    pub fn set_table_with_alias(mut self, table: &str, alias: &str) -> Self {
+        self.table = QuerySource::Table(table.to_string(), Some(alias.to_string()));
+        self
+    }
+
+    pub fn set_source(mut self, source: QuerySource) -> Self {
+        self.table = source;
         self
     }
 
@@ -89,9 +121,35 @@ impl Query {
         self
     }
 
+    pub fn add_group_by(mut self, group_by: Expression) -> Self {
+        self.group_by.push(group_by);
+        self
+    }
+
+    pub fn add_order_by(mut self, order_by: Expression) -> Self {
+        self.order_by.push(order_by);
+        self
+    }
+
     // Simplified ways to define a field with a string
     pub fn add_column_field(self, name: &str) -> Self {
         self.add_column(name.to_string(), Field::new(name.to_string(), None))
+    }
+
+    fn render_with(&self) -> Expression {
+        if self.with.is_empty() {
+            Expression::empty()
+        } else {
+            let with = self
+                .with
+                .iter()
+                .map(|(name, query)| {
+                    expr_arc!(format!("{} AS {{}}", name), query.render_prefix("")).render_chunk()
+                })
+                .collect::<Vec<Expression>>();
+            let e = Expression::from_vec(with, ", ");
+            expr_arc!("WITH {} ", e).render_chunk()
+        }
     }
 
     fn render_where(&self) -> Expression {
@@ -100,6 +158,26 @@ impl Query {
         } else {
             let conditions = ExpressionArc::from_vec(self.conditions.clone(), " AND ");
             expr_arc!(" WHERE {}", conditions).render_chunk()
+        }
+    }
+
+    fn render_group_by(&self) -> Expression {
+        if self.group_by.is_empty() {
+            Expression::empty()
+        } else {
+            let group_by = Expression::from_vec(self.group_by.clone(), ", ");
+            expr_arc!(" GROUP BY {}", group_by).render_chunk()
+        }
+    }
+
+    fn render_order_by(&self) -> Expression {
+        if self.order_by.is_empty() {
+            Expression::empty()
+        } else {
+            let mut rev_vec = self.order_by.clone();
+            rev_vec.reverse();
+            let order_by = Expression::from_vec(rev_vec, ", ");
+            expr_arc!(" ORDER BY {}", order_by).render_chunk()
         }
     }
 
@@ -113,11 +191,17 @@ impl Query {
         );
 
         Ok(expr_arc!(
-            "SELECT {} {}{}{}",
+            format!(
+                "{{}}SELECT{} {{}} {{}}{{}}{{}}{{}}{{}}",
+                if self.distinct { " DISTINCT" } else { "" }
+            ),
+            self.render_with(),
             fields,
             self.table.render_chunk(),
             Expression::from_vec(self.joins.iter().map(|x| x.render_chunk()).collect(), ""),
-            self.render_where()
+            self.render_where(),
+            self.render_group_by(),
+            self.render_order_by()
         )
         .render_chunk())
     }
@@ -281,6 +365,49 @@ mod tests {
         assert_eq!(
             sql,
             "SELECT id, name FROM users LEFT JOIN roles ON users.role_id = roles.id"
+        );
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_render_with() {
+        let roles = Query::new()
+            .set_table("roles")
+            .add_column_field("id")
+            .add_column_field("role_name");
+
+        let outer_query = Query::new()
+            .set_table("users")
+            .add_with("roles", roles)
+            .add_join(JoinQuery::new(
+                JoinType::Inner,
+                QuerySource::Table("roles".to_string(), None),
+                QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
+            ))
+            .add_column_field("user_name")
+            .add_column_field("roles.role_name");
+
+        let (sql, params) = outer_query.render_chunk().split();
+
+        assert_eq!(sql, "WITH roles AS (SELECT id, role_name FROM roles) SELECT user_name, roles.role_name FROM users JOIN roles ON users.role_id = roles.id");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_group_and_order() {
+        let query = Query::new()
+            .set_table("users")
+            .add_column_field("id")
+            .add_column_field("name")
+            .add_column_field("age")
+            .add_group_by(expr!("name"))
+            .add_order_by(expr!("age DESC"));
+
+        let (sql, params) = query.render_chunk().split();
+
+        assert_eq!(
+            sql,
+            "SELECT id, name, age FROM users GROUP BY name ORDER BY age DESC"
         );
         assert_eq!(params.len(), 0);
     }

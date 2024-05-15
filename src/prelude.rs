@@ -6,4 +6,5 @@ pub use crate::expression::{Expression, ExpressionArc};
 pub use crate::field::Field;
 pub use crate::operations::Operations;
 pub use crate::table::TableDelegate;
-pub use crate::{query::Query, table::Table};
+pub use crate::traits::sql_chunk::SqlChunk;
+pub use crate::{query::JoinQuery, query::Query, table::Table};

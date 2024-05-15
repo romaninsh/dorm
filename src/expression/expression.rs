@@ -39,6 +39,10 @@ impl Expression {
         }
     }
 
+    pub fn as_type(value: Value, as_type: &str) -> Self {
+        expr!(format!("{{}}::{}", as_type), value)
+    }
+
     pub fn empty() -> Self {
         Self {
             expression: "".to_owned(),
@@ -111,3 +115,18 @@ impl Column for Expression {
     }
 }
 impl Operations for Expression {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_as_type() {
+        use super::*;
+        use crate::traits::sql_chunk::SqlChunk;
+        use serde_json::json;
+
+        let expression = Expression::as_type(json!(1), "int");
+        let (sql, params) = expression.render_chunk().split();
+        assert_eq!(sql, "{}::int");
+        assert_eq!(params, vec![Value::Number(1.into())]);
+    }
+}

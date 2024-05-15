@@ -24,7 +24,14 @@ chrono = "0.4.38"
 anyhow = "1.0.82"
 futures = "0.3.30"
 pretty_dbg = "1.0.54"
+regex = "1.10.4"
+sqlformat = "0.2.3"
+syntect = "5.2.0"
 
 [[example]]
 name = "basic-dorm"
 path = "examples/basic-dorm/src/main.rs"
+
+[[example]]
+name = "query-builder"
+path = "examples/query-builder/src/main.rs"

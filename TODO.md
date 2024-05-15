@@ -33,7 +33,7 @@ MVP:
 - [ ] select where a field is a sub-query
 - [ ] insert where a field value is an expression
 - [ ] insert where a field is a sub-query
-- [ ] select from a subquery
+- [x] select from a subquery
 - [ ] add sql table as a dataset at a query level (+ clean up method naming)
 - [ ] postgres expressions should add type annotation into query ("$1::text")
 

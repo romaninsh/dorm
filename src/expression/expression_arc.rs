@@ -58,6 +58,11 @@ impl ExpressionArc {
             parameters: vec,
         }
     }
+
+    pub fn fx(function_name: &str, parameters: Vec<Expression>) -> Self {
+        let parameters = Expression::from_vec(parameters, ", ");
+        expr_arc!(format!("{}({{}})", function_name), parameters)
+    }
 }
 
 impl SqlChunk for ExpressionArc {

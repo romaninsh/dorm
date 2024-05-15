@@ -45,6 +45,10 @@ impl<T: DataSource> Table<T> {
         Field::new(field, self.table_alias.clone())
     }
 
+    pub fn get_field(&self, field: &str) -> &Field {
+        self.fields.get(field).unwrap()
+    }
+
     pub fn id(&self) -> &Field {
         self.fields.get("id").unwrap()
     }
