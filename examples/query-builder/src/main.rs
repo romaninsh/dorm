@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use dorm::prelude::*;
 use dorm::query;
-use regex::Regex;
 use serde_json::json;
 use tokio_postgres::NoTls;
 
