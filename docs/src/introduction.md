@@ -128,7 +128,7 @@ let group = Query::new()
     .add_group_by("role_name");
 ```
 
-Query cannot execute itself, but it a friendly DataSource can execute your query for you:
+Query cannot execute itself, but a friendly DataSource can execute your query for you:
 
 ```rust
 // client is a tokio-postgres client
@@ -313,10 +313,13 @@ impl BasketSet {
     pub fn new(ds: Postgres) -> Self {
         let table = Table::new("basket", ds.clone())
             .add_field("date")
+            .add_field_id("id")
 
             .has_many_cb("items", ||BasketItemSet::new(ds.clone()), "id", "basket_id")
             .add_field_cb("item_count", |t|t.ref_items().count())
             .add_field_cb("total", |t|t.ref_items().total_price())
+
+            .add_cb_field("items", |t|t.ref_items())
         ;
         Self { table }
     }
@@ -329,8 +332,8 @@ impl BasketSet {
         self.get_ref("items").unwrap()
     }
 
-    pub fn get_items(&self) -> Vec<Value> {
-        self.ref_items().get()
+    pub fn items(&self) -> &Field {
+        self.ref_field("items").unwrap()
     }
 }
 ```
@@ -397,9 +400,164 @@ struct Basket {
 }
 
 let my_basket = BasketSet::new(postgres.clone())
-    .with_fields(vec!["item_count", "total"])
     .load(123)
     .into::<Basket>();
 
 println!("Basket total: {} for {} items", my_basket.total_price, my_basket.item_count);
 ```
+
+## Callback joins and fields
+
+In some cases, it makes sense to define your data set as a join between several tables. When you
+are performing a join, it will collect the fields from both tables together (even if they already
+have made some joins before).
+
+In other cases, you would want a join to be optional. This can only be done with a LEFT join,
+because any other join would affect number of columns returned with/without, but a LEFT join is
+fully optional (as long as it matches into unique field).
+
+You may also define some callback fields. This is good for some complex calculations, that you
+wouldn't want to always happen like with the `total` and `item_count`.
+
+DORM relies on the entity you pass in and it's deserialization details to infer which fields
+you want to load:
+
+```rust
+#[derive(Serialize, Deserialize)]
+struct BasketDate {
+    date: Date,
+}
+
+let my_basket_totals = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::<Basket>();
+
+let my_basket_date = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::<BasketDate>();
+
+```
+
+DataSet's into() function will determine which fields to load based on the type you are converting
+into and the line above `with_id(123)` will infer the conditoin for loading the record. The code
+above will generate 2 different queries - one for the totals and another for the date.
+
+You may use as many different Structs as you want, there is no explicit bindings a transient
+Model struct and the DataSet.
+
+## Nested data structures
+
+`Table::add_field_cb` is a powerful tool to implement various kinds of fields. Field may define a
+component of a Query , so when DORM is fetching Model data it would amend the query in anticipation,
+alternatively it may result in another DataSet.
+
+If DataSet is returned and it cannot be easily incorporated into the main query, DORM will perform
+a separate query to fill in the result:
+
+```rust
+#[derive(Serialize, Deserialize)]
+struct BasketItems {
+    date: Date,
+    items: Vec<BasketItem>,
+}
+
+let my_basket_items = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::<BasketItems>();
+```
+In this case DORM will look into the `items` field, which is a callback and returns a
+BasketItemSet. To fill in the Vec of basket items, additional query will be performed.
+
+I want also to point out that the ref_items() will produce a secondary DataSet which
+has the same DataSource.
+
+If the DataSource is identical (cloned Arc of the same instance), that means we are
+querying from the same database. But potentially the related DataSet could be linked
+to a different DataSource.
+
+This powerful abstraction makes it possible for a model to fetch data from multiple
+physical databases, sources or APIs and combine them seamlessly.
+
+## Deleting, Inserting or Updating items
+
+So far we have been using a pretty bare-bones structures for a model. We are able to
+load data into a struct. There are also ways to store data or delete rows.
+
+```rust
+BasketSet::new(postgres.clone())
+    .with_id(123)
+    .delete();
+
+let new_basket_id = BasketSet::new(postgres.clone())
+    .insert(my_basket_items);
+```
+
+Methods `delete()` and `insert()` are can be added to your DataSet structure by a macro but
+would look like this:
+
+```rust
+impl BasketSet {
+    pub fn delete(&self) {
+        self.table.delete();
+    }
+
+    pub fn insert(&self, item: impl Serialise) -> Value {
+        self.table.insert(item)
+    }
+}
+```
+
+Method `update()` is also there, but you must not forget to specify `with_id()` before using it,
+otherwise it may affect multiple rows.
+
+Note: See also a map() method that can be used to individually update multiple rows in a DataSet.
+It is an expensive operation though, and will result in multiple updates.
+
+This brings us to the need of having a primary key inside Models.
+
+## Persistence-aware Models
+
+A pesistence-awer model has a field refering to it's data source and a key. This makes
+it easier for developer to load a record, modify and then store it back.
+
+```rust
+#[derive(Serialize, Deserialize)]
+#[dorm_model]
+pub struct Basket {
+    // _ds: (DataSource, id)
+    date: Date,
+    item_count: Option<i32>,
+    total: Option<i32>,
+    items: Vec<BasketItem>,
+}
+```
+
+The `_ds` field is a special field that is used to store the DataSource, key and an initial
+values of the record from the database.
+
+```rust
+let mut my_basket = Basket::load(BasketSet::new(ds.clone()), basket_id);
+
+my_basket.date = Date::now();
+my_basket.items.push(new_item);
+let res = my_basket.save().await;
+```
+
+When record is being saved back, only the fields you have modified will be updated. Additionally
+the data can only be saved into the original DataSet, if you modify some essential fields, that
+would make it go outside of the DataSet, this will result in an error:
+
+```rust
+let mut my_basket = Basket::load(BasketSet::new(ds.clone()), basket_id);
+
+my_basket.shipped = true;
+let res = my_basket.save_into(ShippedBasketSet::new(ds.clone())).await;
+```
+
+This provides an essential guardrails for business application to avoid accidental logical errors.
+
+## Validation and Sanitization
+
+DORM does not offer a way for validation and sanitization of the data, but we recommend using
+"nutype". Make sure that Serde is able to serialize your data structure and it will work fine
+with DORM.
