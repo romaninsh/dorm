@@ -27,6 +27,7 @@ pretty_dbg = "1.0.54"
 regex = "1.10.4"
 sqlformat = "0.2.3"
 syntect = "5.2.0"
+lazy_static = "1.4.0"
 
 [[example]]
 name = "basic-dorm"
@@ -35,3 +36,11 @@ path = "examples/basic-dorm/src/main.rs"
 [[example]]
 name = "query-builder"
 path = "examples/query-builder/src/main.rs"
+
+[[example]]
+name = "bakery"
+path = "examples/bakery/src/main.rs"
+
+[[example]]
+name = "very-basic-example"
+path = "examples/very-basic-example/src/main.rs"

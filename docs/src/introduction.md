@@ -561,3 +561,117 @@ This provides an essential guardrails for business application to avoid accident
 DORM does not offer a way for validation and sanitization of the data, but we recommend using
 "nutype". Make sure that Serde is able to serialize your data structure and it will work fine
 with DORM.
+
+
+## Making DataSet static
+
+You may see a problem with this code:
+
+```rust
+let expensive_products = ProductSet::new(postgres.clone());
+let expensive_products = expensive_products
+    .add_condition(expensive_products.default_price().gt(100));
+```
+
+The problem here is that add_condition takes `self` and this does not allow default_price() to
+be borrow same object. This is a common problem with Rust. There are two ways to solve it.
+
+First lets create condition in a temporary variable:
+```rust
+let expensive_products = ProductSet::new(postgres.clone());
+let condition = expensive_products.default_price().gt(100);
+let expensive_products = expensive_products
+    .add_condition(condition);
+```
+
+This works now fine, but code readability suffers a lot. Let me show you a better way, that
+also speeds things up a little. This relies on Lazy Statics.
+
+First, lets rebuild our ProductSet to be static:
+
+```rust
+use std::sync::OnceLock;
+use dorm::prelude::*;
+use crate::postgres;
+
+pub struct ProductSet {
+    table: Table<Postgres>,
+}
+
+impl ProductSet {
+    pub fn new() -> Table<Postgres> {
+        ProductSet::table().clone()
+    }
+    pub fn table() -> &'static Table<Postgres> {
+        static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+
+        let table = TABLE.get_or_init(|| {
+            Table::new("product", ds)
+                .add_field("name")
+                .add_field("description")
+                .add_field("default_price");
+        });
+
+        table
+    }
+    pub fn name() -> &'static Field {
+        ProductSet::table().get_field("name")
+    }
+    pub fn profit_margin() -> &'static Field {
+        ProductSet::table().get_field("profit_margin")
+    }
+}
+```
+
+This implementation allows us to use ProducSet::name() without creating a new instance of
+ProductSet. Next lets look how `fn main()` needs to change to provide postgres() connection:
+
+```rust
+static POSTGRESS: OnceLock<Postgres> = OnceLock::new();
+
+pub fn postgres() -> Postgres {
+    POSTGRESS
+        .get()
+        .expect("Postgres has not been initialized")
+        .clone()
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let (client, connection) = tokio_postgres::connect("host=localhost dbname=postgres", NoTls)
+        .await
+        .context("Failed to connect to Postgres")?;
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    POSTGRESS
+        .set(Postgres::new(Arc::new(Box::new(client))))
+        .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))?;
+}
+```
+
+Finally - here is the code to create expensive product set once again:
+
+```rust
+let expensive_products = ProductSet::new().add_condition(ProductSet::default_price().gt(100));
+```
+
+In fact you can move that into a method of a ProductSet:
+
+```rust
+impl ProductSet {
+    pub fn expensive() -> Table<Postgres> {
+        ProductSet::new().add_condition(ProductSet::default_price().gt(100))
+    }
+}
+```
+
+And your code will look like this:
+
+```rust
+let expensive_products = ProductSet::expensive();
+```

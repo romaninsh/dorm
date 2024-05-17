@@ -5,7 +5,7 @@ use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
 // use crate::join::Join;
-use crate::prelude::AssociatedQuery;
+use crate::prelude::{AssociatedQuery, Operations};
 use crate::query::{Query, QueryType};
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
@@ -49,10 +49,6 @@ impl<T: DataSource> Table<T> {
         self.fields.get(field).unwrap()
     }
 
-    pub fn id(&self) -> &Field {
-        self.fields.get("id").unwrap()
-    }
-
     pub fn fields(&self) -> &IndexMap<String, Field> {
         &self.fields
     }
@@ -85,6 +81,22 @@ impl<T: DataSource> Table<T> {
             .ok_or_else(|| anyhow!("Field not found: {}", field))?
             .clone();
         Ok(self.add_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
+    }
+
+    pub fn has_many_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
+        todo!()
+    }
+    pub fn has_one_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
+        todo!()
+    }
+
+    pub fn id(&self) -> Field {
+        // Field::new("test".to_string(), Some("test".to_string()))
+        self.fields.get("id").unwrap().clone()
+    }
+    pub fn with_id(self, id: Value) -> Self {
+        let f = self.id().eq(&id);
+        self.add_condition(f)
     }
 
     /*

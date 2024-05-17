@@ -63,7 +63,7 @@ use std::fmt::Debug;
 ///
 /// Standard types such as String, Vec<String>, or ToSql are implementing SqlChunk and can be used
 /// as a part of a query, typically resulting in
-pub trait SqlChunk: Debug {
+pub trait SqlChunk: Debug + Sync + Send {
     /// Generates an SQL statement.
     ///
     /// The method should return a complete SQL statement as a `String`. An `offset`

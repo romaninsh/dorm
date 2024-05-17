@@ -26,7 +26,7 @@ macro_rules! expr_arc {
         ExpressionArc::new(
             $fmt.to_string(),
             vec![
-                $( crate::expression::expression_arc::WrapArc::wrap_arc($arg), )*
+                $( $crate::expression::expression_arc::WrapArc::wrap_arc($arg), )*
             ]
         )
     }}
