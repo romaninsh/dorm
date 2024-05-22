@@ -3,7 +3,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::expression::ExpressionArc;
+use crate::expression::{Expression, ExpressionArc};
 use crate::query::Query;
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -17,7 +17,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::Client;
 use tokio_postgres::Row;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Postgres {
     client: Arc<Box<Client>>,
 }
@@ -247,6 +247,8 @@ impl<T: DataSource> AssociatedExpressionArc<T> {
         Ok(one)
     }
 }
+
+#[derive(Debug, Clone)]
 pub struct AssociatedQuery<T: DataSource> {
     pub query: Query,
     pub ds: T,
@@ -267,6 +269,11 @@ impl<T: DataSource> AssociatedQuery<T> {
     }
     pub async fn get_one(&self) -> Result<Value> {
         self.ds.query_one(&self.query).await
+    }
+}
+impl<T: DataSource + Sync> SqlChunk for AssociatedQuery<T> {
+    fn render_chunk(&self) -> Expression {
+        self.query.render_chunk()
     }
 }
 

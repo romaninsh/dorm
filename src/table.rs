@@ -90,6 +90,21 @@ impl<T: DataSource> Table<T> {
         todo!()
     }
 
+    pub fn get_ref(&self, field: &str) -> Table<T> {
+        todo!()
+    }
+
+    pub fn add_field_cb(
+        self,
+        field: &str,
+        cb: impl FnOnce(&Table<T>) -> Box<dyn SqlChunk>,
+    ) -> Self {
+        todo!();
+        // let field = cb();
+        // self.fields.insert(field.name().clone(), field);
+        // self
+    }
+
     pub fn id(&self) -> Field {
         // Field::new("test".to_string(), Some("test".to_string()))
         self.fields.get("id").unwrap().clone()

@@ -6,7 +6,7 @@ use crate::{
 
 use super::Query;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum QueryType {
     Select,
     Insert,
@@ -55,14 +55,14 @@ impl SqlChunk for QuerySource {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConditionType {
     Where,
     Having,
     On,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QueryConditions {
     condition_type: ConditionType,
     conditions: Vec<Expression>,
@@ -102,7 +102,7 @@ impl SqlChunk for QueryConditions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum JoinType {
     Inner,
     Left,
@@ -110,7 +110,7 @@ pub enum JoinType {
     Full,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JoinQuery {
     join_type: JoinType,
     source: QuerySource,

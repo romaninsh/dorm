@@ -15,7 +15,7 @@ mod parts;
 
 pub use parts::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Query {
     table: QuerySource,
     with: IndexMap<String, QuerySource>,

@@ -5,7 +5,7 @@ use crate::traits::datasource::DataSource;
 use anyhow::Result;
 use serde_json::{Map, Value};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MockDataSource {
     data: Arc<Vec<Map<String, Value>>>,
 }
