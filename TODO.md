@@ -22,7 +22,8 @@ MVP:
 - [x] implemented Query::add_join()
 - [x] implemented Table::join_table() for merging tables
 - [x] add uniq id vendor
-- [b] field prefixing with table alias/name (optional)
+- [x] field prefixing with table alias/name (optional)
+- [ ] Table::join_table should return other_table. Also add Table::with_join()
 - [ ] Table::join_table should preserve conditions on other_table
 - [ ] Table::join_table should preserve joins on other_table
 - [ ] Table::join_table should resolve clashes in table aliases

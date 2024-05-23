@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         .set(Postgres::new(Arc::new(Box::new(client))))
         .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))?;
 
-    let product_set = BakerySet::new().add_condition(BakerySet::profit_margin().gt(10));
+    let product_set = BakerySet::new().with_condition(BakerySet::profit_margin().gt(10));
 
     println!("Hello world Bakery");
     Ok(())

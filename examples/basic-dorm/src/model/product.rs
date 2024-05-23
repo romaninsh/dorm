@@ -33,9 +33,9 @@ impl TableDelegate<Postgres> for ProductSet {
 impl ProductSet {
     pub fn new(ds: Postgres) -> Self {
         let table = Table::new("product", ds)
-            .add_field("name")
-            .add_field("description")
-            .add_field("default_price");
+            .with_field("name")
+            .with_field("description")
+            .with_field("default_price");
         // .add_field(Field::new("id", Type::Serial).primary())
         // .add_field(Field::new("name", Type::Varchar(255)).not_null())
         // .add_field(Field::new("description", Type::Text))

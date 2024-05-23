@@ -26,9 +26,9 @@ struct ProductSet {
 impl ProductSet {
     fn new(ds: Postgres) -> Self {
         let table = Table::new("product", ds)
-            .add_field("name")
-            .add_field("description")
-            .add_field("default_price")
+            .with_field("name")
+            .with_field("description")
+            .with_field("default_price")
             // .has_many_cb("vendors", || {
             //     VendorSet::new().add_condition(VendorSet::product_id.eq(ProductSet::id()))
             // });

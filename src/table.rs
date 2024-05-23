@@ -44,39 +44,81 @@ impl<T: DataSource> Table<T> {
         }
     }
 
-    fn new_field(&self, field: String) -> Field {
-        Field::new(field, self.table_alias.clone())
+    /// Use a callback with a builder pattern:
+    /// ```
+    /// let books = BookSet::new().with(|b| {
+    ///    b.add_field("title");
+    ///    b.add_field("price");
+    /// }).with(|b| {
+    ///    b.add_condition(b.get_field("title").unwrap().gt(100));
+    /// });
+    /// ```
+    pub fn with<F>(mut self, func: F) -> Self
+    where
+        F: FnOnce(&mut Self),
+    {
+        func(&mut self);
+        self
     }
 
+    /// Adds a new field to the table. Note, that Field may use an alias
+    fn add_field(&mut self, field_name: String, field: Field) {
+        self.fields.insert(field_name, field);
+    }
+
+    /// Returns a field by name
     pub fn get_field(&self, field: &str) -> Option<&Field> {
         self.fields.get(field)
     }
 
+    /// Handy way to access fields
     pub fn fields(&self) -> &IndexMap<String, Field> {
         &self.fields
     }
 
-    pub fn add_field(mut self, field: &str) -> Self {
-        self.fields
-            .insert(field.to_string(), self.new_field(field.to_string()));
+    /// When building a table - a simple way to add a typical field. For a
+    /// more sophisticated way use `add_field`
+    pub fn with_field(mut self, field: &str) -> Self {
+        self.add_field(
+            field.to_string(),
+            Field::new(field.to_string(), self.table_alias.clone()),
+        );
         self
     }
 
-    pub fn add_title_field(mut self, field: &str) -> Self {
+    /// Adds a field that is also a title field. Title field will be
+    /// used in the UI to represent the record.
+    pub fn with_title_field(mut self, field: &str) -> Self {
         self.title_field = Some(field.to_string());
-        self.add_field(field)
+        self.with_field(field)
     }
 
-    pub fn add_condition(mut self, condition: Condition) -> Self {
+    /// Add a condition to the table, limiting what records
+    /// the DataSet will represent
+    pub fn add_condition(&mut self, condition: Condition) {
         self.conditions.push(condition);
+    }
+
+    /// A handy way to add a condition during table building:
+    ///
+    /// ```
+    /// let books = BookSet::new();
+    /// let expensive_books = books.with_condition(BookSet::price().gt(100));
+    /// ```
+    pub fn with_condition(mut self, condition: Condition) -> Self {
+        self.add_condition(condition);
         self
     }
 
-    pub fn set_alias(mut self, alias: &str) -> Self {
+    pub fn set_alias(&mut self, alias: &str) {
         self.table_alias = Some(alias.to_string());
         for field in self.fields.values_mut() {
             field.set_alias(alias.to_string());
         }
+    }
+
+    pub fn with_alias(mut self, alias: &str) -> Self {
+        self.set_alias(alias);
         self
     }
 
@@ -91,7 +133,7 @@ impl<T: DataSource> Table<T> {
             .get(field)
             .ok_or_else(|| anyhow!("Field not found: {}", field))?
             .clone();
-        Ok(self.add_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
+        Ok(self.with_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
     }
 
     pub fn has_many_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
@@ -122,7 +164,7 @@ impl<T: DataSource> Table<T> {
     }
     pub fn with_id(self, id: Value) -> Self {
         let f = self.id().eq(&id);
-        self.add_condition(f)
+        self.with_condition(f)
     }
 
     pub fn join_table(
@@ -137,7 +179,7 @@ impl<T: DataSource> Table<T> {
             .table_aliases
             .get_one_of_uniq_id(UniqueIdVendor::all_prefixes(&other_table.table_name));
 
-        let mut other_table = other_table.set_alias(&alias);
+        let mut other_table = other_table.with_alias(&alias);
 
         let our_field = self
             .fields
@@ -243,7 +285,7 @@ pub trait TableDelegate<T: DataSource> {
         self.table().id().clone()
     }
     fn add_condition(&self, condition: Condition) -> Table<T> {
-        self.table().clone().add_condition(condition)
+        self.table().clone().with_condition(condition)
     }
     fn sum(&self, field: &Field) -> AssociatedQuery<T> {
         self.table().sum(field)
@@ -266,12 +308,30 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let table = Table::new("users", data_source.clone())
-            .add_field("name")
-            .add_field("surname");
+            .with_field("name")
+            .with_field("surname");
 
         let result = table.get_all_data().await;
 
         assert_eq!(result.unwrap().clone(), *data_source.data());
+    }
+
+    #[tokio::test]
+    async fn test_with() {
+        let data = json!([]);
+        let data_source = MockDataSource::new(&data);
+        let books = Table::new("book", data_source)
+            .with(|b| {
+                b.add_field("title".to_string(), Field::new("title".to_string(), None));
+                b.add_field("price".to_string(), Field::new("price".to_string(), None));
+            })
+            .with(|b| {
+                b.add_condition(b.get_field("title").unwrap().gt(100));
+            });
+
+        let query = books.get_select_query().render_chunk().split();
+
+        assert_eq!(query.0, "SELECT title, price FROM book WHERE (title > {})");
     }
 
     #[tokio::test]
@@ -281,8 +341,8 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let table = Table::new("users", data_source.clone())
-            .add_field("name")
-            .add_field("surname")
+            .with_field("name")
+            .with_field("surname")
             .add_condition_on_field("name", "=", "John".to_owned())
             .unwrap();
 
@@ -303,9 +363,9 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let vip_client = Table::new("client", db)
-            .add_title_field("name")
-            .add_field("is_vip")
-            .add_field("total_spent")
+            .with_title_field("name")
+            .with_field("is_vip")
+            .with_field("total_spent")
             .add_condition_on_field("is_vip", "is", "true".to_owned())
             .unwrap();
 
@@ -323,8 +383,8 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let table = Table::new("users", db)
-            .add_field("name")
-            .add_field("surname");
+            .with_field("name")
+            .with_field("surname");
 
         let query = table.get_insert_query().render_chunk().split();
 
@@ -342,12 +402,12 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let user_table = Table::new("users", db.clone())
-            .set_alias("u")
-            .add_field("name")
-            .add_field("role_id");
+            .with_alias("u")
+            .with_field("name")
+            .with_field("role_id");
         let role_table = Table::new("roles", db.clone())
-            .add_field("id")
-            .add_field("role_description");
+            .with_field("id")
+            .with_field("role_description");
 
         let table = user_table.join_table(role_table, "id", "role_id");
 

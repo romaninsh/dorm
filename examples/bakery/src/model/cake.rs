@@ -16,10 +16,10 @@ impl CakeSet {
 
         TABLE.get_or_init(|| {
             Table::new("cake", postgres())
-                .add_field("id")
-                .add_field("name")
-                .add_field("profit")
-                .add_field("bakery_id")
+                .with_field("id")
+                .with_field("name")
+                .with_field("profit")
+                .with_field("bakery_id")
         })
     }
 

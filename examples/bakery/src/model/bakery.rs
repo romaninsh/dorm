@@ -15,10 +15,10 @@ impl BakerySet {
 
         TABLE.get_or_init(|| {
             Table::new("bakery", postgres())
-                .add_field("name")
-                .add_field("profit_margin")
+                .with_field("name")
+                .with_field("profit_margin")
                 .has_many_cb("cakes", || {
-                    CakeSet::new().add_condition(CakeSet::bakery_id().eq(BakerySet::id()))
+                    CakeSet::new().with_condition(CakeSet::bakery_id().eq(BakerySet::id()))
                 })
                 .add_field_cb("profit", |t: &Table<Postgres>| {
                     Box::new(t.get_ref("cakes").sum(CakeSet::profit()))

@@ -18,9 +18,9 @@ impl BakerSet {
 
         TABLE.get_or_init(|| {
             Table::new("bakery", postgres())
-                .add_field("name")
-                .add_field("contact_details")
-                .add_field("bakery_id")
+                .with_field("name")
+                .with_field("contact_details")
+                .with_field("bakery_id")
                 .has_one_cb("bakery", || {
                     todo!()
                     // BakerySet::new(postgres.clone()).table.with_id(132)
