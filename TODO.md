@@ -20,7 +20,14 @@ MVP:
 - [x] implemented table::sum()
 - [x] implemented TableDelegate trait
 - [x] implemented Query::add_join()
+- [x] implemented Table::join_table() for merging tables
 - [x] add uniq id vendor
+- [b] field prefixing with table alias/name (optional)
+- [ ] Table::join_table should preserve conditions on other_table
+- [ ] Table::join_table should preserve joins on other_table
+- [ ] Table::join_table should resolve clashes in table aliases
+- [ ] Implement join_table_cb() for lazy joining
+
 - [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet

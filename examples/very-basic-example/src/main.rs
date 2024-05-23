@@ -3,7 +3,6 @@ use std::sync::Arc;
 use anyhow::Result;
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
 use tokio_postgres::NoTls;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,13 +37,13 @@ impl ProductSet {
         Self { table }
     }
     pub fn name(&self) -> &Field {
-        self.table.get_field("name")
+        self.table.get_field("name").unwrap()
     }
     pub fn description(&self) -> &Field {
-        self.table.get_field("description")
+        self.table.get_field("description").unwrap()
     }
     pub fn default_price(&self) -> &Field {
-        self.table.get_field("default_price")
+        self.table.get_field("default_price").unwrap()
     }
 }
 

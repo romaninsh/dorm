@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 
     // Associate Github Authors (github_username, user_name) with theirTeam IDs (user_source_id, team_source_id)
     let github_authors_and_teams = Query::new()
-        .set_table_with_alias("dx_teams", "t")
+        .set_table("dx_teams", Some("t".to_string()))
         .add_column("team_source_id".to_string(), expr!("t.source_id"));
 
     // Team is an anchestor
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
 
     // Start by querying all deployments
     let query_successful_deployments = Query::new()
-        .set_table("deployments")
+        .set_table("deployments", None)
         .distinct()
         .add_column("id".to_string(), expr!("deployments.id"))
         .add_column("deployed_at".to_string(), expr!("deployments.deployed_at"))
@@ -230,7 +230,7 @@ async fn main() -> Result<()> {
         );
 
     let deploys_deploys = Query::new()
-        .set_table("time_series")
+        .set_table("time_series", None)
         .add_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Query(Arc::new(Box::new(query_successful_deployments)), Some("deploys".to_string())),
@@ -246,7 +246,7 @@ async fn main() -> Result<()> {
     let final_query = Query::new()
         .add_with("time_series", query_time_series)
         .add_with("daily_deploys", deploys_deploys)
-        .set_table("daily_deploys")
+        .set_table("daily_deploys", None)
         .add_column("date".to_string(), expr!("date"))
         .add_column(
             "value".to_string(),

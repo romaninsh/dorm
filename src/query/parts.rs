@@ -200,7 +200,10 @@ mod tests {
         );
         let result = conditions.render_chunk().split();
 
-        assert_eq!(result.0, "HAVING ((name = surname) OR (surname = {}))");
+        assert_eq!(
+            result.0,
+            "HAVING ((name = sur.surname) OR (sur.surname = {}))"
+        );
         assert_eq!(result.1.len(), 1);
         assert_eq!(result.1[0], Value::Null);
     }

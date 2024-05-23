@@ -24,16 +24,16 @@ impl CakeSet {
     }
 
     pub fn id() -> &'static Field {
-        CakeSet::table().get_field("id")
+        CakeSet::table().get_field("id").unwrap()
     }
 
     pub fn name() -> &'static Field {
-        CakeSet::table().get_field("name")
+        CakeSet::table().get_field("name").unwrap()
     }
     pub fn profit() -> &'static Field {
-        CakeSet::table().get_field("profit")
+        CakeSet::table().get_field("profit").unwrap()
     }
     pub fn bakery_id() -> &'static Field {
-        CakeSet::table().get_field("bakery_id")
+        CakeSet::table().get_field("bakery_id").unwrap()
     }
 }

@@ -4,12 +4,12 @@ use crate::condition::Condition;
 use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
-// use crate::join::Join;
-use crate::prelude::{AssociatedQuery, Operations};
-use crate::query::{Query, QueryType};
+use crate::prelude::{AssociatedQuery, JoinQuery, Operations};
+use crate::query::{JoinType, Query, QueryConditions, QueryType};
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
+use crate::uniqid::UniqueIdVendor;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
@@ -22,22 +22,25 @@ pub struct Table<T: DataSource> {
     data_source: T,
     table_name: String,
     table_alias: Option<String>,
-    // joins: Vec<Join<T>>,
+    joins: IndexMap<String, JoinQuery>,
     fields: IndexMap<String, Field>,
     title_field: Option<String>,
     conditions: Vec<Condition>,
+
+    table_aliases: UniqueIdVendor,
 }
 
 impl<T: DataSource> Table<T> {
     pub fn new(table_name: &str, data_source: T) -> Table<T> {
         Table {
+            data_source,
             table_name: table_name.to_string(),
             table_alias: None,
-            // joins: Vec::new(),
-            data_source,
+            joins: IndexMap::new(),
             title_field: None,
             conditions: Vec::new(),
             fields: IndexMap::new(),
+            table_aliases: UniqueIdVendor::new(),
         }
     }
 
@@ -45,8 +48,8 @@ impl<T: DataSource> Table<T> {
         Field::new(field, self.table_alias.clone())
     }
 
-    pub fn get_field(&self, field: &str) -> &Field {
-        self.fields.get(field).unwrap()
+    pub fn get_field(&self, field: &str) -> Option<&Field> {
+        self.fields.get(field)
     }
 
     pub fn fields(&self) -> &IndexMap<String, Field> {
@@ -66,6 +69,14 @@ impl<T: DataSource> Table<T> {
 
     pub fn add_condition(mut self, condition: Condition) -> Self {
         self.conditions.push(condition);
+        self
+    }
+
+    pub fn set_alias(mut self, alias: &str) -> Self {
+        self.table_alias = Some(alias.to_string());
+        for field in self.fields.values_mut() {
+            field.set_alias(alias.to_string());
+        }
         self
     }
 
@@ -114,29 +125,48 @@ impl<T: DataSource> Table<T> {
         self.add_condition(f)
     }
 
-    /*
-    // TODO: Need to allow self-join and provide unique alias
-    pub fn add_join(mut self, join: Join<T>) -> Self {
-        self.joins.push(join);
+    pub fn join_table(
+        mut self,
+        other_table: Table<T>,
+        other_table_id: &str,
+        our_id: &str,
+    ) -> Table<T> {
+        // ensure that fields exist
+
+        let alias = self
+            .table_aliases
+            .get_one_of_uniq_id(UniqueIdVendor::all_prefixes(&other_table.table_name));
+
+        let mut other_table = other_table.set_alias(&alias);
+
+        let our_field = self
+            .fields
+            .shift_remove(our_id)
+            .unwrap_or_else(|| Field::new(our_id.to_string(), self.table_alias.clone()));
+
+        let other_field = other_table
+            .fields
+            .shift_remove(other_table_id)
+            .unwrap_or_else(|| Field::new(other_table_id.to_string(), Some(alias.clone())));
+
+        let other_table_name = other_table.table_name.clone();
+
+        let join = JoinQuery::new(
+            JoinType::Left,
+            crate::query::QuerySource::Table(other_table_name, Some(alias.clone())),
+            QueryConditions::on().add_condition(our_field.eq(&other_field).render_chunk()),
+        );
+        self.joins.insert(alias.clone(), join);
+
+        other_table.fields.into_iter().for_each(|(k, mut v)| {
+            v.set_alias(alias.clone());
+            self.fields.insert(k, v);
+        });
         self
     }
 
-    pub fn add_join_table(
-        mut self,
-        our_field: String,
-        other_table: String,
-        other_field: String,
-    ) -> Join<T> {
-        let join = Join::new(other_table);
-        let joined_field = join.add_field(other_field);
-        let condition = joined_field.eq(self.fields.get(our_field));
-        join.add_on_condition(condition);
-        join
-    }
-    */
-
     pub fn get_empty_query(&self) -> Query {
-        let mut query = Query::new().set_table(&self.table_name);
+        let mut query = Query::new().set_table(&self.table_name, None);
         for condition in self.conditions.iter() {
             query = query.add_condition(condition.clone());
         }
@@ -144,19 +174,22 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn get_select_query(&self) -> Query {
-        let mut query = Query::new().set_table(&self.table_name);
+        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
         for (field_key, field_val) in &self.fields {
             query = query.add_column(field_key.clone(), field_val.clone());
         }
         for condition in self.conditions.iter() {
             query = query.add_condition(condition.clone());
         }
+        for (_, join) in &self.joins {
+            query = query.add_join(join.clone());
+        }
         query
     }
 
     pub fn get_insert_query(&self) -> Query {
         let mut query = Query::new()
-            .set_table(&self.table_name)
+            .set_table(&self.table_name, None)
             .set_type(QueryType::Insert);
         for (field, _) in &self.fields {
             let field_object = Field::new(field.clone(), self.table_alias.clone());
@@ -301,5 +334,28 @@ mod tests {
         );
         assert_eq!(query.1[0], Value::Null);
         assert_eq!(query.1[1], Value::Null);
+    }
+
+    #[test]
+    fn test_join() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let user_table = Table::new("users", db.clone())
+            .set_alias("u")
+            .add_field("name")
+            .add_field("role_id");
+        let role_table = Table::new("roles", db.clone())
+            .add_field("id")
+            .add_field("role_description");
+
+        let table = user_table.join_table(role_table, "id", "role_id");
+
+        let query = table.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT u.name, r.role_description FROM users AS u LEFT JOIN roles AS r ON (u.role_id = r.id)"
+        );
     }
 }

@@ -29,10 +29,10 @@ impl BakerSet {
     }
 
     pub fn name() -> &'static Field {
-        BakerSet::table().get_field("name")
+        BakerSet::table().get_field("name").unwrap()
     }
 
     pub fn contact_details() -> &'static Field {
-        BakerSet::table().get_field("contact_details")
+        BakerSet::table().get_field("contact_details").unwrap()
     }
 }

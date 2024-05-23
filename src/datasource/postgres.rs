@@ -301,7 +301,7 @@ mod tests {
         let postgres = Postgres::new(Arc::new(Box::new(client)));
 
         let query = Query::new()
-            .set_table("client")
+            .set_table("client", None)
             .set_type(QueryType::Insert)
             .add_column_field("name")
             .add_column_field("email")
@@ -323,7 +323,7 @@ mod tests {
         let expr = expr!("id in ({}, {})", id0, id1);
 
         let delete_query = Query::new()
-            .set_table("client")
+            .set_table("client", None)
             .set_type(QueryType::Delete)
             .add_condition(expr);
 

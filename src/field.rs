@@ -1,10 +1,10 @@
 use crate::condition::Condition;
+use crate::expr;
 use crate::expression::expression_arc::WrapArc;
-use crate::expression::{Expression, ExpressionArc};
+use crate::expression::Expression;
 use crate::operations::Operations;
 use crate::traits::column::Column;
 use crate::traits::sql_chunk::SqlChunk;
-use crate::{expr, expr_arc};
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -22,6 +22,9 @@ impl Field {
             None => self.name.clone(),
         }
     }
+    pub fn set_alias(&mut self, alias: String) {
+        self.table_alias = Some(alias);
+    }
 }
 
 impl Operations for Field {
@@ -37,7 +40,7 @@ impl Operations for Field {
 
 impl SqlChunk for Field {
     fn render_chunk(&self) -> Expression {
-        Expression::new(format!("{}", self.name), vec![])
+        Expression::new(format!("{}", self.name_with_table()), vec![])
     }
 }
 
@@ -88,7 +91,7 @@ mod tests {
         let f_age = Field::new("age".to_string(), Some("u".to_string()));
         let (sql, params) = f_age.add(5).eq(&18).render_chunk().split();
 
-        assert_eq!(sql, "((age) + ({}) = {})");
+        assert_eq!(sql, "((u.age) + ({}) = {})");
         assert_eq!(params.len(), 2);
         assert_eq!(params[0], 5);
         assert_eq!(params[1], 18);

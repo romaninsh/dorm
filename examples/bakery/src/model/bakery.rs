@@ -27,12 +27,12 @@ impl BakerySet {
         })
     }
     pub fn id() -> &'static Field {
-        BakerySet::table().get_field("id")
+        BakerySet::table().get_field("id").unwrap()
     }
     pub fn name() -> &'static Field {
-        BakerySet::table().get_field("name")
+        BakerySet::table().get_field("name").unwrap()
     }
     pub fn profit_margin() -> &'static Field {
-        BakerySet::table().get_field("profit_margin")
+        BakerySet::table().get_field("profit_margin").unwrap()
     }
 }

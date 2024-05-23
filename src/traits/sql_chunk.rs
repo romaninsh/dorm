@@ -1,6 +1,6 @@
 use crate::expression::Expression;
 use rust_decimal::Decimal;
-use serde_json::{to_value, Number, Value};
+use serde_json::{to_value, Value};
 use std::fmt::Debug;
 
 // use crate::operations::Operations;

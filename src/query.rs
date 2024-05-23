@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use crate::{
-    expr, expr_arc,
+    expr_arc,
     expression::{Expression, ExpressionArc},
     field::Field,
     traits::{column::Column, sql_chunk::SqlChunk},
@@ -60,8 +60,8 @@ impl Query {
         self
     }
 
-    pub fn set_table(mut self, table: &str) -> Self {
-        self.table = QuerySource::Table(table.to_string(), None);
+    pub fn set_table(mut self, table: &str, alias: Option<String>) -> Self {
+        self.table = QuerySource::Table(table.to_string(), alias);
         self
     }
 
@@ -70,11 +70,6 @@ impl Query {
             alias.to_string(),
             QuerySource::Query(Arc::new(Box::new(subquery)), None),
         );
-        self
-    }
-
-    pub fn set_table_with_alias(mut self, table: &str, alias: &str) -> Self {
-        self.table = QuerySource::Table(table.to_string(), Some(alias.to_string()));
         self
     }
 
@@ -287,7 +282,7 @@ mod tests {
         let expr2 = expr!("age > {}", 30);
 
         let query = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .add_condition(expr1)
             .add_condition(expr2);
 
@@ -304,7 +299,7 @@ mod tests {
     #[test]
     fn test_select() {
         let (sql, params) = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .add_column_field("id")
             .add_column_field("name")
             .add_column("calc".to_string(), expr_arc!("1 + 1"))
@@ -318,7 +313,7 @@ mod tests {
     #[test]
     fn test_insert() {
         let (sql, params) = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .set_type(QueryType::Insert)
             .add_column_field("name")
             .add_column_field("surname")
@@ -350,7 +345,7 @@ mod tests {
     #[test]
     fn test_join_query() {
         let query = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .add_column_field("id")
             .add_column_field("name");
 
@@ -372,12 +367,12 @@ mod tests {
     #[test]
     fn test_render_with() {
         let roles = Query::new()
-            .set_table("roles")
+            .set_table("roles", None)
             .add_column_field("id")
             .add_column_field("role_name");
 
         let outer_query = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .add_with("roles", roles)
             .add_join(JoinQuery::new(
                 JoinType::Inner,
@@ -396,7 +391,7 @@ mod tests {
     #[test]
     fn test_group_and_order() {
         let query = Query::new()
-            .set_table("users")
+            .set_table("users", None)
             .add_column_field("id")
             .add_column_field("name")
             .add_column_field("age")
