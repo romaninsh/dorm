@@ -23,11 +23,16 @@ MVP:
 - [x] implemented Table::join_table() for merging tables
 - [x] add uniq id vendor
 - [x] field prefixing with table alias/name (optional)
-- [ ] Table::join_table should return other_table. Also add Table::with_join()
+- [x] Table::join_table can be used to reference fields. Also add Table::with_join()
 - [ ] Table::join_table should preserve conditions on other_table
-- [ ] Table::join_table should preserve joins on other_table
+- [x] Table::join_table should preserve joins on other_table
 - [ ] Table::join_table should resolve clashes in table aliases
-- [ ] Implement join_table_cb() for lazy joining
+- [ ] Implement join_table_lazy()
+- [ ] When joining table, combine their UniqueIdVendors into one
+- [ ] Condition::or() shouldn't be limited to only two arguments
+- [ ] It should not be possible to change table alias, after ownership of Fields is given
+- [ ] Implement add_field_lazy()
+- [ ] Implement ability to specify which fields to query for
 
 - [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)

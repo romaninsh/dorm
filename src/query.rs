@@ -84,6 +84,7 @@ impl Query {
     }
 
     pub fn add_column(self, name: String, field: impl Column + 'static) -> Self {
+        dbg!(&name);
         self.add_column_arc(name, Arc::new(Box::new(field)))
     }
 
@@ -180,7 +181,7 @@ impl Query {
         let fields = Expression::from_vec(
             self.columns
                 .iter()
-                .map(|f| f.1.render_column(f.0).render_chunk())
+                .map(|f| f.1.render_column(Some(f.0)).render_chunk())
                 .collect(),
             ", ",
         );

@@ -10,11 +10,16 @@ use crate::traits::sql_chunk::SqlChunk;
 pub struct Field {
     name: String,
     table_alias: Option<String>,
+    field_alias: Option<String>,
 }
 
 impl Field {
     pub fn new(name: String, table_alias: Option<String>) -> Field {
-        Field { name, table_alias }
+        Field {
+            name,
+            table_alias,
+            field_alias: None,
+        }
     }
     fn name_with_table(&self) -> String {
         match &self.table_alias {
@@ -22,8 +27,15 @@ impl Field {
             None => self.name.clone(),
         }
     }
-    pub fn set_alias(&mut self, alias: String) {
+    pub fn set_table_alias(&mut self, alias: String) {
         self.table_alias = Some(alias);
+    }
+    pub fn set_field_alias(&mut self, alias: String) {
+        self.field_alias = Some(alias);
+    }
+
+    pub fn get_field_alias(&self) -> Option<String> {
+        self.field_alias.clone()
     }
 }
 
@@ -45,12 +57,19 @@ impl SqlChunk for Field {
 }
 
 impl Column for Field {
-    fn render_column(&self, alias: &str) -> Expression {
-        (if self.name == alias {
-            expr!(format!("{}", self.name_with_table()))
-        } else {
+    fn render_column(&self, mut alias: Option<&str>) -> Expression {
+        // If the alias is the same as the field name, we don't need to render it
+        if alias.is_some() && alias.unwrap() == self.name {
+            alias = None;
+        }
+
+        let alias = alias.or(self.field_alias.as_deref());
+
+        if let Some(alias) = alias {
             expr!(format!("{} AS {}", self.name_with_table(), alias))
-        })
+        } else {
+            expr!(format!("{}", self.name_with_table()))
+        }
         .render_chunk()
     }
     fn calculated(&self) -> bool {
@@ -70,11 +89,11 @@ mod tests {
         assert_eq!(sql, "id");
         assert_eq!(params.len(), 0);
 
-        let (sql, params) = field.render_column("id").render_chunk().split();
+        let (sql, params) = field.render_column(Some("id")).render_chunk().split();
         assert_eq!(sql, "id");
         assert_eq!(params.len(), 0);
 
-        let (sql, params) = &field.render_column("id_alias").render_chunk().split();
+        let (sql, params) = &field.render_column(Some("id_alias")).render_chunk().split();
         assert_eq!(sql, "id AS id_alias");
         assert_eq!(params.len(), 0);
     }

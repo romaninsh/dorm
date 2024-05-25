@@ -1,4 +1,9 @@
-use crate::{prelude::JoinQuery, traits::datasource::DataSource};
+use std::ops::{Deref, DerefMut};
+
+use crate::{
+    prelude::{JoinQuery, Table},
+    traits::datasource::DataSource,
+};
 
 #[derive(Clone, Debug)]
 enum JoinType {
@@ -10,16 +15,39 @@ enum JoinType {
 
 #[derive(Clone, Debug)]
 pub struct Join<T: DataSource> {
+    table: Table<T>,
     join_query: JoinQuery,
-    table_alias: String,
 }
 
 impl<T: DataSource> Join<T> {
-    fn new(table_alias: String, join_query: JoinQuery) -> Join<T> {
-        Join {
-            table_alias,
-            join_query,
-        }
+    pub fn new(table: Table<T>, join_query: JoinQuery) -> Join<T> {
+        Join { table, join_query }
+    }
+    pub fn alias(&self) -> &str {
+        self.table.get_alias().unwrap()
+    }
+    pub fn join_query(&self) -> &JoinQuery {
+        &self.join_query
+    }
+    pub fn table(&self) -> &Table<T> {
+        &self.table
+    }
+    pub fn table_mut(&mut self) -> &mut Table<T> {
+        &mut self.table
+    }
+}
+
+impl<T: DataSource> Deref for Join<T> {
+    type Target = Table<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.table
+    }
+}
+
+impl<T: DataSource> DerefMut for Join<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.table
     }
 }
 

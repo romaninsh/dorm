@@ -2,7 +2,7 @@ mod condition;
 mod datasource;
 pub mod expression;
 mod field;
-// mod join;
+mod join;
 mod mocks;
 mod operations;
 pub mod prelude;

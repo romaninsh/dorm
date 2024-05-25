@@ -53,6 +53,15 @@ impl Condition {
             value,
         }
     }
+
+    pub fn set_table_alias(&mut self, alias: &str) {
+        match &mut self.field {
+            ConditionOperand::Field(field) => field.set_table_alias(alias.to_string()),
+            ConditionOperand::Condition(condition) => condition.set_table_alias(alias),
+            _ => {}
+        }
+    }
+
     pub fn from_value(operand: Value, operation: &str, value: Arc<Box<dyn SqlChunk>>) -> Condition {
         Condition {
             field: ConditionOperand::Value(operand),

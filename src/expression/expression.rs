@@ -105,8 +105,12 @@ impl Expression {
 }
 
 impl Column for Expression {
-    fn render_column(&self, alias: &str) -> Expression {
-        let expression = format!("({}) AS {}", self.expression, alias);
+    fn render_column(&self, alias: Option<&str>) -> Expression {
+        let expression = if let Some(alias) = alias {
+            format!("({}) AS {}", self.expression, alias)
+        } else {
+            format!("({})", self.expression)
+        };
 
         Expression::new(expression, self.parameters.clone())
     }

@@ -87,8 +87,12 @@ impl SqlChunk for ExpressionArc {
 }
 
 impl Column for ExpressionArc {
-    fn render_column(&self, alias: &str) -> Expression {
-        let expression = format!("({}) AS {}", self.expression, alias);
+    fn render_column(&self, alias: Option<&str>) -> Expression {
+        let expression = if let Some(alias) = alias {
+            format!("({}) AS {}", self.expression, alias)
+        } else {
+            format!("({})", self.expression)
+        };
 
         ExpressionArc::new(expression, self.parameters.clone()).render_chunk()
     }
@@ -214,7 +218,7 @@ mod tests {
         let expr2 = expr_arc!("{} + {}", b, c);
         let expr1 = expr_arc!("{} + {}", a, expr2);
 
-        let column = expr1.render_column("result");
+        let column = expr1.render_column(Some("result"));
         let (sql, params) = column.split();
 
         assert_eq!(sql, "({} + {} + {}) AS result");
