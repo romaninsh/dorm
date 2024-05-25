@@ -84,7 +84,6 @@ impl Query {
     }
 
     pub fn add_column(self, name: String, field: impl Column + 'static) -> Self {
-        dbg!(&name);
         self.add_column_arc(name, Arc::new(Box::new(field)))
     }
 

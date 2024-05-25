@@ -33,6 +33,7 @@ MVP:
 - [ ] It should not be possible to change table alias, after ownership of Fields is given
 - [ ] Implement add_field_lazy()
 - [ ] Implement ability to specify which fields to query for
+- [x] Implement has_one and has_many in a lazy way
 
 - [ ] table.itsert_query should quote field names (bug)
 - [ ] add tests for all CRUD operations (ID-less table)

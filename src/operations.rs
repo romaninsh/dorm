@@ -2,12 +2,29 @@ use std::sync::Arc;
 
 use crate::{
     condition::Condition,
-    expr_arc,
+    expr, expr_arc,
     expression::{Expression, ExpressionArc},
     traits::sql_chunk::SqlChunk,
 };
 
 pub trait Operations: SqlChunk {
+    // fn in_vec(&self, other: Vec<impl SqlChunk>) -> Condition {
+    //     Condition::from_expression(
+    //         self.render_chunk(),
+    //         "IN",
+    //         Arc::new(Box::new(ExpressionArc::from_vec(
+    //             other.into_iter().map(|x| x.render_chunk()).collect(),
+    //             ", ",
+    //         ))),
+    //     )
+    // }
+    fn in_expr(&self, other: &impl SqlChunk) -> Condition {
+        Condition::from_expression(
+            self.render_chunk(),
+            "IN",
+            Arc::new(Box::new(expr_arc!("({})", other.render_chunk()))),
+        )
+    }
     fn eq(&self, other: &impl SqlChunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),

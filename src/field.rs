@@ -21,6 +21,9 @@ impl Field {
             field_alias: None,
         }
     }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
     fn name_with_table(&self) -> String {
         match &self.table_alias {
             Some(table_alias) => format!("{}.{}", table_alias, self.name),

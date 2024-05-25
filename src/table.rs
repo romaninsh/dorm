@@ -8,6 +8,7 @@ use crate::field::Field;
 use crate::join::Join;
 use crate::prelude::{AssociatedQuery, JoinQuery, Operations};
 use crate::query::{JoinType, Query, QueryConditions, QueryType};
+use crate::reference::Reference;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
@@ -22,12 +23,15 @@ use serde_json::{Map, Value};
 #[derive(Debug)]
 pub struct Table<T: DataSource> {
     data_source: T,
+
     table_name: String,
     table_alias: Option<String>,
-    joins: IndexMap<String, Arc<Join<T>>>,
-    fields: IndexMap<String, Field>,
     title_field: Option<String>,
+
     conditions: Vec<Condition>,
+    fields: IndexMap<String, Field>,
+    joins: IndexMap<String, Arc<Join<T>>>,
+    refs: IndexMap<String, Reference<T>>,
 
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
@@ -36,12 +40,15 @@ impl<T: DataSource + Clone> Clone for Table<T> {
     fn clone(&self) -> Self {
         Table {
             data_source: self.data_source.clone(),
+
             table_name: self.table_name.clone(),
             table_alias: self.table_alias.clone(),
-            joins: self.joins.clone(),
-            fields: self.fields.clone(),
             title_field: self.title_field.clone(),
+
             conditions: self.conditions.clone(),
+            fields: self.fields.clone(),
+            joins: self.joins.clone(),
+            refs: self.refs.clone(),
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
@@ -53,12 +60,16 @@ impl<T: DataSource> Table<T> {
     pub fn new(table_name: &str, data_source: T) -> Table<T> {
         Table {
             data_source,
+
             table_name: table_name.to_string(),
             table_alias: None,
-            joins: IndexMap::new(),
             title_field: None,
+
             conditions: Vec::new(),
             fields: IndexMap::new(),
+            joins: IndexMap::new(),
+            refs: IndexMap::new(),
+
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
         }
     }
@@ -77,6 +88,46 @@ impl<T: DataSource> Table<T> {
         F: FnOnce(&mut Self),
     {
         func(&mut self);
+        self
+    }
+
+    pub fn set_alias(&mut self, alias: &str) {
+        if let Some(alias) = &self.table_alias {
+            self.table_aliases.lock().unwrap().dont_avoid(alias);
+        }
+        self.table_alias = Some(alias.to_string());
+        self.table_aliases.lock().unwrap().avoid(alias);
+        for field in self.fields.values_mut() {
+            field.set_table_alias(alias.to_string());
+        }
+        for condition in &mut self.conditions {
+            condition.set_table_alias(alias);
+        }
+    }
+
+    pub fn with_alias(mut self, alias: &str) -> Self {
+        self.set_alias(alias);
+        self
+    }
+
+    pub fn get_alias(&self) -> Option<&String> {
+        self.table_alias.as_ref()
+    }
+
+    /// Add a condition to the table, limiting what records
+    /// the DataSet will represent
+    pub fn add_condition(&mut self, condition: Condition) {
+        self.conditions.push(condition);
+    }
+
+    /// A handy way to add a condition during table building:
+    ///
+    /// ```
+    /// let books = BookSet::new();
+    /// let expensive_books = books.with_condition(BookSet::price().gt(100));
+    /// ```
+    pub fn with_condition(mut self, condition: Condition) -> Self {
+        self.add_condition(condition);
         self
     }
 
@@ -112,46 +163,6 @@ impl<T: DataSource> Table<T> {
         self.with_field(field)
     }
 
-    /// Add a condition to the table, limiting what records
-    /// the DataSet will represent
-    pub fn add_condition(&mut self, condition: Condition) {
-        self.conditions.push(condition);
-    }
-
-    /// A handy way to add a condition during table building:
-    ///
-    /// ```
-    /// let books = BookSet::new();
-    /// let expensive_books = books.with_condition(BookSet::price().gt(100));
-    /// ```
-    pub fn with_condition(mut self, condition: Condition) -> Self {
-        self.add_condition(condition);
-        self
-    }
-
-    pub fn set_alias(&mut self, alias: &str) {
-        if let Some(alias) = &self.table_alias {
-            self.table_aliases.lock().unwrap().dont_avoid(alias);
-        }
-        self.table_alias = Some(alias.to_string());
-        self.table_aliases.lock().unwrap().avoid(alias);
-        for field in self.fields.values_mut() {
-            field.set_table_alias(alias.to_string());
-        }
-        for condition in &mut self.conditions {
-            condition.set_table_alias(alias);
-        }
-    }
-
-    pub fn with_alias(mut self, alias: &str) -> Self {
-        self.set_alias(alias);
-        self
-    }
-
-    pub fn get_alias(&self) -> Option<&String> {
-        self.table_alias.as_ref()
-    }
-
     pub fn add_condition_on_field(
         self,
         field: &'static str,
@@ -166,15 +177,73 @@ impl<T: DataSource> Table<T> {
         Ok(self.with_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
     }
 
+    pub fn add_ref(
+        &mut self,
+        relation: &str,
+        cb: impl Fn(&Table<T>) -> Table<T> + 'static + Sync + Send,
+    ) {
+        let reference = Reference::new(cb);
+        self.refs.insert(relation.to_string(), reference);
+    }
+
     pub fn has_many_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
         todo!()
     }
+
+    pub fn has_many(
+        mut self,
+        relation: &str,
+        foreign_key: &str,
+        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
+    ) -> Self {
+        let foreign_key = foreign_key.to_string();
+        self.add_ref(relation, move |p| {
+            let mut c = cb();
+            let foreign_field = c
+                .get_field(&foreign_key)
+                .unwrap_or_else(|| panic!("Field '{}' not found", foreign_key));
+            let id_field = p
+                .get_field("id")
+                .unwrap_or_else(|| panic!("Field 'id' not found"));
+
+            c.add_condition(foreign_field.in_expr(&p.field_query(id_field)));
+            c
+        });
+        self
+    }
+
+    pub fn has_one(
+        mut self,
+        relation: &str,
+        foreign_key: &str,
+        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
+    ) -> Self {
+        let foreign_key = foreign_key.to_string();
+        self.add_ref(relation, move |p| {
+            let mut c = cb();
+            let id_field = c
+                .get_field("id")
+                .unwrap_or_else(|| panic!("Field 'id' not found"));
+            let foreign_field = p
+                .get_field(&foreign_key)
+                .unwrap_or_else(|| panic!("Field '{}' not found", foreign_key));
+
+            c.add_condition(id_field.in_expr(&p.field_query(foreign_field)));
+            c
+        });
+        self
+    }
+
     pub fn has_one_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
         todo!()
     }
 
-    pub fn get_ref(&self, field: &str) -> Table<T> {
-        todo!()
+    pub fn get_ref(&self, field: &str) -> Result<Table<T>> {
+        Ok(self
+            .refs
+            .get(field)
+            .ok_or_else(|| anyhow!("Reference not found"))?
+            .table(self))
     }
 
     pub fn add_field_cb(
@@ -342,6 +411,13 @@ impl<T: DataSource> Table<T> {
 
     pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         self.data_source.query_fetch(&self.get_select_query()).await
+    }
+
+    pub fn field_query(&self, field: &Field) -> AssociatedQuery<T> {
+        let query = self
+            .get_empty_query()
+            .add_column(field.name(), field.clone());
+        AssociatedQuery::new(query, self.data_source.clone())
     }
 
     pub fn sum(&self, field: &Field) -> AssociatedQuery<T> {
@@ -654,5 +730,155 @@ mod tests {
 
         // will panic, both tables want "u" alias
         user_table.with_join(role_table, "role_id");
+    }
+
+    #[test]
+    fn test_field_query() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let mut roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name");
+
+        roles.add_condition(roles.get_field("name").unwrap().eq(&"admin".to_string()));
+        let query = roles.field_query(roles.get_field("id").unwrap());
+
+        assert_eq!(
+            query.render_chunk().sql().clone(),
+            "SELECT id FROM roles WHERE (name = {})".to_owned()
+        );
+
+        let mut users = Table::new("users", db.clone())
+            .with_field("id")
+            .with_field("role_id");
+
+        users.add_condition(users.get_field("role_id").unwrap().in_expr(&query));
+        let query = users.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT id, role_id FROM users WHERE (role_id IN (SELECT id FROM roles WHERE (name = {})))"
+        );
+        assert_eq!(query.1[0], json!("admin"));
+    }
+
+    #[test]
+    fn test_add_ref() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        struct UserSet {
+            table: Table<MockDataSource>,
+        }
+        impl UserSet {
+            fn table() -> Table<MockDataSource> {
+                let data = json!([]);
+                let db = MockDataSource::new(&data);
+                let mut table = Table::new("users", db)
+                    .with_field("id")
+                    .with_field("name")
+                    .with_field("role_id");
+
+                table.add_ref("role", |u| {
+                    let mut r = RoleSet::table();
+                    r.add_condition(
+                        r.get_field("id")
+                            .unwrap()
+                            // .eq(u.get_field("role_id").unwrap()),
+                            .in_expr(&u.field_query(u.get_field("role_id").unwrap())),
+                    );
+                    r
+                });
+                table
+            }
+        }
+
+        struct RoleSet {
+            table: Table<MockDataSource>,
+        }
+        impl RoleSet {
+            fn table() -> Table<MockDataSource> {
+                let data = json!([]);
+                let db = MockDataSource::new(&data);
+                Table::new("roles", db)
+                    .with_field("id")
+                    .with_field("role_type")
+            }
+        }
+
+        let mut user_table = UserSet::table();
+
+        user_table.add_condition(user_table.get_field("id").unwrap().eq(&123));
+        let user_roles = user_table.get_ref("role").unwrap();
+
+        let query = user_roles.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT id, role_type FROM roles WHERE (id IN (SELECT role_id FROM users WHERE (id = {})))"
+        );
+    }
+
+    #[test]
+    fn test_father_child() {
+        struct PersonSet {
+            table: Table<MockDataSource>,
+        }
+        impl PersonSet {
+            fn table() -> Table<MockDataSource> {
+                let data = json!([]);
+                let db = MockDataSource::new(&data);
+                let mut table = Table::new("persons", db)
+                    .with_field("id")
+                    .with_field("name")
+                    .with_field("parent_id")
+                    .has_one("parent", "parent_id", || PersonSet::table())
+                    .has_many("children", "parent_id", || PersonSet::table());
+
+                table
+            }
+        }
+
+        let mut john = PersonSet::table();
+        john.add_condition(john.get_field("name").unwrap().eq(&"John".to_string()));
+
+        let children = john.get_ref("children").unwrap();
+
+        let query = children.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT id, name, parent_id FROM persons WHERE (parent_id IN (SELECT id FROM persons WHERE (name = {})))"
+        );
+
+        let grand_children = john
+            .get_ref("children")
+            .unwrap()
+            .get_ref("children")
+            .unwrap();
+
+        let query = grand_children.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT id, name, parent_id FROM persons WHERE \
+            (parent_id IN (SELECT id FROM persons WHERE \
+            (parent_id IN (SELECT id FROM persons WHERE (name = {})\
+            ))\
+            ))"
+        );
+
+        let parent_name = john
+            .get_ref("parent")
+            .unwrap()
+            .field_query(john.get_field("name").unwrap());
+
+        let query = parent_name.render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT name FROM persons WHERE (id IN (SELECT parent_id FROM persons WHERE (name = {})))"
+        );
     }
 }

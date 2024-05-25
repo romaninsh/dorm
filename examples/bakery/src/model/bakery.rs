@@ -21,7 +21,7 @@ impl BakerySet {
                     CakeSet::new().with_condition(CakeSet::bakery_id().eq(BakerySet::id()))
                 })
                 .add_field_cb("profit", |t: &Table<Postgres>| {
-                    Box::new(t.get_ref("cakes").sum(CakeSet::profit()))
+                    Box::new(t.get_ref("cakes").unwrap().sum(CakeSet::profit()))
                 })
                 .has_many_cb("bakers", || BakerySet::new())
         })

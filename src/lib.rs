@@ -7,6 +7,7 @@ mod mocks;
 mod operations;
 pub mod prelude;
 pub mod query;
+mod reference;
 mod table;
 mod traits;
 mod uniqid;
