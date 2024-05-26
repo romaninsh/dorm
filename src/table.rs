@@ -26,6 +26,7 @@ pub struct Table<T: DataSource> {
 
     table_name: String,
     table_alias: Option<String>,
+    id_field: Option<String>,
     title_field: Option<String>,
 
     conditions: Vec<Condition>,
@@ -43,6 +44,7 @@ impl<T: DataSource + Clone> Clone for Table<T> {
 
             table_name: self.table_name.clone(),
             table_alias: self.table_alias.clone(),
+            id_field: self.id_field.clone(),
             title_field: self.title_field.clone(),
 
             conditions: self.conditions.clone(),
@@ -63,6 +65,7 @@ impl<T: DataSource> Table<T> {
 
             table_name: table_name.to_string(),
             table_alias: None,
+            id_field: None,
             title_field: None,
 
             conditions: Vec::new(),
@@ -160,6 +163,11 @@ impl<T: DataSource> Table<T> {
     /// used in the UI to represent the record.
     pub fn with_title_field(mut self, field: &str) -> Self {
         self.title_field = Some(field.to_string());
+        self.with_field(field)
+    }
+
+    pub fn with_id_field(mut self, field: &str) -> Self {
+        self.id_field = Some(field.to_string());
         self.with_field(field)
     }
 

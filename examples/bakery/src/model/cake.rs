@@ -2,11 +2,9 @@ use std::sync::OnceLock;
 
 use dorm::prelude::*;
 
-use crate::postgres;
+use crate::{model::baker::BakerSet, postgres};
 
-pub struct CakeSet {
-    pub table: Table<Postgres>,
-}
+pub struct CakeSet {}
 impl CakeSet {
     pub fn new() -> Table<Postgres> {
         CakeSet::table().clone()
@@ -18,9 +16,23 @@ impl CakeSet {
             Table::new("cake", postgres())
                 .with_field("id")
                 .with_field("name")
-                .with_field("profit")
+                .with_field("price")
                 .with_field("bakery_id")
+                .with_field("gluten_free")
+                .with_field("serial")
+                .has_many("cake_bakers", "cake_id", || {
+                    // add baker_id field into Cake through a left join
+                    BakerSet::new().with_join(
+                        Table::new("cakes_bakers", postgres())
+                            .with_id_field("baker_id")
+                            .with_field("cake_id"),
+                        "id",
+                    )
+                    // maybe here some grouping would be more sensible
+                })
         })
+
+        // not defining relation to "lineitem" as it has no logical meaning
     }
 
     pub fn id() -> &'static Field {
@@ -30,10 +42,16 @@ impl CakeSet {
     pub fn name() -> &'static Field {
         CakeSet::table().get_field("name").unwrap()
     }
-    pub fn profit() -> &'static Field {
-        CakeSet::table().get_field("profit").unwrap()
+    pub fn price() -> &'static Field {
+        CakeSet::table().get_field("price").unwrap()
     }
     pub fn bakery_id() -> &'static Field {
         CakeSet::table().get_field("bakery_id").unwrap()
+    }
+    pub fn gluten_free() -> &'static Field {
+        CakeSet::table().get_field("gluten_free").unwrap()
+    }
+    pub fn serial() -> &'static Field {
+        CakeSet::table().get_field("serial").unwrap()
     }
 }

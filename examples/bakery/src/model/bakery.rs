@@ -2,7 +2,10 @@ use std::sync::OnceLock;
 
 use dorm::prelude::*;
 
-use crate::{model::cake::CakeSet, postgres};
+use crate::{
+    model::{baker::BakerSet, cake::CakeSet, order::OrderSet},
+    postgres,
+};
 
 pub struct BakerySet {}
 
@@ -17,13 +20,9 @@ impl BakerySet {
             Table::new("bakery", postgres())
                 .with_field("name")
                 .with_field("profit_margin")
-                .has_many_cb("cakes", || {
-                    CakeSet::new().with_condition(CakeSet::bakery_id().eq(BakerySet::id()))
-                })
-                .add_field_cb("profit", |t: &Table<Postgres>| {
-                    Box::new(t.get_ref("cakes").unwrap().sum(CakeSet::profit()))
-                })
-                .has_many_cb("bakers", || BakerySet::new())
+                .has_many("cakes", "bakery_id", || CakeSet::new())
+                .has_many("bakers", "bakery_id", || BakerSet::new())
+                .has_many("orders", "bakery_id", || OrderSet::new())
         })
     }
     pub fn id() -> &'static Field {
