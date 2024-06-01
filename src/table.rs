@@ -206,10 +206,6 @@ impl<T: DataSource> Table<T> {
         self.refs.insert(relation.to_string(), reference);
     }
 
-    pub fn has_many_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
-        todo!()
-    }
-
     pub fn has_many(
         mut self,
         relation: &str,
@@ -254,27 +250,12 @@ impl<T: DataSource> Table<T> {
         self
     }
 
-    pub fn has_one_cb(self, relation: &str, cb: impl FnOnce() -> Table<T>) -> Self {
-        todo!()
-    }
-
     pub fn get_ref(&self, field: &str) -> Result<Table<T>> {
         Ok(self
             .refs
             .get(field)
             .ok_or_else(|| anyhow!("Reference not found"))?
             .table(self))
-    }
-
-    pub fn add_field_cb(
-        self,
-        field: &str,
-        cb: impl FnOnce(&Table<T>) -> Box<dyn SqlChunk>,
-    ) -> Self {
-        todo!();
-        // let field = cb();
-        // self.fields.insert(field.name().clone(), field);
-        // self
     }
 
     pub fn id(&self) -> Field {
@@ -494,7 +475,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::{expr, mocks::datasource::MockDataSource};
+    use crate::mocks::datasource::MockDataSource;
 
     #[tokio::test]
     async fn test_table() {
@@ -785,12 +766,7 @@ mod tests {
 
     #[test]
     fn test_add_ref() {
-        let data = json!([]);
-        let db = MockDataSource::new(&data);
-
-        struct UserSet {
-            table: Table<MockDataSource>,
-        }
+        struct UserSet {}
         impl UserSet {
             fn table() -> Table<MockDataSource> {
                 let data = json!([]);
@@ -814,9 +790,7 @@ mod tests {
             }
         }
 
-        struct RoleSet {
-            table: Table<MockDataSource>,
-        }
+        struct RoleSet {}
         impl RoleSet {
             fn table() -> Table<MockDataSource> {
                 let data = json!([]);
@@ -842,14 +816,12 @@ mod tests {
 
     #[test]
     fn test_father_child() {
-        struct PersonSet {
-            table: Table<MockDataSource>,
-        }
+        struct PersonSet {}
         impl PersonSet {
             fn table() -> Table<MockDataSource> {
                 let data = json!([]);
                 let db = MockDataSource::new(&data);
-                let mut table = Table::new("persons", db)
+                let table = Table::new("persons", db)
                     .with_field("id")
                     .with_field("name")
                     .with_field("parent_id")

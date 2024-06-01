@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     condition::Condition,
-    expr, expr_arc,
+    expr_arc,
     expression::{Expression, ExpressionArc},
     traits::sql_chunk::SqlChunk,
 };

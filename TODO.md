@@ -1,5 +1,6 @@
 MVP:
 
+0.1.0: Query Building
 - [x] create a basic query type
 - [x] have query ability to render into a SQL query
 - [x] add ability to have expressions
@@ -12,6 +13,8 @@ MVP:
 - [x] implement delete query
 - [x] implement operations: (field.eq(otherfield))
 - [x] implement parametric queries
+
+0.2.0: Nested Query Building
 - [x] properly handle nested queries
 - [x] table should own DataSource, which should be cloneable and use Arc for client
 - [x] implemented condition chaining
@@ -20,23 +23,23 @@ MVP:
 - [x] implemented table::sum()
 - [x] implemented TableDelegate trait
 - [x] implemented Query::add_join()
-- [x] implemented Table::join_table() for merging tables
+
+0.3.0: Table Structure
 - [x] add uniq id vendor
+- [x] implemented Table::join_table() for merging tables
 - [x] field prefixing with table alias/name (optional)
 - [x] Table::join_table can be used to reference fields. Also add Table::with_join()
-- [ ] Table::join_table should preserve conditions on other_table
 - [x] Table::join_table should preserve joins on other_table
-- [ ] Table::join_table should resolve clashes in table aliases
-- [ ] Implement join_table_lazy()
-- [ ] When joining table, combine their UniqueIdVendors into one
-- [ ] Condition::or() shouldn't be limited to only two arguments
-- [ ] It should not be possible to change table alias, after ownership of Fields is given
-- [ ] Implement add_field_lazy()
-- [ ] Implement ability to specify which fields to query for
+- [x] When joining table, combine their UniqueIdVendors into one
 - [x] Implement has_one and has_many in a lazy way
 - [x] Implement expressions in a lazy way
 
-- [ ] table.itsert_query should quote field names (bug)
+0.4.0: Control field queries
+- [ ] Implement a way to create a query with custom field references
+- [ ] Implement a way to query with a serialized structure
+- [ ] Separate fields from active fields structure
+- [ ] Implement ability to specify which fields to query for
+
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet
 - [ ] implement functions: (concat(field, " ", otherfield))
@@ -51,6 +54,22 @@ MVP:
 - [x] select from a subquery
 - [ ] add sql table as a dataset at a query level (+ clean up method naming)
 - [ ] postgres expressions should add type annotation into query ("$1::text")
+
+Pratcitacl tests:
+- [x] Populate bakery tests
+- [ ] Make bakery model more usable
+- [ ] table.itsert_query should quote field names (bug)
+
+Lazy features:
+- [ ] Implement join_table_lazy()
+- [ ] Implement add_field_lazy()
+
+
+Minor Cases:
+- [ ] Table::join_table should preserve conditions on other_table
+- [ ] Table::join_table should resolve clashes in table aliases
+- [ ] Condition::or() shouldn't be limited to only two arguments
+- [ ] It should not be possible to change table alias, after ownership of Fields is given
 
 Implementing examples:
 

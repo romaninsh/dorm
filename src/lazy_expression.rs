@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::{
-    prelude::{Expression, Query, Table},
+    prelude::{Expression, Table},
     traits::datasource::DataSource,
 };
 

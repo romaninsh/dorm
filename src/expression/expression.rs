@@ -21,7 +21,6 @@ macro_rules! expr {
 pub struct Expression {
     expression: String,
     parameters: Vec<Value>,
-    escape_char: Option<char>,
 }
 
 impl SqlChunk for Expression {
@@ -35,7 +34,6 @@ impl Expression {
         Self {
             expression,
             parameters,
-            escape_char: None,
         }
     }
 
@@ -47,7 +45,6 @@ impl Expression {
         Self {
             expression: "".to_owned(),
             parameters: vec![],
-            escape_char: None,
         }
     }
 
@@ -87,7 +84,6 @@ impl Expression {
         Self {
             expression,
             parameters,
-            escape_char: None,
         }
     }
 
