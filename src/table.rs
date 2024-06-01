@@ -6,7 +6,8 @@ use crate::expr_arc;
 use crate::expression::ExpressionArc;
 use crate::field::Field;
 use crate::join::Join;
-use crate::prelude::{AssociatedQuery, JoinQuery, Operations};
+use crate::lazy_expression::LazyExpression;
+use crate::prelude::{AssociatedQuery, Expression, JoinQuery, Operations};
 use crate::query::{JoinType, Query, QueryConditions, QueryType};
 use crate::reference::Reference;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
@@ -32,6 +33,7 @@ pub struct Table<T: DataSource> {
     conditions: Vec<Condition>,
     fields: IndexMap<String, Field>,
     joins: IndexMap<String, Arc<Join<T>>>,
+    lazy_expressions: IndexMap<String, LazyExpression<T>>,
     refs: IndexMap<String, Reference<T>>,
 
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
@@ -50,6 +52,7 @@ impl<T: DataSource + Clone> Clone for Table<T> {
             conditions: self.conditions.clone(),
             fields: self.fields.clone(),
             joins: self.joins.clone(),
+            lazy_expressions: self.lazy_expressions.clone(),
             refs: self.refs.clone(),
 
             // Perform a deep clone of the UniqueIdVendor
@@ -71,6 +74,7 @@ impl<T: DataSource> Table<T> {
             conditions: Vec::new(),
             fields: IndexMap::new(),
             joins: IndexMap::new(),
+            lazy_expressions: IndexMap::new(),
             refs: IndexMap::new(),
 
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
@@ -124,11 +128,6 @@ impl<T: DataSource> Table<T> {
     }
 
     /// A handy way to add a condition during table building:
-    ///
-    /// ```
-    /// let books = BookSet::new();
-    /// let expensive_books = books.with_condition(BookSet::price().gt(100));
-    /// ```
     pub fn with_condition(mut self, condition: Condition) -> Self {
         self.add_condition(condition);
         self
@@ -183,6 +182,19 @@ impl<T: DataSource> Table<T> {
             .ok_or_else(|| anyhow!("Field not found: {}", field))?
             .clone();
         Ok(self.with_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
+    }
+
+    // ---- Expressions ----
+    //  BeforeQuery(Arc<Box<dyn Fn(&Query) -> Expression>>),
+    pub fn add_expression_before_query(
+        &mut self,
+        name: &str,
+        expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
+    ) {
+        self.lazy_expressions.insert(
+            name.to_string(),
+            LazyExpression::BeforeQuery(Arc::new(Box::new(expression))),
+        );
     }
 
     pub fn add_ref(
@@ -482,7 +494,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::mocks::datasource::MockDataSource;
+    use crate::{expr, mocks::datasource::MockDataSource};
 
     #[tokio::test]
     async fn test_table() {
@@ -888,5 +900,29 @@ mod tests {
             query.0,
             "SELECT name FROM persons WHERE (id IN (SELECT parent_id FROM persons WHERE (name = {})))"
         );
+    }
+
+    #[test]
+    fn test_expression_query() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let mut orders = Table::new("orders", db.clone())
+            .with_field("price")
+            .with_field("qty");
+
+        orders.add_expression_before_query("total", |t| {
+            expr_arc!(
+                "{}*{}",
+                t.get_field("price").unwrap().clone(),
+                t.get_field("qty").unwrap().clone()
+            )
+            .render_chunk()
+        });
+
+        let query = orders.get_select_query().render_chunk().split();
+
+        assert_eq!(query.0, "SELECT price, qty FROM orders");
+        // assert_eq!(query.0, "SELECT price, qty, price*qty AS total FROM orders");
     }
 }

@@ -6,6 +6,7 @@ use crate::{model::cake::CakeSet, postgres};
 
 use super::bakery::BakerySet;
 
+/// Example implementation of a Baker Set for Bakrey model
 pub struct BakerSet {}
 impl BakerSet {
     pub fn new() -> Table<Postgres> {

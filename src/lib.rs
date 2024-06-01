@@ -3,6 +3,7 @@ mod datasource;
 pub mod expression;
 mod field;
 mod join;
+mod lazy_expression;
 mod mocks;
 mod operations;
 pub mod prelude;
