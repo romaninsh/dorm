@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut, IndexMut};
 use std::ptr::eq;
 use std::sync::{Arc, Mutex};
 
@@ -10,16 +11,20 @@ use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression, JoinQuery, Operations};
 use crate::query::{JoinType, Query, QueryConditions, QueryType};
 use crate::reference::Reference;
+use crate::traits::column::Column;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
 use crate::uniqid::UniqueIdVendor;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
-use serde_json::{Map, Value};
+use serde::Serialize;
+use serde_json::{to_value, Map, Value};
 
 // Generic implementation of SQL table. We don't really want to use this extensively,
 // instead we want to use 3rd party SQL builders, that cary table schema information.
+
+trait TableField {}
 
 #[derive(Debug)]
 pub struct Table<T: DataSource> {
@@ -31,7 +36,7 @@ pub struct Table<T: DataSource> {
     title_field: Option<String>,
 
     conditions: Vec<Condition>,
-    fields: IndexMap<String, Field>,
+    fields: IndexMap<String, Arc<Field>>,
     joins: IndexMap<String, Arc<Join<T>>>,
     lazy_expressions: IndexMap<String, LazyExpression<T>>,
     refs: IndexMap<String, Reference<T>>,
@@ -105,7 +110,9 @@ impl<T: DataSource> Table<T> {
         self.table_alias = Some(alias.to_string());
         self.table_aliases.lock().unwrap().avoid(alias);
         for field in self.fields.values_mut() {
-            field.set_table_alias(alias.to_string());
+            let mut new_field = field.deref().deref().clone();
+            new_field.set_table_alias(alias.to_string());
+            *field = Arc::new(new_field);
         }
         for condition in &mut self.conditions {
             condition.set_table_alias(alias);
@@ -135,16 +142,19 @@ impl<T: DataSource> Table<T> {
 
     /// Adds a new field to the table. Note, that Field may use an alias
     fn add_field(&mut self, field_name: String, field: Field) {
-        self.fields.insert(field_name, field);
+        self.fields.insert(field_name, Arc::new(field));
     }
 
-    /// Returns a field by name
-    pub fn get_field(&self, field: &str) -> Option<&Field> {
-        self.fields.get(field)
+    /// Returns a field reference by name.
+    pub fn get_field(&self, field: &str) -> Option<Arc<Field>> {
+        self.fields.get(field).map(|f| f.clone())
     }
+
+    /// Returns something that implements a TableField, arc-boxed
+    pub fn get_table_field(&self, field: Arc<Box<dyn TableField>>) {}
 
     /// Handy way to access fields
-    pub fn fields(&self) -> &IndexMap<String, Field> {
+    pub fn fields(&self) -> &IndexMap<String, Arc<Field>> {
         &self.fields
     }
 
@@ -177,8 +187,7 @@ impl<T: DataSource> Table<T> {
         value: impl SqlChunk + 'static,
     ) -> Result<Self> {
         let field = self
-            .fields
-            .get(field)
+            .get_field(field)
             .ok_or_else(|| anyhow!("Field not found: {}", field))?
             .clone();
         Ok(self.with_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
@@ -258,9 +267,9 @@ impl<T: DataSource> Table<T> {
             .table(self))
     }
 
-    pub fn id(&self) -> Field {
+    pub fn id(&self) -> Arc<Field> {
         // Field::new("test".to_string(), Some("test".to_string()))
-        self.fields.get("id").unwrap().clone()
+        self.get_field("id").unwrap()
     }
     pub fn with_id(self, id: Value) -> Self {
         let f = self.id().eq(&id);
@@ -368,14 +377,15 @@ impl<T: DataSource> Table<T> {
         for (field_key, field_val) in &self.fields {
             let field_val = if let Some(alias_prefix) = &alias_prefix {
                 let alias = format!("{}_{}", alias_prefix, field_key);
-                let mut field_val = field_val.clone();
+                let mut field_val = field_val.deref().clone();
                 field_val.set_field_alias(alias);
-                field_val
+                Arc::new(field_val)
             } else {
                 field_val.clone()
             };
             query = query.add_column(
                 field_val
+                    .deref()
                     .get_field_alias()
                     .unwrap_or_else(|| field_key.clone()),
                 field_val,
@@ -399,12 +409,44 @@ impl<T: DataSource> Table<T> {
         query
     }
 
+    pub fn get_select_query_for_fields(
+        &self,
+        fields: IndexMap<String, Arc<Box<dyn Column>>>,
+    ) -> Query {
+        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
+        for (field_alias, field_val) in fields {
+            let field_val = field_val.clone();
+            query = query.add_column_arc(field_alias, field_val);
+        }
+        query
+    }
+
+    pub fn get_select_query_for_struct<R: Serialize>(&self, default: R) -> Query {
+        let json_value = to_value(default).unwrap();
+
+        let field_names = match json_value {
+            Value::Object(map) => {
+                let field_names = map.keys().cloned().collect::<Vec<String>>();
+                field_names
+            }
+            _ => panic!("Expected argument to be a struct"),
+        };
+
+        let i = field_names
+            .into_iter()
+            .filter_map(|f| self.search_for_field(&f).map(|c| (f, Arc::new(c))));
+
+        let i = i.collect::<IndexMap<_, _>>();
+
+        self.get_select_query_for_fields(i)
+    }
+
     pub fn get_insert_query(&self) -> Query {
         let mut query = Query::new()
             .set_table(&self.table_name, None)
             .set_type(QueryType::Insert);
         for (field, _) in &self.fields {
-            let field_object = Field::new(field.clone(), self.table_alias.clone());
+            let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
             query = query.add_column(field.clone(), field_object);
         }
         query
@@ -414,18 +456,44 @@ impl<T: DataSource> Table<T> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn field_query(&self, field: &Field) -> AssociatedQuery<T> {
-        let query = self
-            .get_empty_query()
-            .add_column(field.name(), field.clone());
+    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
+        let query = self.get_empty_query().add_column(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
     }
 
-    pub fn sum(&self, field: &Field) -> AssociatedQuery<T> {
+    pub fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         let query = self
             .get_empty_query()
-            .add_column("sum".to_string(), expr_arc!("SUM({})", field.clone()));
+            .add_column("sum".to_string(), expr_arc!("SUM({})", field));
         AssociatedQuery::new(query, self.data_source.clone())
+    }
+
+    pub fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>> {
+        // perhaps we have a field like this
+        // let field = self.get_field(field_name);
+
+        if let Some(field) = self.get_field(field_name) {
+            return Some(Box::new(field));
+        }
+
+        // maybe joined table have a field we want
+        for (_, join) in self.joins.iter() {
+            if let Some(field) = join.table().get_field(field_name) {
+                return Some(Box::new(field));
+            }
+        }
+
+        // maybe we have a lazy expression
+        if let Some(lazy_expression) = self.lazy_expressions.get(field_name) {
+            return match lazy_expression {
+                LazyExpression::AfterQuery(_) => None,
+                LazyExpression::BeforeQuery(expr) => {
+                    let x = (expr)(self);
+                    Some(Box::new(x))
+                }
+            };
+        }
+        None
     }
 }
 
@@ -458,13 +526,13 @@ impl<T: DataSource> WritableDataSet for Table<T> {
 pub trait TableDelegate<T: DataSource> {
     fn table(&self) -> &Table<T>;
 
-    fn id(&self) -> Field {
-        self.table().id().clone()
+    fn id(&self) -> Arc<Field> {
+        self.table().id()
     }
     fn add_condition(&self, condition: Condition) -> Table<T> {
         self.table().clone().with_condition(condition)
     }
-    fn sum(&self, field: &Field) -> AssociatedQuery<T> {
+    fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         self.table().sum(field)
     }
 }
@@ -472,6 +540,7 @@ pub trait TableDelegate<T: DataSource> {
 #[cfg(test)]
 mod tests {
 
+    use serde::{Deserialize, Serialize};
     use serde_json::json;
 
     use super::*;
@@ -546,7 +615,7 @@ mod tests {
             .add_condition_on_field("is_vip", "is", "true".to_owned())
             .unwrap();
 
-        let sum = vip_client.sum(vip_client.fields.get("total_spent").unwrap());
+        let sum = vip_client.sum(vip_client.get_field("total_spent").unwrap());
         assert_eq!(
             sum.render_chunk().sql().clone(),
             "SELECT (SUM(total_spent)) AS sum FROM client WHERE (is_vip is {})".to_owned()
@@ -895,6 +964,18 @@ mod tests {
         let query = orders.get_select_query().render_chunk().split();
 
         assert_eq!(query.0, "SELECT price, qty FROM orders");
+
+        #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+        struct ItemLine {
+            price: f64,
+            qty: i32,
+            total: f64,
+        }
+
+        let query = orders
+            .get_select_query_for_struct(ItemLine::default())
+            .render_chunk()
+            .split();
         // assert_eq!(query.0, "SELECT price, qty, price*qty AS total FROM orders");
     }
 }

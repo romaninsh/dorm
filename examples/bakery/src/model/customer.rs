@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
@@ -20,11 +20,11 @@ impl CustomerSet {
         })
     }
 
-    pub fn name() -> &'static Field {
+    pub fn name() -> Arc<Field> {
         CustomerSet::table().get_field("name").unwrap()
     }
 
-    pub fn contact_details() -> &'static Field {
+    pub fn contact_details() -> Arc<Field> {
         CustomerSet::table().get_field("contact_details").unwrap()
     }
 }

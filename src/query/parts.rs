@@ -192,8 +192,8 @@ mod tests {
 
     #[test]
     fn test_conditions_expressions() {
-        let name = Field::new("name".to_string(), None);
-        let surname = Field::new("surname".to_string(), Some("sur".to_string()));
+        let name = Arc::new(Field::new("name".to_string(), None));
+        let surname = Arc::new(Field::new("surname".to_string(), Some("sur".to_string())));
 
         let conditions = QueryConditions::having().add_condition(
             Condition::or(name.eq(&surname), surname.eq(&Value::Null)).render_chunk(),

@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
@@ -35,23 +35,22 @@ impl CakeSet {
         // not defining relation to "lineitem" as it has no logical meaning
     }
 
-    pub fn id() -> &'static Field {
+    pub fn id() -> Arc<Field> {
         CakeSet::table().get_field("id").unwrap()
     }
-
-    pub fn name() -> &'static Field {
+    pub fn name() -> Arc<Field> {
         CakeSet::table().get_field("name").unwrap()
     }
-    pub fn price() -> &'static Field {
+    pub fn price() -> Arc<Field> {
         CakeSet::table().get_field("price").unwrap()
     }
-    pub fn bakery_id() -> &'static Field {
+    pub fn bakery_id() -> Arc<Field> {
         CakeSet::table().get_field("bakery_id").unwrap()
     }
-    pub fn gluten_free() -> &'static Field {
+    pub fn gluten_free() -> Arc<Field> {
         CakeSet::table().get_field("gluten_free").unwrap()
     }
-    pub fn serial() -> &'static Field {
+    pub fn serial() -> Arc<Field> {
         CakeSet::table().get_field("serial").unwrap()
     }
 }

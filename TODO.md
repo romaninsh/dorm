@@ -35,6 +35,7 @@ MVP:
 - [x] Implement expressions in a lazy way
 
 0.4.0: Control field queries
+- [x] Convert Field and &Field into Arc<Field> everywhere
 - [ ] Implement a way to create a query with custom field references
 - [ ] Implement a way to query with a serialized structure
 - [ ] Separate fields from active fields structure

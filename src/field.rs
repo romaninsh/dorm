@@ -1,3 +1,6 @@
+use std::ops::Deref;
+use std::sync::Arc;
+
 use crate::condition::Condition;
 use crate::expr;
 use crate::expression::expression_arc::WrapArc;
@@ -42,7 +45,7 @@ impl Field {
     }
 }
 
-impl Operations for Field {
+impl Operations for Arc<Field> {
     fn eq(&self, other: &impl SqlChunk) -> Condition {
         Condition::from_field(self.clone(), "=", WrapArc::wrap_arc(other.render_chunk()))
     }
@@ -53,13 +56,13 @@ impl Operations for Field {
     // }
 }
 
-impl SqlChunk for Field {
+impl SqlChunk for Arc<Field> {
     fn render_chunk(&self) -> Expression {
         Expression::new(format!("{}", self.name_with_table()), vec![])
     }
 }
 
-impl Column for Field {
+impl Column for Arc<Field> {
     fn render_column(&self, mut alias: Option<&str>) -> Expression {
         // If the alias is the same as the field name, we don't need to render it
         if alias.is_some() && alias.unwrap() == self.name {
@@ -86,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_field() {
-        let field = Field::new("id".to_string(), None);
+        let field = Arc::new(Field::new("id".to_string(), None));
         let (sql, params) = field.render_chunk().split();
 
         assert_eq!(sql, "id");
@@ -103,14 +106,14 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let field = Field::new("id".to_string(), None);
+        let field = Arc::new(Field::new("id".to_string(), None));
         let (sql, params) = field.eq(&1).render_chunk().split();
 
         assert_eq!(sql, "(id = {})");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], 1);
 
-        let f_age = Field::new("age".to_string(), Some("u".to_string()));
+        let f_age = Arc::new(Field::new("age".to_string(), Some("u".to_string())));
         let (sql, params) = f_age.add(5).eq(&18).render_chunk().split();
 
         assert_eq!(sql, "((u.age) + ({}) = {})");

@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
@@ -27,19 +27,19 @@ impl OrderSet {
         })
     }
 
-    pub fn customer_id() -> &'static Field {
+    pub fn customer_id() -> Arc<Field> {
         OrderSet::table().get_field("customer_id").unwrap()
     }
 
-    pub fn bakery_id() -> &'static Field {
+    pub fn bakery_id() -> Arc<Field> {
         OrderSet::table().get_field("bakery_id").unwrap()
     }
 
-    pub fn total() -> &'static Field {
+    pub fn total() -> Arc<Field> {
         OrderSet::table().get_field("total").unwrap()
     }
 
-    pub fn placed_at() -> &'static Field {
+    pub fn placed_at() -> Arc<Field> {
         OrderSet::table().get_field("placed_at").unwrap()
     }
 }

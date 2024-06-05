@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use std::sync::Arc;
 
 use serde_json::Value;
@@ -9,7 +10,7 @@ use crate::traits::sql_chunk::SqlChunk;
 
 #[derive(Debug, Clone)]
 enum ConditionOperand {
-    Field(Field),
+    Field(Arc<Field>),
     Expression(Box<Expression>),
     Condition(Box<Condition>),
     Value(Value),
@@ -24,7 +25,11 @@ pub struct Condition {
 
 #[allow(dead_code)]
 impl Condition {
-    pub fn from_field(field: Field, operation: &str, value: Arc<Box<dyn SqlChunk>>) -> Condition {
+    pub fn from_field(
+        field: Arc<Field>,
+        operation: &str,
+        value: Arc<Box<dyn SqlChunk>>,
+    ) -> Condition {
         Condition {
             field: ConditionOperand::Field(field),
             operation: operation.to_string(),
@@ -56,7 +61,11 @@ impl Condition {
 
     pub fn set_table_alias(&mut self, alias: &str) {
         match &mut self.field {
-            ConditionOperand::Field(field) => field.set_table_alias(alias.to_string()),
+            ConditionOperand::Field(field) => {
+                let mut f = field.as_ref().clone();
+                f.set_table_alias(alias.to_string());
+                *field = Arc::new(f);
+            }
             ConditionOperand::Condition(condition) => condition.set_table_alias(alias),
             _ => {}
         }
@@ -114,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_condition() {
-        let field = Field::new("id".to_string(), None);
+        let field = Arc::new(Field::new("id".to_string(), None));
 
         let condition = Condition::from_field(field, "=", Arc::new(Box::new("1".to_string())));
         let (sql, params) = condition.render_chunk().split();
@@ -139,8 +148,8 @@ mod tests {
 
     #[test]
     fn test_and() {
-        let f_married = Field::new("married".to_string(), None);
-        let f_divorced = Field::new("divorced".to_string(), None);
+        let f_married = Arc::new(Field::new("married".to_string(), None));
+        let f_divorced = Arc::new(Field::new("divorced".to_string(), None));
 
         let condition =
             Condition::from_field(f_married, "=", Arc::new(Box::new("yes".to_string()))).and(

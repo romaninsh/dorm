@@ -128,7 +128,10 @@ impl Query {
 
     // Simplified ways to define a field with a string
     pub fn add_column_field(self, name: &str) -> Self {
-        self.add_column(name.to_string(), Field::new(name.to_string(), None))
+        self.add_column(
+            name.to_string(),
+            Arc::new(Field::new(name.to_string(), None)),
+        )
     }
 
     fn render_with(&self) -> Expression {

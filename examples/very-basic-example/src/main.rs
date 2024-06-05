@@ -36,13 +36,13 @@ impl ProductSet {
 
         Self { table }
     }
-    pub fn name(&self) -> &Field {
+    pub fn name(&self) -> Arc<Field> {
         self.table.get_field("name").unwrap()
     }
-    pub fn description(&self) -> &Field {
+    pub fn description(&self) -> Arc<Field> {
         self.table.get_field("description").unwrap()
     }
-    pub fn default_price(&self) -> &Field {
+    pub fn default_price(&self) -> Arc<Field> {
         self.table.get_field("default_price").unwrap()
     }
 }

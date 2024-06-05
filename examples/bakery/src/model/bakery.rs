@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
@@ -25,13 +25,13 @@ impl BakerySet {
                 .has_many("orders", "bakery_id", || OrderSet::new())
         })
     }
-    pub fn id() -> &'static Field {
+    pub fn id() -> Arc<Field> {
         BakerySet::table().get_field("id").unwrap()
     }
-    pub fn name() -> &'static Field {
+    pub fn name() -> Arc<Field> {
         BakerySet::table().get_field("name").unwrap()
     }
-    pub fn profit_margin() -> &'static Field {
+    pub fn profit_margin() -> Arc<Field> {
         BakerySet::table().get_field("profit_margin").unwrap()
     }
 }

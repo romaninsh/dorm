@@ -5,6 +5,8 @@
 //     price DECIMAL(10, 2) NOT NULL
 // );
 
+use std::sync::Arc;
+
 use rust_decimal::Decimal;
 
 use anyhow::Result;
@@ -44,16 +46,16 @@ impl ProductSet {
         Self { table }
     }
 
-    pub fn name(&self) -> &Field {
-        self.table.fields().get("name").unwrap()
+    pub fn name(&self) -> Arc<Field> {
+        self.table.get_field("name").unwrap()
     }
 
-    pub fn description(&self) -> &Field {
-        self.table.fields().get("description").unwrap()
+    pub fn description(&self) -> Arc<Field> {
+        self.table.get_field("description").unwrap()
     }
 
-    pub fn price(&self) -> &Field {
-        self.table.fields().get("default_price").unwrap()
+    pub fn price(&self) -> Arc<Field> {
+        self.table.get_field("default_price").unwrap()
     }
 
     async fn map<T, F>(self, mut callback: F) -> Result<Self>
