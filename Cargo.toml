@@ -28,6 +28,10 @@ regex = "1.10.4"
 sqlformat = "0.2.3"
 syntect = "5.2.0"
 lazy_static = "1.4.0"
+cargo-nextest = { version = "0.9.72", features = ["experimental-tokio-console"] }
+pretty_assertions = "1.4.0"
+testcontainers = "0.17.0"
+testcontainers-modules = { version = "0.5.0", features = ["postgres"] }
 
 [[example]]
 name = "basic-dorm"

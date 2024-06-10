@@ -86,6 +86,10 @@ impl Postgres {
         Ok(json!(json_map))
     }
 
+    pub fn client(&self) -> &tokio_postgres::Client {
+        self.client.as_ref()
+    }
+
     pub async fn query_raw(&self, query: &Query) -> Result<Vec<Value>> {
         let query_rendered = query.render_chunk();
         let params_tosql = query_rendered

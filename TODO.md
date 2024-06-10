@@ -34,7 +34,16 @@ MVP:
 - [x] Implement has_one and has_many in a lazy way
 - [x] Implement expressions in a lazy way
 
-0.4.0: Control field queries
+
+Create integration test-suite for SQL testing
+- [x] Quality of life improvements - nextest and improved assert_eq
+- [x] Implement testcontainers postgres connectivity
+- [ ] Create separate test-suite, connect DB etc
+- [ ] Populate Bakery tables for tests
+- [ ] Seed some data into Bakery tests
+- [ ] Make use of Postgres snapshots in the tests
+
+Control field queries
 - [x] Convert Field and &Field into Arc<Field> everywhere
 - [ ] Implement a way to create a query with custom field references
 - [ ] Implement a way to query with a serialized structure

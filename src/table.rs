@@ -1,4 +1,4 @@
-use std::ops::{Deref, DerefMut, IndexMut};
+use std::ops::Deref;
 use std::ptr::eq;
 use std::sync::{Arc, Mutex};
 
@@ -23,8 +23,6 @@ use serde_json::{to_value, Map, Value};
 
 // Generic implementation of SQL table. We don't really want to use this extensively,
 // instead we want to use 3rd party SQL builders, that cary table schema information.
-
-trait TableField {}
 
 #[derive(Debug)]
 pub struct Table<T: DataSource> {
@@ -149,9 +147,6 @@ impl<T: DataSource> Table<T> {
     pub fn get_field(&self, field: &str) -> Option<Arc<Field>> {
         self.fields.get(field).map(|f| f.clone())
     }
-
-    /// Returns something that implements a TableField, arc-boxed
-    pub fn get_table_field(&self, field: Arc<Box<dyn TableField>>) {}
 
     /// Handy way to access fields
     pub fn fields(&self) -> &IndexMap<String, Arc<Field>> {
@@ -539,6 +534,7 @@ pub trait TableDelegate<T: DataSource> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
 
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -976,6 +972,9 @@ mod tests {
             .get_select_query_for_struct(ItemLine::default())
             .render_chunk()
             .split();
-        // assert_eq!(query.0, "SELECT price, qty, price*qty AS total FROM orders");
+        assert_eq!(
+            query.0,
+            "SELECT price, qty, (price*qty) AS total FROM orders"
+        );
     }
 }
