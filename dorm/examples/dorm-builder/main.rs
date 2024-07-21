@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use dorm::prelude::*;
-use regex::Regex;
-use serde_json::json;
 use tokio_postgres::NoTls;
 
 use anyhow::Result;
