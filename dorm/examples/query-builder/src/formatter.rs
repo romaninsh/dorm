@@ -1,4 +1,3 @@
-use std::process::exit;
 
 use dorm::{prelude::SqlChunk, query::Query};
 
