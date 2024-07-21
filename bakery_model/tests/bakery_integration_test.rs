@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use dorm::prelude::*;
 use pretty_assertions::assert_eq;
 use serde_json::json;
-use testcontainers::{runners::AsyncRunner, ContainerAsync};
+use testcontainers_modules::testcontainers::{runners::AsyncRunner, ContainerAsync};
 
 use testcontainers_modules;
 use tokio_postgres::NoTls;
@@ -28,7 +28,6 @@ pub fn postgres() -> Postgres {
 
 async fn start_postgres() -> Result<()> {
     let pg_container = testcontainers_modules::postgres::Postgres::default()
-        .with_host_auth()
         .start()
         .await
         .context("Failed to start Postgres container")?;

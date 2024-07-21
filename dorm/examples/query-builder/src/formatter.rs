@@ -1,14 +1,13 @@
-
 use dorm::{prelude::SqlChunk, query::Query};
 
 use sqlformat::FormatOptions;
 use sqlformat::QueryParams;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::Style;
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxSet;
-use syntect::util::as_24_bit_terminal_escaped;
-use syntect::util::LinesWithEndings;
+// use syntect::easy::HighlightLines;
+// use syntect::highlighting::Style;
+// use syntect::highlighting::ThemeSet;
+// use syntect::parsing::SyntaxSet;
+// use syntect::util::as_24_bit_terminal_escaped;
+// use syntect::util::LinesWithEndings;
 
 pub fn format_query(q: &Query) -> String {
     let qs = q.render_chunk().split();
@@ -19,25 +18,27 @@ pub fn format_query(q: &Query) -> String {
         FormatOptions::default(),
     );
 
-    let ps = SyntaxSet::load_defaults_newlines();
-    let ts = ThemeSet::load_defaults();
+    formatted_sql
 
-    // Choose a theme
-    let theme = &ts.themes["base16-ocean.dark"];
+    // let ps = SyntaxSet::load_defaults_newlines();
+    // let ts = ThemeSet::load_defaults();
 
-    // Get the syntax definition for SQL
-    let syntax = ps.find_syntax_by_extension("sql").unwrap();
+    // // Choose a theme
+    // let theme = &ts.themes["base16-ocean.dark"];
 
-    // Create a highlighter
-    let mut h = HighlightLines::new(syntax, theme);
+    // // Get the syntax definition for SQL
+    // let syntax = ps.find_syntax_by_extension("sql").unwrap();
 
-    // Apply highlighting
-    let mut highlighted_sql = String::new();
-    for line in LinesWithEndings::from(&formatted_sql) {
-        let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
-        let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
-        highlighted_sql.push_str(&escaped);
-    }
+    // // Create a highlighter
+    // let mut h = HighlightLines::new(syntax, theme);
 
-    highlighted_sql
+    // // Apply highlighting
+    // let mut highlighted_sql = String::new();
+    // for line in LinesWithEndings::from(&formatted_sql) {
+    //     let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
+    //     let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
+    //     highlighted_sql.push_str(&escaped);
+    // }
+
+    // highlighted_sql
 }
