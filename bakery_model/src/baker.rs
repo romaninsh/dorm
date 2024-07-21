@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
-use crate::{model::cake::CakeSet, postgres};
+use crate::{cake::CakeSet, postgres};
 
 use super::bakery::BakerySet;
 
@@ -31,6 +31,15 @@ impl BakerSet {
                     )
                 })
         })
+    }
+
+    pub fn create() -> &'static str {
+        "create table if not exists baker (
+            id serial primary key,
+            name text not null,
+            contact_details text not null,
+            bakery_id integer not null
+        )"
     }
 
     pub fn name() -> Arc<Field> {

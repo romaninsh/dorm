@@ -3,8 +3,8 @@ use std::sync::{Arc, OnceLock};
 use dorm::prelude::*;
 
 use crate::{
-    model::{cake::CakeSet, order::OrderSet},
     postgres,
+    {cake::CakeSet, order::OrderSet},
 };
 
 pub struct LineitemSet {}
@@ -24,6 +24,16 @@ impl LineitemSet {
                 .has_one("order", "order_id", || OrderSet::new())
                 .has_one("cake", "cake_id", || CakeSet::new())
         })
+    }
+
+    pub fn create() -> &'static str {
+        "create table if not exists lineitem (
+            id serial primary key,
+            price integer not null,
+            quantity integer not null,
+            order_id integer not null,
+            cake_id integer not null
+        )"
     }
 
     pub fn order_id() -> Arc<Field> {

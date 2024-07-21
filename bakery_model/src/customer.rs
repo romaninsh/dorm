@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
-use crate::{model::order::OrderSet, postgres};
+use crate::{order::OrderSet, postgres};
 
 pub struct CustomerSet {}
 impl CustomerSet {
@@ -18,6 +18,14 @@ impl CustomerSet {
                 .with_field("notes")
                 .has_many("orders", "customer_id", || OrderSet::new())
         })
+    }
+
+    pub fn create() -> &'static str {
+        "create table if not exists customer (
+            id serial primary key,
+            name text not null,
+            notes text not null
+        )"
     }
 
     pub fn name() -> Arc<Field> {

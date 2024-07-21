@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
 
-use crate::{model::baker::BakerSet, postgres};
+use crate::{baker::BakerSet, postgres};
 
 pub struct CakeSet {}
 impl CakeSet {
@@ -33,6 +33,17 @@ impl CakeSet {
         })
 
         // not defining relation to "lineitem" as it has no logical meaning
+    }
+
+    pub fn create() -> &'static str {
+        "create table if not exists cake (
+            id serial primary key,
+            name text not null,
+            price integer not null,
+            bakery_id integer not null,
+            gluten_free boolean not null,
+            serial text not null
+        )"
     }
 
     pub fn id() -> Arc<Field> {
