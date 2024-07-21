@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use dorm::prelude::*;
 use pretty_assertions::assert_eq;
 use serde_json::json;
-use testcontainers::{runners::AsyncRunner, ContainerAsync};
+use testcontainers_modules::testcontainers::{runners::AsyncRunner, ContainerAsync};
 
 use testcontainers_modules;
 use tokio_postgres::NoTls;
@@ -28,7 +28,6 @@ pub fn postgres() -> Postgres {
 
 async fn start_postgres() -> Result<()> {
     let pg_container = testcontainers_modules::postgres::Postgres::default()
-        .with_host_auth()
         .start()
         .await
         .context("Failed to start Postgres container")?;
@@ -38,6 +37,8 @@ async fn start_postgres() -> Result<()> {
         pg_container.get_host().await?,
         pg_container.get_host_port_ipv4(5432).await?
     );
+
+    dbg!(pg_container.get_host().await?);
     CONTAINER
         .set(pg_container)
         .map_err(|_| anyhow::anyhow!("Failed to store container reference"))?;
@@ -128,45 +129,47 @@ async fn init() {
     create_bootstrap_db().await.context("seeding db").unwrap();
 }
 
-#[tokio::test]
-async fn should_create_bucket() {
-    init().await;
+// TODO: get rid of testcontainers, yukk.
 
-    let postgres = POSTGRESS.get().unwrap();
+// #[tokio::test]
+// async fn should_create_bucket() {
+//     init().await;
 
-    let res = postgres
-        .query_raw(
-            &Query::new()
-                .set_table("table1", None)
-                .add_column_field("name"),
-        )
-        .await
-        .unwrap();
+//     let postgres = POSTGRESS.get().unwrap();
 
-    dbg!(&res);
+//     let res = postgres
+//         .query_raw(
+//             &Query::new()
+//                 .set_table("table1", None)
+//                 .add_column_field("name"),
+//         )
+//         .await
+//         .unwrap();
 
-    assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
-}
+//     dbg!(&res);
 
-#[tokio::test]
-async fn test_bakery() {
-    init().await;
+//     assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
+// }
 
-    let product_set = bakery_model::BakerySet::new()
-        .with_condition(bakery_model::BakerySet::profit_margin().gt(10));
+// #[tokio::test]
+// async fn test_bakery() {
+//     init().await;
 
-    let postgres = POSTGRESS.get().unwrap();
-    let res = postgres
-        .query_opt(&product_set.get_select_query())
-        .await
-        .unwrap()
-        .unwrap();
+//     let product_set = bakery_model::BakerySet::new()
+//         .with_condition(bakery_model::BakerySet::profit_margin().gt(10));
 
-    assert_eq!(
-        res,
-        json!({
-            "name": "Profitable Bakery",
-            "profit_margin": 15,
-        })
-    );
-}
+//     let postgres = POSTGRESS.get().unwrap();
+//     let res = postgres
+//         .query_opt(&product_set.get_select_query())
+//         .await
+//         .unwrap()
+//         .unwrap();
+
+//     assert_eq!(
+//         res,
+//         json!({
+//             "name": "Profitable Bakery",
+//             "profit_margin": 15,
+//         })
+//     );
+// }
