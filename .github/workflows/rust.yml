@@ -17,8 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - name: Create Docker network for running Testcontianers
-        run: docker network create ${{ env.TESTCONTAINER_DOCKER_NETWORK }}
       - name: Build
         run: cargo build
       - name: Run tests
