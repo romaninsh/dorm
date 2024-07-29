@@ -36,3 +36,5 @@ jobs:
         run: cargo build
       - name: Run tests
         run: cargo test
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres

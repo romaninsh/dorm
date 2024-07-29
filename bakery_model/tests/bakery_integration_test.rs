@@ -21,7 +21,8 @@ pub fn postgres() -> Postgres {
 }
 
 async fn connect_postgres() -> Result<()> {
-    let connection_string = "postgres://localhost:5432/postgres";
+    let connection_string = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postlocalhost:5432/postgres".to_string());
 
     let timeout = Duration::from_secs(3); // Max time to wait
     let start_time = Instant::now();
