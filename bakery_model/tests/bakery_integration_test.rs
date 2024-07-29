@@ -6,18 +6,12 @@ use std::{
 
 use anyhow::{Context, Result};
 use dorm::prelude::*;
-use pretty_assertions::assert_eq;
 use serde_json::json;
-use testcontainers_modules::testcontainers::{runners::AsyncRunner, ContainerAsync};
-
-use testcontainers_modules;
 use tokio_postgres::NoTls;
 
 use bakery_model;
 
 static POSTGRESS: OnceLock<Postgres> = OnceLock::new();
-static CONTAINER: OnceLock<ContainerAsync<testcontainers_modules::postgres::Postgres>> =
-    OnceLock::new();
 
 pub fn postgres() -> Postgres {
     POSTGRESS
@@ -26,24 +20,10 @@ pub fn postgres() -> Postgres {
         .clone()
 }
 
-async fn start_postgres() -> Result<()> {
-    let pg_container = testcontainers_modules::postgres::Postgres::default()
-        .start()
-        .await
-        .context("Failed to start Postgres container")?;
+async fn connect_postgres() -> Result<()> {
+    let connection_string = "postgres://localhost:5432/postgres";
 
-    let connection_string = &format!(
-        "postgres://postgres@{}:{}/postgres",
-        pg_container.get_host().await?,
-        pg_container.get_host_port_ipv4(5432).await?
-    );
-
-    dbg!(pg_container.get_host().await?);
-    CONTAINER
-        .set(pg_container)
-        .map_err(|_| anyhow::anyhow!("Failed to store container reference"))?;
-
-    let timeout = Duration::from_secs(30); // Max time to wait
+    let timeout = Duration::from_secs(3); // Max time to wait
     let start_time = Instant::now();
     let mut last_error: Result<()> = Ok(());
 
@@ -125,51 +105,54 @@ async fn create_bootstrap_db() -> Result<()> {
 }
 
 async fn init() {
-    start_postgres().await.context("starting postgres").unwrap();
+    connect_postgres()
+        .await
+        .context("starting postgres")
+        .unwrap();
     create_bootstrap_db().await.context("seeding db").unwrap();
 }
 
 // TODO: get rid of testcontainers, yukk.
 
-// #[tokio::test]
-// async fn should_create_bucket() {
-//     init().await;
+#[tokio::test]
+async fn should_create_bucket() {
+    init().await;
 
-//     let postgres = POSTGRESS.get().unwrap();
+    let postgres = POSTGRESS.get().unwrap();
 
-//     let res = postgres
-//         .query_raw(
-//             &Query::new()
-//                 .set_table("table1", None)
-//                 .add_column_field("name"),
-//         )
-//         .await
-//         .unwrap();
+    let res = postgres
+        .query_raw(
+            &Query::new()
+                .set_table("table1", None)
+                .add_column_field("name"),
+        )
+        .await
+        .unwrap();
 
-//     dbg!(&res);
+    dbg!(&res);
 
-//     assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
-// }
+    assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
+}
 
-// #[tokio::test]
-// async fn test_bakery() {
-//     init().await;
+#[tokio::test]
+async fn test_bakery() {
+    init().await;
 
-//     let product_set = bakery_model::BakerySet::new()
-//         .with_condition(bakery_model::BakerySet::profit_margin().gt(10));
+    let product_set = bakery_model::BakerySet::new()
+        .with_condition(bakery_model::BakerySet::profit_margin().gt(10));
 
-//     let postgres = POSTGRESS.get().unwrap();
-//     let res = postgres
-//         .query_opt(&product_set.get_select_query())
-//         .await
-//         .unwrap()
-//         .unwrap();
+    let postgres = POSTGRESS.get().unwrap();
+    let res = postgres
+        .query_opt(&product_set.get_select_query())
+        .await
+        .unwrap()
+        .unwrap();
 
-//     assert_eq!(
-//         res,
-//         json!({
-//             "name": "Profitable Bakery",
-//             "profit_margin": 15,
-//         })
-//     );
-// }
+    assert_eq!(
+        res,
+        json!({
+            "name": "Profitable Bakery",
+            "profit_margin": 15,
+        })
+    );
+}
