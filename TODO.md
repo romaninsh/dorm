@@ -37,6 +37,10 @@ MVP:
 - [x] Implement has_one and has_many in a lazy way
 - [x] Implement expressions in a lazy way
 
+  0.4.0: Features for multiple table queries
+
+- [ ] Implement ability to include sub-queries based on related tables
+
 Create integration test-suite for SQL testing
 
 - [x] Quality of life improvements - nextest and improved assert_eq
