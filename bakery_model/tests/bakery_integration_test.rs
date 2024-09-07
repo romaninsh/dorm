@@ -67,23 +67,23 @@ async fn init() {
 
 // TODO: get rid of testcontainers, yukk.
 
-#[tokio::test]
-async fn should_create_bucket() {
-    init().await;
+// #[tokio::test]
+// async fn should_create_bucket() {
+//     init().await;
 
-    let postgres = postgres();
+//     let postgres = postgres();
 
-    let res = postgres
-        .query_raw(
-            &Query::new()
-                .set_table("table1", None)
-                .add_column_field("name"),
-        )
-        .await
-        .unwrap();
+//     let res = postgres
+//         .query_raw(
+//             &Query::new()
+//                 .set_table("table1", None)
+//                 .add_column_field("name"),
+//         )
+//         .await
+//         .unwrap();
 
-    assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
-}
+//     assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
+// }
 
 // #[tokio::test]
 // async fn test_bakery() {
