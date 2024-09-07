@@ -1,5 +1,4 @@
 use std::ops::Deref;
-use std::ptr::eq;
 use std::sync::{Arc, Mutex};
 
 use crate::condition::Condition;
@@ -8,15 +7,14 @@ use crate::expression::ExpressionArc;
 use crate::field::Field;
 use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
-use crate::prelude::{AssociatedQuery, Expression, JoinQuery, Operations};
-use crate::query::{JoinType, Query, QueryConditions, QueryType};
+use crate::prelude::{AssociatedQuery, Expression};
+use crate::query::{Query, QueryType};
 use crate::reference::Reference;
 use crate::traits::column::Column;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
-use crate::traits::sql_chunk::SqlChunk;
 use crate::uniqid::UniqueIdVendor;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use indexmap::IndexMap;
 use serde::Serialize;
 use serde_json::{to_value, Map, Value};
@@ -41,6 +39,10 @@ pub struct Table<T: DataSource> {
 
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
+
+mod with_fields;
+mod with_joins;
+mod with_refs;
 
 impl<T: DataSource + Clone> Clone for Table<T> {
     fn clone(&self) -> Self {
@@ -138,56 +140,6 @@ impl<T: DataSource> Table<T> {
         self
     }
 
-    /// Adds a new field to the table. Note, that Field may use an alias
-    pub fn add_field(&mut self, field_name: String, field: Field) {
-        self.fields.insert(field_name, Arc::new(field));
-    }
-
-    /// Returns a field reference by name.
-    pub fn get_field(&self, field: &str) -> Option<Arc<Field>> {
-        self.fields.get(field).map(|f| f.clone())
-    }
-
-    /// Handy way to access fields
-    pub fn fields(&self) -> &IndexMap<String, Arc<Field>> {
-        &self.fields
-    }
-
-    /// When building a table - a simple way to add a typical field. For a
-    /// more sophisticated way use `add_field`
-    pub fn with_field(mut self, field: &str) -> Self {
-        self.add_field(
-            field.to_string(),
-            Field::new(field.to_string(), self.table_alias.clone()),
-        );
-        self
-    }
-
-    /// Adds a field that is also a title field. Title field will be
-    /// used in the UI to represent the record.
-    pub fn with_title_field(mut self, field: &str) -> Self {
-        self.title_field = Some(field.to_string());
-        self.with_field(field)
-    }
-
-    pub fn with_id_field(mut self, field: &str) -> Self {
-        self.id_field = Some(field.to_string());
-        self.with_field(field)
-    }
-
-    pub fn add_condition_on_field(
-        self,
-        field: &'static str,
-        op: &'static str,
-        value: impl SqlChunk + 'static,
-    ) -> Result<Self> {
-        let field = self
-            .get_field(field)
-            .ok_or_else(|| anyhow!("Field not found: {}", field))?
-            .clone();
-        Ok(self.with_condition(Condition::from_field(field, op, Arc::new(Box::new(value)))))
-    }
-
     // ---- Expressions ----
     //  BeforeQuery(Arc<Box<dyn Fn(&Query) -> Expression>>),
     pub fn add_expression_before_query(
@@ -199,169 +151,6 @@ impl<T: DataSource> Table<T> {
             name.to_string(),
             LazyExpression::BeforeQuery(Arc::new(Box::new(expression))),
         );
-    }
-
-    pub fn add_ref(
-        &mut self,
-        relation: &str,
-        cb: impl Fn(&Table<T>) -> Table<T> + 'static + Sync + Send,
-    ) {
-        let reference = Reference::new(cb);
-        self.refs.insert(relation.to_string(), reference);
-    }
-
-    pub fn has_many(
-        mut self,
-        relation: &str,
-        foreign_key: &str,
-        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
-    ) -> Self {
-        let foreign_key = foreign_key.to_string();
-        self.add_ref(relation, move |p| {
-            let mut c = cb();
-            let foreign_field = c
-                .get_field(&foreign_key)
-                .unwrap_or_else(|| panic!("Field '{}' not found", foreign_key));
-            let id_field = p
-                .get_field("id")
-                .unwrap_or_else(|| panic!("Field 'id' not found"));
-
-            c.add_condition(foreign_field.in_expr(&p.field_query(id_field)));
-            c
-        });
-        self
-    }
-
-    pub fn has_one(
-        mut self,
-        relation: &str,
-        foreign_key: &str,
-        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
-    ) -> Self {
-        let foreign_key = foreign_key.to_string();
-        self.add_ref(relation, move |p| {
-            let mut c = cb();
-            let id_field = c
-                .get_field("id")
-                .unwrap_or_else(|| panic!("Field 'id' not found"));
-            let foreign_field = p
-                .get_field(&foreign_key)
-                .unwrap_or_else(|| panic!("Field '{}' not found", foreign_key));
-
-            c.add_condition(id_field.in_expr(&p.field_query(foreign_field)));
-            c
-        });
-        self
-    }
-
-    pub fn get_ref(&self, field: &str) -> Result<Table<T>> {
-        Ok(self
-            .refs
-            .get(field)
-            .ok_or_else(|| anyhow!("Reference not found"))?
-            .table(self))
-    }
-
-    pub fn id(&self) -> Arc<Field> {
-        let id_field = if self.id_field.is_some() {
-            let x = self.id_field.clone().unwrap();
-            x.clone()
-        } else {
-            "id".to_string()
-        };
-        self.get_field(&id_field).unwrap()
-    }
-    pub fn with_id(self, id: Value) -> Self {
-        let f = self.id().eq(&id);
-        self.with_condition(f)
-    }
-
-    /// Left-Joins their_table table and return self. Assuming their_table has set id field,
-    /// but we still have to specify foreign key in our own table. For more complex
-    /// joins use `join_table` method.
-    pub fn with_join(mut self, their_table: Table<T>, our_foreign_id: &str) -> Self {
-        self.add_join(their_table, our_foreign_id);
-        self
-    }
-
-    pub fn add_join(&mut self, mut their_table: Table<T>, our_foreign_id: &str) -> Arc<Join<T>> {
-        // before joining, make sure there are no alias clashes
-        if eq(&*self.table_aliases, &*their_table.table_aliases) {
-            panic!(
-                "Tables are already joined: {}, {}",
-                self.table_name, their_table.table_name
-            )
-        }
-
-        if their_table
-            .table_aliases
-            .lock()
-            .unwrap()
-            .has_conflict(&self.table_aliases.lock().unwrap())
-        {
-            panic!(
-                "Table alias conflict while joining: {}, {}",
-                self.table_name, their_table.table_name
-            )
-        }
-
-        self.table_aliases
-            .lock()
-            .unwrap()
-            .merge(their_table.table_aliases.lock().unwrap().to_owned());
-
-        // Get information about their_table
-        let their_table_name = their_table.table_name.clone();
-        if their_table.table_alias.is_none() {
-            let their_table_alias = self
-                .table_aliases
-                .lock()
-                .unwrap()
-                .get_one_of_uniq_id(UniqueIdVendor::all_prefixes(&their_table_name));
-            their_table.set_alias(&their_table_alias);
-        };
-        let their_table_id = their_table.id();
-
-        // Give alias to our table as well
-        if self.table_alias.is_none() {
-            let our_table_alias = self
-                .table_aliases
-                .lock()
-                .unwrap()
-                .get_one_of_uniq_id(UniqueIdVendor::all_prefixes(&self.table_name));
-            self.set_alias(&our_table_alias);
-        }
-        let their_table_alias = their_table.table_alias.as_ref().unwrap().clone();
-
-        let mut on_condition = QueryConditions::on().add_condition(
-            self.get_field(our_foreign_id)
-                .unwrap()
-                .eq(&their_table_id)
-                .render_chunk(),
-        );
-
-        // Any condition in their_table should be moved into ON condition
-        for condition in their_table.conditions.iter() {
-            on_condition = on_condition.add_condition(condition.render_chunk());
-        }
-        their_table.conditions = Vec::new();
-
-        // Create a join
-        let join = JoinQuery::new(
-            JoinType::Left,
-            crate::query::QuerySource::Table(their_table_name, Some(their_table_alias.clone())),
-            on_condition,
-        );
-        self.joins.insert(
-            their_table_alias.clone(),
-            Arc::new(Join::new(their_table, join)),
-        );
-
-        self.get_join(&their_table_alias).unwrap()
-    }
-
-    pub fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>> {
-        self.joins.get(table_alias).map(|r| r.clone())
     }
 
     pub fn get_empty_query(&self) -> Query {
@@ -560,7 +349,10 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::mocks::datasource::MockDataSource;
+    use crate::{
+        mocks::datasource::MockDataSource,
+        prelude::{Operations, SqlChunk},
+    };
 
     #[tokio::test]
     async fn test_table() {
