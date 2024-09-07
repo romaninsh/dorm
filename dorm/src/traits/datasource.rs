@@ -17,4 +17,5 @@ pub trait DataSource: Clone + Send + Sync + std::fmt::Debug {
     async fn query_insert(&self, query: &Query, rows: Vec<Vec<Value>>) -> Result<()>;
 
     async fn query_one(&self, query: &Query) -> Result<Value>;
+    async fn query_row(&self, query: &Query) -> Result<Map<String, Value>>;
 }

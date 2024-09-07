@@ -19,13 +19,6 @@ impl CakesBakersSet {
         })
     }
 
-    pub fn create() -> &'static str {
-        "create table if not exists cakes_bakers (
-            cake_id integer not null,
-            baker_id integer not null
-        )"
-    }
-
     pub fn cake_id() -> Arc<Field> {
         CakesBakersSet::table().get_field("cake_id").unwrap()
     }

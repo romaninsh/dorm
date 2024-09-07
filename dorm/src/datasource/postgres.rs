@@ -12,6 +12,7 @@ use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use rust_decimal::Decimal;
 use serde_json::json;
+use serde_json::Map;
 use serde_json::Value;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::Client;
@@ -60,6 +61,7 @@ impl Postgres {
             let col_type = col.type_().name();
             let value = match col_type {
                 "int4" => json!(row.get::<_, Option<i32>>(i)), // int4 as i32
+                "int8" => json!(row.get::<_, Option<i64>>(i)), // int8 as i64
                 "varchar" | "text" => json!(row.get::<_, Option<String>>(i)), // varchar and text as String
                 "bool" => json!(row.get::<_, Option<bool>>(i)),               // bool as bool
                 "float4" => json!(row.get::<_, Option<f32>>(i)),              // float4 as f32
@@ -216,9 +218,18 @@ impl DataSource for Postgres {
     async fn query_insert(&self, _query: &Query, _rows: Vec<Vec<Value>>) -> Result<()> {
         todo!()
     }
+    async fn query_row(&self, query: &Query) -> Result<Map<String, Value>> {
+        let Some(Value::Object(res)) = self.query_raw(query).await?.into_iter().next() else {
+            return Err(anyhow!("No rows for query_row"));
+        };
+        Ok(res)
+    }
     async fn query_one(&self, query: &Query) -> Result<Value> {
-        let Some(res) = self.query_raw(query).await?.into_iter().next() else {
+        let Some(Value::Object(res)) = self.query_raw(query).await?.into_iter().next() else {
             return Err(anyhow!("No rows for query_one"));
+        };
+        let Some((_, res)) = res.into_iter().next() else {
+            return Err(anyhow!("No cells in a first row of query_one"));
         };
         Ok(res)
     }
@@ -283,12 +294,6 @@ impl<T: DataSource + Sync> SqlChunk for AssociatedQuery<T> {
 
 #[cfg(test)]
 mod tests {
-
-    
-    
-    
-    
-    
 
     // #[tokio::test]
     // async fn test_insert_async() {

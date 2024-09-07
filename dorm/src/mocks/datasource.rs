@@ -49,6 +49,9 @@ impl DataSource for MockDataSource {
     async fn query_one(&self, _query: &Query) -> Result<Value> {
         todo!()
     }
+    async fn query_row(&self, query: &Query) -> Result<Map<String, Value>> {
+        todo!()
+    }
 }
 
 #[cfg(test)]

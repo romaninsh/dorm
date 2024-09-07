@@ -4,7 +4,7 @@ use dorm::prelude::*;
 
 use crate::{
     postgres,
-    {bakery::BakerySet, customer::CustomerSet, lineitem::LineitemSet},
+    {client::ClientSet, product::Products},
 };
 
 pub struct OrderSet {}
@@ -16,40 +16,16 @@ impl OrderSet {
         static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new("order", postgres())
-                .with_field("total")
-                .with_field("bakery_id")
-                .with_field("customer_id")
-                .with_field("placed_at")
-                .has_one("customer", "customer_id", || CustomerSet::new())
-                .has_one("bakery", "bakery_id", || BakerySet::new())
-                .has_many("lineitems", "order_id", || LineitemSet::new())
+            Table::new("ord", postgres())
+                .with_field("product_id")
+                .with_field("client_id")
+                .has_one("product", "product_id", || Products::new().table())
+                .has_one("client", "client_id", || ClientSet::new())
+            // .has_many("lineitems", "order_id", || LineitemSet::new())
         })
     }
 
-    pub fn create() -> &'static str {
-        "create table if not exists \"order\" (
-            id serial primary key,
-            total integer not null,
-            bakery_id integer not null,
-            customer_id integer not null,
-            placed_at timestamp not null
-        )"
-    }
-
-    pub fn customer_id() -> Arc<Field> {
-        OrderSet::table().get_field("customer_id").unwrap()
-    }
-
-    pub fn bakery_id() -> Arc<Field> {
-        OrderSet::table().get_field("bakery_id").unwrap()
-    }
-
-    pub fn total() -> Arc<Field> {
-        OrderSet::table().get_field("total").unwrap()
-    }
-
-    pub fn placed_at() -> Arc<Field> {
-        OrderSet::table().get_field("placed_at").unwrap()
+    pub fn client_id() -> Arc<Field> {
+        OrderSet::table().get_field("client_id").unwrap()
     }
 }
