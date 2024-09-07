@@ -139,7 +139,7 @@ impl<T: DataSource> Table<T> {
     }
 
     /// Adds a new field to the table. Note, that Field may use an alias
-    fn add_field(&mut self, field_name: String, field: Field) {
+    pub fn add_field(&mut self, field_name: String, field: Field) {
         self.fields.insert(field_name, Arc::new(field));
     }
 
@@ -263,8 +263,13 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn id(&self) -> Arc<Field> {
-        // Field::new("test".to_string(), Some("test".to_string()))
-        self.get_field("id").unwrap()
+        let id_field = if self.id_field.is_some() {
+            let x = self.id_field.clone().unwrap();
+            x.clone()
+        } else {
+            "id".to_string()
+        };
+        self.get_field(&id_field).unwrap()
     }
     pub fn with_id(self, id: Value) -> Self {
         let f = self.id().eq(&id);
@@ -360,9 +365,12 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn get_empty_query(&self) -> Query {
-        let mut query = Query::new().set_table(&self.table_name, None);
+        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
         for condition in self.conditions.iter() {
             query = query.add_condition(condition.clone());
+        }
+        for (alias, join) in &self.joins {
+            query = query.add_join(join.join_query().clone());
         }
         query
     }
@@ -388,7 +396,6 @@ impl<T: DataSource> Table<T> {
         }
 
         for (alias, join) in &self.joins {
-            query = query.add_join(join.join_query().clone());
             query = join.add_fields_into_query(query, Some(alias));
         }
 
@@ -396,11 +403,8 @@ impl<T: DataSource> Table<T> {
     }
 
     pub fn get_select_query(&self) -> Query {
-        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
+        let mut query = self.get_empty_query();
         query = self.add_fields_into_query(query, None);
-        for condition in self.conditions.iter() {
-            query = query.add_condition(condition.clone());
-        }
         query
     }
 
@@ -414,6 +418,15 @@ impl<T: DataSource> Table<T> {
             query = query.add_column_arc(field_alias, field_val);
         }
         query
+    }
+
+    pub fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query {
+        let mut index_map = IndexMap::new();
+        for field_name in field_names {
+            let field = self.search_for_field(field_name).unwrap();
+            index_map.insert(field_name.to_string(), Arc::new(field));
+        }
+        self.get_select_query_for_fields(index_map)
     }
 
     pub fn get_select_query_for_struct<R: Serialize>(&self, default: R) -> Query {
@@ -460,6 +473,13 @@ impl<T: DataSource> Table<T> {
         let query = self
             .get_empty_query()
             .add_column("sum".to_string(), expr_arc!("SUM({})", field));
+        AssociatedQuery::new(query, self.data_source.clone())
+    }
+
+    pub fn count(&self) -> AssociatedQuery<T> {
+        let query = self
+            .get_empty_query()
+            .add_column("count".to_string(), expr_arc!("COUNT(*)"));
         AssociatedQuery::new(query, self.data_source.clone())
     }
 

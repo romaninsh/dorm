@@ -1,6 +1,7 @@
 MVP:
 
 0.1.0: Query Building
+
 - [x] create a basic query type
 - [x] have query ability to render into a SQL query
 - [x] add ability to have expressions
@@ -14,7 +15,8 @@ MVP:
 - [x] implement operations: (field.eq(otherfield))
 - [x] implement parametric queries
 
-0.2.0: Nested Query Building
+  0.2.0: Nested Query Building
+
 - [x] properly handle nested queries
 - [x] table should own DataSource, which should be cloneable and use Arc for client
 - [x] implemented condition chaining
@@ -24,7 +26,8 @@ MVP:
 - [x] implemented TableDelegate trait
 - [x] implemented Query::add_join()
 
-0.3.0: Table Structure
+  0.3.0: Table Structure
+
 - [x] add uniq id vendor
 - [x] implemented Table::join_table() for merging tables
 - [x] field prefixing with table alias/name (optional)
@@ -34,16 +37,18 @@ MVP:
 - [x] Implement has_one and has_many in a lazy way
 - [x] Implement expressions in a lazy way
 
-
 Create integration test-suite for SQL testing
+
 - [x] Quality of life improvements - nextest and improved assert_eq
 - [x] Implement testcontainers postgres connectivity
+- [ ] Get rid of testcontainers (they don't work anyway), use regular Postgres
 - [ ] Create separate test-suite, connect DB etc
 - [ ] Populate Bakery tables for tests
 - [ ] Seed some data into Bakery tests
 - [ ] Make use of Postgres snapshots in the tests
 
 Control field queries
+
 - [x] Convert Field and &Field into Arc<Field> everywhere
 - [ ] Implement a way to create a query with custom field references
 - [ ] Implement a way to query with a serialized structure
@@ -66,16 +71,18 @@ Control field queries
 - [ ] postgres expressions should add type annotation into query ("$1::text")
 
 Pratcitacl tests:
+
 - [x] Populate bakery tests
 - [ ] Make bakery model more usable
 - [ ] table.itsert_query should quote field names (bug)
 
 Lazy features:
+
 - [ ] Implement join_table_lazy()
 - [ ] Implement add_field_lazy()
 
-
 Minor Cases:
+
 - [ ] Table::join_table should preserve conditions on other_table
 - [ ] Table::join_table should resolve clashes in table aliases
 - [ ] Condition::or() shouldn't be limited to only two arguments
