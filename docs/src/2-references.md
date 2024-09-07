@@ -112,3 +112,5 @@ let client_set = ClientSet::new()
         t.get_ref_related("client").count().render_chunk()
     });
 ```
+
+some more docs here..
