@@ -5,8 +5,10 @@ use std::sync::Arc;
 
 use crate::condition::Condition;
 use crate::field::Field;
+use crate::lazy_expression::LazyExpression;
 use crate::prelude::Operations;
 use crate::table::Table;
+use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
 use crate::traits::sql_chunk::SqlChunk;
 
@@ -73,5 +75,74 @@ impl<T: DataSource> Table<T> {
     pub fn with_id(self, id: Value) -> Self {
         let f = self.id().eq(&id);
         self.with_condition(f)
+    }
+    pub fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>> {
+        // perhaps we have a field like this
+        // let field = self.get_field(field_name);
+
+        if let Some(field) = self.get_field(field_name) {
+            return Some(Box::new(field));
+        }
+
+        // maybe joined table have a field we want
+        for (_, join) in self.joins.iter() {
+            if let Some(field) = join.table().get_field(field_name) {
+                return Some(Box::new(field));
+            }
+        }
+
+        // maybe we have a lazy expression
+        if let Some(lazy_expression) = self.lazy_expressions.get(field_name) {
+            return match lazy_expression {
+                LazyExpression::AfterQuery(_) => None,
+                LazyExpression::BeforeQuery(expr) => {
+                    let x = (expr)(self);
+                    Some(Box::new(x))
+                }
+            };
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use crate::{
+        mocks::datasource::MockDataSource,
+        prelude::{Operations, SqlChunk},
+        table::Table,
+    };
+
+    #[test]
+    fn test_field_query() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let mut roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name");
+
+        roles.add_condition(roles.get_field("name").unwrap().eq(&"admin".to_string()));
+        let query = roles.field_query(roles.get_field("id").unwrap());
+
+        assert_eq!(
+            query.render_chunk().sql().clone(),
+            "SELECT id FROM roles WHERE (name = {})".to_owned()
+        );
+
+        let mut users = Table::new("users", db.clone())
+            .with_field("id")
+            .with_field("role_id");
+
+        users.add_condition(users.get_field("role_id").unwrap().in_expr(&query));
+        let query = users.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT id, role_id FROM users WHERE (role_id IN (SELECT id FROM roles WHERE (name = {})))"
+        );
+        assert_eq!(query.1[0], json!("admin"));
     }
 }
