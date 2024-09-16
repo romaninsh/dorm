@@ -155,3 +155,6 @@ Importantly - the two parameters which were set (and then cloned)
 for the `query` are kept separate from a final query rendering and
 will be passed into DataSource separately. This ensures that
 SQL injection is never possible.
+
+Next, lets explore some other kinds of `SqlChunk` implementation,
+that are more intuitive to use over Expressions.
