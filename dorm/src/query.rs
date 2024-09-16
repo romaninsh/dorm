@@ -55,17 +55,17 @@ impl Query {
         }
     }
 
-    pub fn distinct(mut self) -> Self {
+    pub fn is_distinct(mut self) -> Self {
         self.distinct = true;
         self
     }
 
-    pub fn set_table(mut self, table: &str, alias: Option<String>) -> Self {
+    pub fn with_table(mut self, table: &str, alias: Option<String>) -> Self {
         self.table = QuerySource::Table(table.to_string(), alias);
         self
     }
 
-    pub fn add_with(mut self, alias: &str, subquery: Query) -> Self {
+    pub fn with_with(mut self, alias: &str, subquery: Query) -> Self {
         self.with.insert(
             alias.to_string(),
             QuerySource::Query(Arc::new(Box::new(subquery)), None),
@@ -73,62 +73,67 @@ impl Query {
         self
     }
 
-    pub fn set_source(mut self, source: QuerySource) -> Self {
+    pub fn with_source(mut self, source: QuerySource) -> Self {
         self.table = source;
         self
     }
 
-    pub fn set_type(mut self, query_type: QueryType) -> Self {
+    pub fn with_type(mut self, query_type: QueryType) -> Self {
         self.query_type = query_type;
         self
     }
 
-    pub fn add_column(self, name: String, field: impl Column + 'static) -> Self {
-        self.add_column_arc(name, Arc::new(Box::new(field)))
+    pub fn without_columns(mut self) -> Self {
+        self.columns = IndexMap::new();
+        self
     }
 
-    pub fn add_column_arc(mut self, name: String, field: Arc<Box<dyn Column>>) -> Self {
+    pub fn with_column(self, name: String, field: impl Column + 'static) -> Self {
+        self.with_column_arc(name, Arc::new(Box::new(field)))
+    }
+
+    pub fn with_column_arc(mut self, name: String, field: Arc<Box<dyn Column>>) -> Self {
         self.columns.insert(name, field);
         self
     }
 
-    pub fn add_where_condition(mut self, cond: Expression) -> Self {
+    pub fn with_where_condition(mut self, cond: Expression) -> Self {
         self.where_conditions = self.where_conditions.add_condition(cond);
         self
     }
 
-    pub fn add_having_condition(mut self, cond: Expression) -> Self {
+    pub fn with_having_condition(mut self, cond: Expression) -> Self {
         self.having_conditions = self.having_conditions.add_condition(cond);
         self
     }
 
-    pub fn add_join(mut self, join: JoinQuery) -> Self {
+    pub fn with_join(mut self, join: JoinQuery) -> Self {
         self.joins.push(join);
         self
     }
 
-    pub fn add_condition(self, cond: impl SqlChunk + 'static) -> Self {
-        self.add_condition_arc(Arc::new(Box::new(cond)))
+    pub fn with_condition(self, cond: impl SqlChunk + 'static) -> Self {
+        self.with_condition_arc(Arc::new(Box::new(cond)))
     }
 
-    pub fn add_condition_arc(mut self, cond: Arc<Box<dyn SqlChunk>>) -> Self {
+    pub fn with_condition_arc(mut self, cond: Arc<Box<dyn SqlChunk>>) -> Self {
         self.conditions.push(cond);
         self
     }
 
-    pub fn add_group_by(mut self, group_by: Expression) -> Self {
+    pub fn with_group_by(mut self, group_by: Expression) -> Self {
         self.group_by.push(group_by);
         self
     }
 
-    pub fn add_order_by(mut self, order_by: Expression) -> Self {
+    pub fn with_order_by(mut self, order_by: Expression) -> Self {
         self.order_by.push(order_by);
         self
     }
 
     // Simplified ways to define a field with a string
-    pub fn add_column_field(self, name: &str) -> Self {
-        self.add_column(
+    pub fn with_column_field(self, name: &str) -> Self {
+        self.with_column(
             name.to_string(),
             Arc::new(Field::new(name.to_string(), None)),
         )
@@ -285,9 +290,9 @@ mod tests {
         let expr2 = expr!("age > {}", 30);
 
         let query = Query::new()
-            .set_table("users", None)
-            .add_condition(expr1)
-            .add_condition(expr2);
+            .with_table("users", None)
+            .with_condition(expr1)
+            .with_condition(expr2);
 
         let wher = query.render_where();
 
@@ -302,10 +307,10 @@ mod tests {
     #[test]
     fn test_select() {
         let (sql, params) = Query::new()
-            .set_table("users", None)
-            .add_column_field("id")
-            .add_column_field("name")
-            .add_column("calc".to_string(), expr_arc!("1 + 1"))
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column("calc".to_string(), expr_arc!("1 + 1"))
             .render_chunk()
             .split();
 
@@ -316,11 +321,11 @@ mod tests {
     #[test]
     fn test_insert() {
         let (sql, params) = Query::new()
-            .set_table("users", None)
-            .set_type(QueryType::Insert)
-            .add_column_field("name")
-            .add_column_field("surname")
-            .add_column_field("age")
+            .with_table("users", None)
+            .with_type(QueryType::Insert)
+            .with_column_field("name")
+            .with_column_field("surname")
+            .with_column_field("age")
             .render_chunk()
             .split();
 
@@ -337,7 +342,7 @@ mod tests {
     #[test]
     fn test_expression() {
         let (sql, params) = Query::new()
-            .set_type(QueryType::Expression(expr!("CALL some_procedure()")))
+            .with_type(QueryType::Expression(expr!("CALL some_procedure()")))
             .render_chunk()
             .split();
 
@@ -348,9 +353,9 @@ mod tests {
     #[test]
     fn test_join_query() {
         let query = Query::new()
-            .set_table("users", None)
-            .add_column_field("id")
-            .add_column_field("name");
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name");
 
         let join = JoinQuery::new(
             JoinType::Left,
@@ -358,7 +363,7 @@ mod tests {
             QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
         );
 
-        let (sql, params) = query.add_join(join).render_chunk().split();
+        let (sql, params) = query.with_join(join).render_chunk().split();
 
         assert_eq!(
             sql,
@@ -370,20 +375,20 @@ mod tests {
     #[test]
     fn test_render_with() {
         let roles = Query::new()
-            .set_table("roles", None)
-            .add_column_field("id")
-            .add_column_field("role_name");
+            .with_table("roles", None)
+            .with_column_field("id")
+            .with_column_field("role_name");
 
         let outer_query = Query::new()
-            .set_table("users", None)
-            .add_with("roles", roles)
-            .add_join(JoinQuery::new(
+            .with_table("users", None)
+            .with_with("roles", roles)
+            .with_join(JoinQuery::new(
                 JoinType::Inner,
                 QuerySource::Table("roles".to_string(), None),
                 QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
             ))
-            .add_column_field("user_name")
-            .add_column_field("roles.role_name");
+            .with_column_field("user_name")
+            .with_column_field("roles.role_name");
 
         let (sql, params) = outer_query.render_chunk().split();
 
@@ -394,12 +399,12 @@ mod tests {
     #[test]
     fn test_group_and_order() {
         let query = Query::new()
-            .set_table("users", None)
-            .add_column_field("id")
-            .add_column_field("name")
-            .add_column_field("age")
-            .add_group_by(expr!("name"))
-            .add_order_by(expr!("age DESC"));
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column_field("age")
+            .with_group_by(expr!("name"))
+            .with_order_by(expr!("age DESC"));
 
         let (sql, params) = query.render_chunk().split();
 

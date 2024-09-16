@@ -159,14 +159,14 @@ impl<T: DataSource> Table<T> {
     pub fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         let query = self
             .get_empty_query()
-            .add_column("sum".to_string(), expr_arc!("SUM({})", field));
+            .with_column("sum".to_string(), expr_arc!("SUM({})", field));
         AssociatedQuery::new(query, self.data_source.clone())
     }
 
     pub fn count(&self) -> AssociatedQuery<T> {
         let query = self
             .get_empty_query()
-            .add_column("count".to_string(), expr_arc!("COUNT(*)"));
+            .with_column("count".to_string(), expr_arc!("COUNT(*)"));
         AssociatedQuery::new(query, self.data_source.clone())
     }
 }

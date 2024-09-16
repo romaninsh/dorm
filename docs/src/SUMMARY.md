@@ -1,4 +1,5 @@
 # Summary
 
-- [Chapter 1](./chapter_1.md)
 - [Introduction](./introduction.md)
+  - [Table and Fields](./1-table-and-fields.md)
+  - [Queries](./2-queries.md)
