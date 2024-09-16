@@ -37,11 +37,11 @@ async fn main() -> Result<()> {
 
     // Associate Github Authors (github_username, user_name) with theirTeam IDs (user_source_id, team_source_id)
     let github_authors_and_teams = Query::new()
-        .set_table("dx_teams", Some("t".to_string()))
-        .add_column("team_source_id".to_string(), expr!("t.source_id"));
+        .with_table("dx_teams", Some("t".to_string()))
+        .with_column("team_source_id".to_string(), expr!("t.source_id"));
 
     // Team is an anchestor
-    let github_authors_and_teams = github_authors_and_teams.add_join(query::JoinQuery::new(
+    let github_authors_and_teams = github_authors_and_teams.with_join(query::JoinQuery::new(
         query::JoinType::Inner,
         query::QuerySource::Table("dx_team_hierarchies".to_string(), Some("h".to_string())),
         query::QueryConditions::on().add_condition(expr!("t.id = h.ancestor_id")),
@@ -49,24 +49,24 @@ async fn main() -> Result<()> {
 
     // to a user with `user_name`
     let github_authors_and_teams = github_authors_and_teams
-        .add_join(query::JoinQuery::new(
+        .with_join(query::JoinQuery::new(
             query::JoinType::Inner,
             query::QuerySource::Table("dx_users".to_string(), Some("dxu".to_string())),
             query::QueryConditions::on().add_condition(expr!("h.descendant_id = dxu.team_id")),
         ))
-        .add_column("user_name".to_string(), expr!("dxu.name"))
-        .add_column("github_username".to_string(), expr!("dxu.source_id"));
+        .with_column("user_name".to_string(), expr!("dxu.name"))
+        .with_column("github_username".to_string(), expr!("dxu.source_id"));
 
     // pin identity of a user
     let github_authors_and_teams = github_authors_and_teams
-        .add_join(query::JoinQuery::new(
+        .with_join(query::JoinQuery::new(
             query::JoinType::Inner,
             query::QuerySource::Table("identities".to_string(), Some("i".to_string())),
             query::QueryConditions::on()
                 .add_condition(expr!("dxu.id = i.dx_user_id"))
                 .add_condition(expr!("i.source = {}", "github")),
         ))
-        .add_column("user_source_id".to_string(), expr!("i.source_id"));
+        .with_column("user_source_id".to_string(), expr!("i.source_id"));
 
     println!("{}", formatter::format_query(&github_authors_and_teams));
 
@@ -95,16 +95,16 @@ async fn main() -> Result<()> {
 
     // Start by querying all deployments
     let query_successful_deployments = Query::new()
-        .set_table("deployments", None)
-        .distinct()
-        .add_column("id".to_string(), expr!("deployments.id"))
-        .add_column("deployed_at".to_string(), expr!("deployments.deployed_at"))
-        .add_condition(expr!("deployments.success = {}", true))
-        .add_condition(expr!("deployments.environment ~* {}", "prod"));
+        .with_table("deployments", None)
+        .is_distinct()
+        .with_column("id".to_string(), expr!("deployments.id"))
+        .with_column("deployed_at".to_string(), expr!("deployments.deployed_at"))
+        .with_condition(expr!("deployments.success = {}", true))
+        .with_condition(expr!("deployments.environment ~* {}", "prod"));
 
     // Service to where the deployment has taken place
     let query_successful_deployments =
-        query_successful_deployments.add_join(query::JoinQuery::new(
+        query_successful_deployments.with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Table("service_identities".to_string(), None),
             query::QueryConditions::on()
@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
 
     // Service associations with the teams
     let query_successful_deployments =
-        query_successful_deployments.add_join(query::JoinQuery::new(
+        query_successful_deployments.with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Table("services".to_string(), None),
             query::QueryConditions::on()
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
 
     // Deployment Pull contains environment details as well as pull IDs for our deployment
     let query_successful_deployments =
-        query_successful_deployments.add_join(query::JoinQuery::new(
+        query_successful_deployments.with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Table(
                 "github_pull_deployments".to_string(),
@@ -136,7 +136,7 @@ async fn main() -> Result<()> {
 
     // Grabbing more information about pipeline execution
     let query_successful_deployments =
-        query_successful_deployments.add_join(query::JoinQuery::new(
+        query_successful_deployments.with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Table("pipeline_runs".to_string(), Some("piper".to_string())),
             query::QueryConditions::on()
@@ -145,7 +145,7 @@ async fn main() -> Result<()> {
 
     // Fetch author information from a sub-query
     let query_successful_deployments =
-        query_successful_deployments.add_join(query::JoinQuery::new(
+        query_successful_deployments.with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Query(
                 Arc::new(Box::new(github_authors_and_teams)),
@@ -158,7 +158,7 @@ async fn main() -> Result<()> {
 
     // We are only interested in a single team
     let query_successful_deployments = query_successful_deployments
-        .add_condition(expr!("authors.team_source_id IN ({})", "NzM0MA"));
+        .with_condition(expr!("authors.team_source_id IN ({})", "NzM0MA"));
 
     println!("=============================================================");
     println!("{}", formatter::format_query(&query_successful_deployments));
@@ -212,7 +212,7 @@ async fn main() -> Result<()> {
     // ORDER BY date
 
     let query_time_series = Query::new()
-        .set_source(query::QuerySource::Expression(
+        .with_source(query::QuerySource::Expression(
             ExpressionArc::fx(
                 "GENERATE_SERIES",
                 vec![
@@ -224,14 +224,14 @@ async fn main() -> Result<()> {
             .render_chunk(),
             Some("dates".to_string()),
         ))
-        .add_column(
+        .with_column(
             "date".to_string(),
             expr!("date_trunc({}, dates)", "week".to_string()),
         );
 
     let deploys_deploys = Query::new()
-        .set_table("time_series", None)
-        .add_join(query::JoinQuery::new(
+        .with_table("time_series", None)
+        .with_join(query::JoinQuery::new(
             query::JoinType::Left,
             query::QuerySource::Query(Arc::new(Box::new(query_successful_deployments)), Some("deploys".to_string())),
             query::QueryConditions::on()
@@ -239,21 +239,21 @@ async fn main() -> Result<()> {
                     "date_trunc({}, deploys.deployed_at) BETWEEN time_series.date AND time_series.date + INTERVAL '7 days'",
                     "day".to_string()
                 )),
-        )).add_column("date".to_string(), expr!("time_series.date"))
-        .add_column("deploys_count".to_string(), expr!("COUNT(DISTINCT deploys.id)"))
-        .add_group_by(expr!("time_series.date")).add_order_by(expr!("time_series.date"));
+        )).with_column("date".to_string(), expr!("time_series.date"))
+        .with_column("deploys_count".to_string(), expr!("COUNT(DISTINCT deploys.id)"))
+        .with_group_by(expr!("time_series.date")).with_order_by(expr!("time_series.date"));
 
     let final_query = Query::new()
-        .add_with("time_series", query_time_series)
-        .add_with("daily_deploys", deploys_deploys)
-        .set_table("daily_deploys", None)
-        .add_column("date".to_string(), expr!("date"))
-        .add_column(
+        .with_with("time_series", query_time_series)
+        .with_with("daily_deploys", deploys_deploys)
+        .with_table("daily_deploys", None)
+        .with_column("date".to_string(), expr!("date"))
+        .with_column(
             "value".to_string(),
             expr!("(SUM(daily_deploys.deploys_count) / 7)"),
         )
-        .add_group_by(expr!("date"))
-        .add_order_by(expr!("date"));
+        .with_group_by(expr!("date"))
+        .with_order_by(expr!("date"));
 
     println!("=============================================================");
     println!("{}", formatter::format_query(&final_query));

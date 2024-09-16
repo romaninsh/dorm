@@ -1,12 +1,42 @@
 # Introduction
 
-DORM brings a powerful business domain abstraction layer to Rust.
+DORM is a busines entity abstraction framework for Rust.
 
-For a business application, it is important to have flexibility, stability of the code-base,
-ability to easily maintain and change the code, remain decoupled from implementation detail
-and most importantly to have a consise and easy to operate with syntax.
+In Enterprise environment, software applications must be easy to maintain and change.
+Typical Rust applications require significant effort to maintain and change the logic,
+which makes Rust difficult to compete with languages such as Java, C# and Typescript.
 
-DORM is loosely based on Agile Toolkit (https://agiletoolkit.org/)
+DORM will allow you to separate your entity abstraction from your business logic, making
+it easier to maintain and change your code. DORM also will make your code much more
+readable and easy to understand.
+
+In DORM, you will be able to define your business entities, then work with set of records
+like this:
+
+```rust
+// Create a set of products with low inventory
+let out_of_stock_products = Products::new(postgres.clone())
+    .with_inventory()
+    .with_condition(Products::stock().lt(5));
+
+// Traverse into suppliers of a products with low inventory
+let suppliers = out_of_stock_products.ref_supplier();
+
+// Execute query and iterate over the result
+for supplier in suppliers.get().await.unwrap() {
+    order_more_stock(supplier.id());
+}
+```
+
+The example above demonstrates multiple DORM features together, specifically:
+
+- Abstracting entity definition into custom types such as Products and Suppliers
+- Operating with abstract set of records, for example, out_of_stock_products is not fetched until much later
+- Using type-safe conditions and expressions to filter the data
+- Traversing relationships between sets of different entity types
+- Finally - hydrating (or fetching) the data from the database (or remote API) for processing
+
+To get you started with DORM, I will introduce you to all the concepts above one by one.
 
 ## The Query Languages
 
@@ -17,21 +47,21 @@ queries your application would need to execute.
 
 DORM contains 3 layers of abstraction:
 
- 1. Expressions - a parametric template system with recursive rendering capabilities.
- 2. Query - a structured query-language aware object, that can be manipulated into any query.
- 3. DataSets and Models - native Rust structures for interactign with single or multiple records.
+1.  Expressions - a parametric template system with recursive rendering capabilities.
+2.  Query - a structured query-language aware object, that can be manipulated into any query.
+3.  DataSets and Models - native Rust structures for interactign with single or multiple records.
 
- Operations ond DataSets and Models are translated into SQL queries, which are then converted into
- expressions.
+Operations ond DataSets and Models are translated into SQL queries, which are then converted into
+expressions.
 
- To understand the basics of DORM, lets start with the fundamentals of expressions.
+To understand the basics of DORM, lets start with the fundamentals of expressions.
 
- ## Expressions
+## Expressions
 
- There are two base classes that Expressions are built around:
+There are two base classes that Expressions are built around:
 
-  - Expression - a full ownership expression, which parameters have type of Value.
-  - ExpressionArc - a shared ownership expression, which parameters can be converted into Expression
+- Expression - a full ownership expression, which parameters have type of Value.
+- ExpressionArc - a shared ownership expression, which parameters can be converted into Expression
 
 Expressions are short-lived - they are created, rendered and discarded. ExpressionArc can remain
 in memory for longer time and tie together various conditions, that may have shared ownership and
@@ -465,6 +495,7 @@ let my_basket_items = BasketSet::new(postgres.clone())
     .with_id(123)
     .into::<BasketItems>();
 ```
+
 In this case DORM will look into the `items` field, which is a callback and returns a
 BasketItemSet. To fill in the Vec of basket items, additional query will be performed.
 
@@ -562,7 +593,6 @@ DORM does not offer a way for validation and sanitization of the data, but we re
 "nutype". Make sure that Serde is able to serialize your data structure and it will work fine
 with DORM.
 
-
 ## Making DataSet static
 
 You may see a problem with this code:
@@ -577,6 +607,7 @@ The problem here is that add_condition takes `self` and this does not allow defa
 be borrow same object. This is a common problem with Rust. There are two ways to solve it.
 
 First lets create condition in a temporary variable:
+
 ```rust
 let expensive_products = ProductSet::new(postgres.clone());
 let condition = expensive_products.default_price().gt(100);

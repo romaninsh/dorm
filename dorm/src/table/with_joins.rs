@@ -9,16 +9,74 @@ use crate::traits::datasource::DataSource;
 use crate::uniqid::UniqueIdVendor;
 
 impl<T: DataSource> Table<T> {
-    /// Left-Joins their_table table and return self. Assuming their_table has set id field,
-    /// but we still have to specify foreign key in our own table. For more complex
-    /// joins use `join_table` method.
     pub fn with_join(mut self, their_table: Table<T>, our_foreign_id: &str) -> Self {
+        //! Mutate self with a join to another table.
+        //!
+        //! See [Table::add_join] for more details.
+        //!
+        //! # Example
+        //! Example of creating two Table instances on the fly and then joining them:
+        //!
+        //! ```rust
+        //! let users = Table::new("users", db)
+        //!     .with_field("name")
+        //!     .with_field("role_id");
+        //! let roles = Table::new("roles", db)
+        //!     .with_field("id")
+        //!     .with_field("role_type");
+        //!
+        //! let user_with_roles = users.with_join(roles, "role_id");
+        //! ```
+        //!
+        //! # Example in Entity Model
+        //! More commonly, you would want to perform joins between tables that are already
+        //! defined. In this example, we have existing entities for Products and Inventory.
+        //! We want to join Products with Inventory, so we can get the stock for each product.
+        //!
+        //! The functionality to perform the join would be needed only in certain cases, so
+        //! we defined it as a public method on Products:
+        //!
+        //! ```rust
+        //! impl Products {
+        //!     pub fn static_table() -> &'static Table<Postgres> {
+        //!         static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+        //!
+        //!         TABLE.get_or_init(|| {
+        //!             Table::new("product", postgres())
+        //!                 .with_id_field("id")
+        //!                 .with_field("name")
+        //!         })
+        //!     }
+        //!     pub fn mod_table(self, func: impl FnOnce(Table<Postgres>) -> Table<Postgres>) -> Self {
+        //!         let table = self.table.clone();
+        //!         let table = func(table);
+        //!         Self { table }
+        //!     }
+        //!     pub fn with_inventory(self) -> Self {
+        //!         self.mod_table(|t| {
+        //!             t.with_join(
+        //!                 Table::new("inventory", postgres())
+        //!                     .with_alias("i")
+        //!                     .with_id_field("product_id")
+        //!                     .with_field("stock"),
+        //!                 "id",
+        //!             )
+        //!         })
+        //!     }
+        //! }
+        //! ```
+
         self.add_join(their_table, our_foreign_id);
         self
     }
 
     pub fn add_join(&mut self, mut their_table: Table<T>, our_foreign_id: &str) -> Arc<Join<T>> {
-        // before joining, make sure there are no alias clashes
+        //! Combine two tables with 1 to 1 relationship into a single table.
+        //!
+        //! Left-Joins their_table table and return self. Assuming their_table has set id field,
+        //! but we still have to specify foreign key in our own table. For more complex
+        //! joins use `join_table` method.
+        //! before joining, make sure there are no alias clashes
         if eq(&*self.table_aliases, &*their_table.table_aliases) {
             panic!(
                 "Tables are already joined: {}, {}",
