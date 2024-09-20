@@ -74,8 +74,44 @@ pub trait Operations: SqlChunk {
     fn sub(&self, other: impl SqlChunk) -> Expression {
         expr_arc!("({}) - ({})", self.render_chunk(), other.render_chunk()).render_chunk()
     }
+
+    fn concat(arg: Vec<Arc<Box<dyn SqlChunk>>>) -> Expression {
+        ExpressionArc::from_vec(arg, ", ").render_chunk()
+    }
+
+    fn upper(&self) -> Expression {
+        expr_arc!("UPPER({})", self.render_chunk()).render_chunk()
+    }
 }
 
-pub fn concat(arg: Vec<Arc<Box<dyn SqlChunk>>>) -> Expression {
-    ExpressionArc::from_vec(arg, ", ").render_chunk()
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::{mocks::datasource::MockDataSource, prelude::*};
+
+    #[test]
+    fn test_upper() {
+        let a = Arc::new(Field::new("name".to_string(), None));
+        let b = a.upper();
+
+        assert_eq!(b.render_chunk().sql(), "UPPER(name)");
+    }
+
+    #[test]
+    fn test_upper_in_table() {
+        let data = json!([]);
+        let t = Table::new("product", MockDataSource::new(&data))
+            .with_field("name")
+            .with_expression("name_caps", |t| t.get_field("name").unwrap().upper());
+
+        let query = t
+            .get_select_query_for_field_names(&["name", "name_caps"])
+            .render_chunk();
+        assert_eq!(
+            query.sql(),
+            "SELECT name, (UPPER(name)) AS name_caps FROM product"
+        );
+    }
 }

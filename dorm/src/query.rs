@@ -351,6 +351,18 @@ mod tests {
     }
 
     #[test]
+    fn test_expression_field() {
+        let (sql, params) = Query::new()
+            .with_table("product", None)
+            .with_column("name_caps".to_string(), expr!("UPPER(name)"))
+            .render_chunk()
+            .split();
+
+        assert_eq!(sql, "SELECT (UPPER(name)) AS name_caps FROM product");
+        assert_eq!(params.len(), 0);
+    }
+
+    #[test]
     fn test_join_query() {
         let query = Query::new()
             .with_table("users", None)

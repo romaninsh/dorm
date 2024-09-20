@@ -91,7 +91,7 @@ let person = Table::new("person", postgres.clone())
     .with_field("father_id");
     .with_expression(
         "full_name",
-        expr!("CONCAT({}, ' ', {})",
+        expr_arc!("CONCAT({}, ' ', {})",
             &person.get_field("first_name").unwrap(),
             &person.get_field("last_name").unwrap()
         )

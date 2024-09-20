@@ -11,8 +11,8 @@ for your query parameters. Lets start with a simple example:
 
 ```rust
 let expression = Expression::new(
-    "SELECT * FROM users WHERE name = {}",
-    vec![json!("John")]);
+    "SELECT * FROM product WHERE name = {}",
+    vec![json!("DeLorian Doughnut")]);
 
 writeln!(expression.preview());
 ```
@@ -20,7 +20,7 @@ writeln!(expression.preview());
 The above expression will be rendered as:
 
 ```sql
-SELECT * FROM users WHERE name = 'John'
+SELECT * FROM product WHERE name = 'DeLorian Doughnut'
 ```
 
 Expressions do not know anything about the underlying database and
@@ -30,7 +30,7 @@ of type `serde_json::Value`.
 To simplify the process DORM offers you a `expr!` macro:
 
 ```rust
-let expression = expr!("SELECT * FROM users WHERE name = {}", "John");
+let expression = expr!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
 ```
 
 The parameters to `expr!` macro can be any owned scalar types, as long
@@ -56,49 +56,49 @@ at them later.
 ExpressionArc can be created through a `expr_arc!` macro:
 
 ```rust
-let expression = expr_arc!("SELECT * FROM users WHERE name = {}", "John");
+let expression = expr_arc!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
 writeln!(expression.preview());
 
-// renders into: SELECT * FROM users WHERE name = 'John'
+// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
 ```
 
 You can now pass expresisons recursively:
 
 ```rust
-let condition = expr_arc!("name = {}", "John");
-let expression = expr_arc!("SELECT * FROM users WHERE {}", condition);
+let condition = expr_arc!("name = {}", "DeLorian Doughnut");
+let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
 writeln!(expression.preview());
 
-// renders into: SELECT * FROM users WHERE name = 'John'
+// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
 ```
 
-You might have noticed, that nested expressions are not escaped.
+You might have noticed, that nested expressions are not escaped, but
+rest assured, parameters are never inserted into the SQL query.
 Both Expression and ExpressionArc can cloned and passed around freely.
 
 ## Flattening Expressions
 
-As you can see in the example above, expression can be nested. When
-we need to send off expression to the database, we need to flattern it.
+As you can see in the example above, `SqlChunk` can have many sub-objects.
+When we need to send off expression to the database, we need to flattern it.
 
-For that, DORM offers a `render_chunk()` method on `SqlChunk` trait.
-This method will convert a dynamic `SqlChunk` into a static `Expression`
-type:
+`SqlChunk` trait has a `render_chunk()` method that will convert itself
+into a static `Expression` type:
 
 ```rust
-let condition = expr_arc!("name = {}", "John");
-let expression = expr_arc!("SELECT * FROM users WHERE {}", condition);
+let condition = expr_arc!("name = {}", "DeLorian Doughnut");
+let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
 let flattened = expression.render_chunk();
 
 dbg!(flattened.sql());
 dbg!(flattened.params());
 
-// renders into: SELECT * FROM users WHERE name = {}
-// params: [json!("John")]
+// renders into: SELECT * FROM product WHERE name = {}
+// params: [json!("DeLorian Doughnut")]
 ```
 
 In the example above, we used `render_chunk()` method on `ExpressionArc`
 to convert it into a static `Expression` type. Then sql() and params()
-methods were called to get the final template and parameters. Template
+methods can be called to get the final template and parameters. Template
 has correctly combined nested condition, while leaving parameter value
 separated.
 
@@ -106,7 +106,12 @@ separated.
 
 A query object is designed as a template engine. It contains maps
 of various columns, conditions, joins etc. Query implements `SqlChunk`
-and query itself can be contained inside expression or another query:
+and query itself can be contained inside expression or another query.
+
+Query implements wide range of "with\_\*" methods that can be used to
+manipulate the query. Lets create a query that will select all
+columns from "product" table, where name is "DeLorian Doughnut"
+and age is greater than 30:
 
 ```rust
 let expr1 = expr!("name = {}", "John");
