@@ -13,12 +13,12 @@ use crate::traits::datasource::DataSource;
 
 impl<T: DataSource> Table<T> {
     pub fn get_empty_query(&self) -> Query {
-        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
+        let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for condition in self.conditions.iter() {
-            query = query.add_condition(condition.clone());
+            query = query.with_condition(condition.clone());
         }
         for (alias, join) in &self.joins {
-            query = query.add_join(join.join_query().clone());
+            query = query.with_join(join.join_query().clone());
         }
         query
     }
@@ -34,7 +34,7 @@ impl<T: DataSource> Table<T> {
             } else {
                 field_val.clone()
             };
-            query = query.add_column(
+            query = query.with_column(
                 field_val
                     .deref()
                     .get_field_alias()
@@ -60,10 +60,10 @@ impl<T: DataSource> Table<T> {
         &self,
         fields: IndexMap<String, Arc<Box<dyn Column>>>,
     ) -> Query {
-        let mut query = Query::new().set_table(&self.table_name, self.table_alias.clone());
+        let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
-            query = query.add_column_arc(field_alias, field_val);
+            query = query.with_column_arc(field_alias, field_val);
         }
         query
     }
@@ -99,17 +99,17 @@ impl<T: DataSource> Table<T> {
 
     pub fn get_insert_query(&self) -> Query {
         let mut query = Query::new()
-            .set_table(&self.table_name, None)
-            .set_type(QueryType::Insert);
+            .with_table(&self.table_name, None)
+            .with_type(QueryType::Insert);
         for (field, _) in &self.fields {
             let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
-            query = query.add_column(field.clone(), field_object);
+            query = query.with_column(field.clone(), field_object);
         }
         query
     }
 
     pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
-        let query = self.get_empty_query().add_column(field.name(), field);
+        let query = self.get_empty_query().with_column(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
     }
 }
@@ -153,7 +153,7 @@ mod tests {
             .with_field("price")
             .with_field("qty");
 
-        orders.add_expression_before_query("total", |t| {
+        orders.add_expression("total", |t| {
             expr_arc!(
                 "{}*{}",
                 t.get_field("price").unwrap().clone(),

@@ -8,7 +8,7 @@ use crate::field::Field;
 use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
-use crate::query::{Query, QueryType};
+use crate::query::Query;
 use crate::reference::Reference;
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
@@ -141,7 +141,7 @@ impl<T: DataSource> Table<T> {
 
     // ---- Expressions ----
     //  BeforeQuery(Arc<Box<dyn Fn(&Query) -> Expression>>),
-    pub fn add_expression_before_query(
+    pub fn add_expression(
         &mut self,
         name: &str,
         expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
@@ -152,6 +152,15 @@ impl<T: DataSource> Table<T> {
         );
     }
 
+    pub fn with_expression(
+        mut self,
+        name: &str,
+        expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
+    ) -> Self {
+        self.add_expression(name, expression);
+        self
+    }
+
     pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
@@ -159,14 +168,14 @@ impl<T: DataSource> Table<T> {
     pub fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         let query = self
             .get_empty_query()
-            .add_column("sum".to_string(), expr_arc!("SUM({})", field));
+            .with_column("sum".to_string(), expr_arc!("SUM({})", field));
         AssociatedQuery::new(query, self.data_source.clone())
     }
 
     pub fn count(&self) -> AssociatedQuery<T> {
         let query = self
             .get_empty_query()
-            .add_column("count".to_string(), expr_arc!("COUNT(*)"));
+            .with_column("count".to_string(), expr_arc!("COUNT(*)"));
         AssociatedQuery::new(query, self.data_source.clone())
     }
 }

@@ -255,7 +255,7 @@ impl<T: DataSource> AssociatedExpressionArc<T> {
     pub async fn get_one(&self) -> Result<Value> {
         let one = self
             .ds
-            .query_one(&Query::new().set_type(crate::query::QueryType::Expression(
+            .query_one(&Query::new().with_type(crate::query::QueryType::Expression(
                 self.expr.render_chunk(),
             )))
             .await?;

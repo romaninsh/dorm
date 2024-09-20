@@ -77,9 +77,9 @@ mod tests {
         let data_source = MockDataSource::new(&json);
 
         let query = Query::new()
-            .set_table("users", None)
-            .add_column_field("name")
-            .add_column_field("surname");
+            .with_table("users", None)
+            .with_column_field("name")
+            .with_column_field("surname");
         let result = data_source.query_fetch(&query).await;
 
         assert_eq!(result.unwrap(), *data_source.data());

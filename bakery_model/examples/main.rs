@@ -79,7 +79,7 @@ async fn main() {
     // Next we want to see number of orders for each client
     let mut client_set = bakery_model::client::ClientSet::new().with_alias("a");
 
-    client_set.add_expression_before_query("orders_count", move |t| {
+    client_set.add_expression("orders_count", move |t| {
         bakery_model::order::OrderSet::new()
             .with_condition(bakery_model::order::OrderSet::client_id().eq(&t.id()))
             .count()
