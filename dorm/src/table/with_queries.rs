@@ -153,7 +153,7 @@ mod tests {
             .with_field("price")
             .with_field("qty");
 
-        orders.add_expression_before_query("total", |t| {
+        orders.add_expression("total", |t| {
             expr_arc!(
                 "{}*{}",
                 t.get_field("price").unwrap().clone(),

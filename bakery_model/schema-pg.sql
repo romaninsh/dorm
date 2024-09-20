@@ -45,6 +45,7 @@ CREATE TABLE order_line (
 CREATE TABLE product (
   id serial PRIMARY KEY,
   name varchar(255) NOT NULL,
+  calories int NOT NULL,
   bakery_id int NOT NULL
 );
 

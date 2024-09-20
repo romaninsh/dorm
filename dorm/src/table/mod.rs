@@ -141,7 +141,7 @@ impl<T: DataSource> Table<T> {
 
     // ---- Expressions ----
     //  BeforeQuery(Arc<Box<dyn Fn(&Query) -> Expression>>),
-    pub fn add_expression_before_query(
+    pub fn add_expression(
         &mut self,
         name: &str,
         expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
@@ -150,6 +150,15 @@ impl<T: DataSource> Table<T> {
             name.to_string(),
             LazyExpression::BeforeQuery(Arc::new(Box::new(expression))),
         );
+    }
+
+    pub fn with_expression(
+        mut self,
+        name: &str,
+        expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
+    ) -> Self {
+        self.add_expression(name, expression);
+        self
     }
 
     pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
