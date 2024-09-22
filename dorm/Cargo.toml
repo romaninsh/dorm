@@ -34,9 +34,6 @@ pretty_assertions = "1.4.0"
 [dev-dependencies]
 bakery_model = { path = "../bakery_model" }
 
-[[example]]
-name = "basic-dorm"
-path = "examples/basic-dorm/src/main.rs"
 
 [[example]]
 name = "query-builder"

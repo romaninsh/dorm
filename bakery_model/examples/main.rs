@@ -1,3 +1,4 @@
+use bakery_model::product::Product;
 use dorm::prelude::*;
 use serde_json::Value;
 
@@ -15,37 +16,38 @@ async fn main() {
         .unwrap();
     client.batch_execute(&schema).await.unwrap();
 
-    // Ok, now lets work with the models directly
-    let bakery_set = bakery_model::bakery::BakerySet::new();
-    let query = bakery_set.get_select_query();
-    let result = dorm_client.query_raw(&query).await.unwrap();
+    // // Ok, now lets work with the models directly
+    // let bakery_set = bakery_model::bakery::BakerySet::new();
+    // let query = bakery_set.get_select_query();
+    // let result = dorm_client.query_raw(&query).await.unwrap();
 
-    let Some(Value::String(bakery)) = result[0].get("name") else {
-        panic!("No bakery found");
-    };
-    println!("-----------------------------");
-    println!("Working for the bakery: {}", bakery);
-    println!("");
+    // let Some(Value::String(bakery)) = result[0].get("name") else {
+    //     panic!("No bakery found");
+    // };
+    // println!("-----------------------------");
+    // println!("Working for the bakery: {}", bakery);
+    // println!("");
 
-    // Now, lets see how many clients bakery has
-    let client_set = bakery_set.get_ref("clients").unwrap();
-    let client_count = client_set.count();
+    // // Now, lets see how many clients bakery has
+    // let client_set = bakery_set.get_ref("clients").unwrap();
+    // let client_count = client_set.count();
 
-    println!(
-        "There are {} clients in the bakery.",
-        client_count.get_one().await.unwrap()
-    );
+    // println!(
+    //     "There are {} clients in the bakery.",
+    //     client_count.get_one().await.unwrap()
+    // );
 
-    // Finally lets see how many products we have in the bakery
+    // // Finally lets see how many products we have in the bakery
 
-    let product_set = bakery_set.get_ref("products").unwrap();
-    let product_count = product_set.count();
+    // let product_set = bakery_set.get_ref("products").unwrap();
+    let product_count = Product::table().count();
 
     println!(
         "There are {} products in the bakery.",
         product_count.get_one().await.unwrap()
     );
 
+    /*
     // How many products are there with the name
 
     // Now for every product, lets calculate how many orders it has
@@ -91,4 +93,5 @@ async fn main() {
     for row in res.into_iter() {
         println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
     }
+    */
 }

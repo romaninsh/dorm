@@ -10,15 +10,15 @@ use tokio_postgres::NoTls;
 
 use dorm::prelude::Postgres;
 
-pub mod bakery;
+// pub mod bakery;
 // pub mod cake;
 // pub mod cakes_bakers;
-pub mod client;
+// pub mod client;
 // pub mod customer;
 pub mod product;
 
 // pub mod lineitem;
-pub mod order;
+// pub mod order;
 
 // pub use bakery::BakerySet;
 // pub use product::ProductSet;

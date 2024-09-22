@@ -10,9 +10,10 @@ use crate::prelude::Operations;
 use crate::table::Table;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
+use crate::traits::entity::Entity;
 use crate::traits::sql_chunk::SqlChunk;
 
-impl<T: DataSource> Table<T> {
+impl<T: DataSource, E: Entity> Table<T, E> {
     /// Adds a new field to the table. Note, that Field may use an alias
     pub fn add_field(&mut self, field_name: String, field: Field) {
         self.fields.insert(field_name, Arc::new(field));

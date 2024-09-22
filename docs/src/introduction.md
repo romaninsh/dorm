@@ -5,28 +5,72 @@ DORM is a busines entity abstraction framework for Rust.
 In Enterprise environment, software applications must be easy to maintain and change.
 Typical Rust applications require significant effort to maintain and change the logic,
 which makes Rust difficult to compete with languages such as Java, C# and Typescript.
+Additionally, existing ORM libraries are rigid and do not allow you to decouple your
+business logic from your database implementation detail.
 
-DORM will allow you to separate your entity abstraction from your business logic, making
-it easier to maintain and change your code. DORM also will make your code much more
-readable and easy to understand.
+DORM offers opinionated abstraction over SQL for a separation between your
+physical database and business logic. Such decoupling allows you to change
+either without affecting the other.
 
-In DORM, you will be able to define your business entities, then work with set of records
+DORM also introduces great syntax sugar making your Rust code readable and
+easy to understand. To achieve this, DORM comes with the following features:
+
+1. DataSet abstraction - like a Map, but Rows are stored remotely and only fetched when needed.
+2. Expressions - use a power of SQL without writing SQL.
+3. Query - a structured query-language aware object for any SQL statement.
+4. DataSources - a way to abstract away the database implementation.
+5. Table - your in-rust version of SQL table or a view
+6. Field - representing columns or arbitrary expressions in a data set.
+7. Entity modelin - a pattern for you to create your onw business entities.
+8. CRUD operations - serde-compatible insert, update and delete operations.
+9. Joins - combining tables into a single table.
+10. Reference traversal - convert a set of records into a set of related records.
+11. Subqueries - augment a table with expressions based on related tables.
+
+This book will guide you through the basics of DORM features and how to use them.
+
+## Example
+
+In this book, we will be using a fictional database for your typical Bakery business.
+Primarily we will be using `product`, `inventory`, `order` and `client` tables.
+
+With DORM, creating a function to notify clients about low stock, would look
 like this:
 
 ```rust
+fn notify_clients_of_low_stock() -> Result<()> {
+    // Start with all our products and inventory
+    let products = Products::table_with_inventory()
+        .add_condition(Products::stock().eq(0));
+
+    // Find clients who have product orders with low stock
+    let clients = products
+        .ref_order()
+        .ref_client();
+
+    // Drop clients into notification queue
+    for client_comm in cilents.get_email_comm().await? {
+        client_comm.type = ClientCommType::LowStock;
+
+        client_comm.save_into(ClientComm::queue()).await?;
+    }
+}
+```
+
 // Create a set of products with low inventory
 let out_of_stock_products = Products::new(postgres.clone())
-    .with_inventory()
-    .with_condition(Products::stock().lt(5));
+.with_inventory()
+.with_condition(Products::stock().lt(5));
 
 // Traverse into suppliers of a products with low inventory
 let suppliers = out_of_stock_products.ref_supplier();
 
 // Execute query and iterate over the result
 for supplier in suppliers.get().await.unwrap() {
-    order_more_stock(supplier.id());
+order_more_stock(supplier.id());
 }
-```
+
+````
 
 The example above demonstrates multiple DORM features together, specifically:
 
@@ -75,7 +119,7 @@ use dorm::prelude::*;
 let expr = expr!("concat({}, {})", "hello", "world");
 
 println!("{}", expr.preview());
-```
+````
 
 When expression is created, the template is stored separately from the arguments. This allows
 you to use arbitrary types as arguments and also use nested queries too:

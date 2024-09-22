@@ -1,76 +1,83 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, OnceLock},
-};
+use std::sync::{Arc, OnceLock};
 
-use crate::bakery::BakerySet;
+// use crate::bakery::BakerySet;
 use dorm::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::postgres;
 
-#[derive(Debug)]
-pub struct Products {
-    table: Table<Postgres>,
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct Product {
+    id: i64,
+    name: String,
 }
-impl Products {
-    pub fn new() -> Products {
-        Products {
-            table: Products::static_table().clone(),
-        }
-    }
-    pub fn from_table(table: Table<Postgres>) -> Self {
-        Self { table }
-    }
-    pub fn static_table() -> &'static Table<Postgres> {
-        static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+impl Entity for Product {}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct ProductInventory {
+    id: i64,
+    product_id: i64,
+    stock: i64,
+}
+impl Entity for ProductInventory {}
+
+impl Product {
+    pub fn static_table() -> &'static Table<Postgres, Product> {
+        static TABLE: OnceLock<Table<Postgres, Product>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new("product", postgres())
+            Table::new_with_entity("product", postgres())
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("bakery_id")
-                .has_one("bakery", "bakery_id", || BakerySet::new())
+            // .has_one("bakery", "bakery_id", || BakerySet::new())
         })
     }
-    pub fn table(&self) -> Table<Postgres> {
-        self.table.clone()
-    }
-    pub fn mod_table(self, func: impl FnOnce(Table<Postgres>) -> Table<Postgres>) -> Self {
-        let table = self.table.clone();
-        let table = func(table);
-        Self { table }
-    }
-    pub fn with_inventory(self) -> Self {
-        self.mod_table(|t| {
-            t.with_join(
-                Table::new("inventory", postgres())
-                    .with_alias("i")
-                    .with_id_field("product_id")
-                    .with_field("stock"),
-                "id",
-            )
-        })
-    }
-
-    pub fn id() -> Arc<Field> {
-        Products::static_table().get_field("id").unwrap()
-    }
-    pub fn name() -> Arc<Field> {
-        Products::static_table().get_field("name").unwrap()
-    }
-    pub fn bakery_id() -> Arc<Field> {
-        Products::static_table().get_field("bakery_id").unwrap()
-    }
-
-    pub fn stock(&self) -> Arc<Field> {
-        self.get_join("i").unwrap().get_field("stock").unwrap()
+    pub fn table() -> Table<Postgres, Product> {
+        Product::static_table().clone()
     }
 }
 
-impl Deref for Products {
-    type Target = Table<Postgres>;
+trait ProductTable: AnyTable {
+    fn with_inventory(self) -> Table<Postgres, Product>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.table
+    fn id(&self) -> &Arc<Field> {
+        self.get_field("id").unwrap()
+    }
+    fn name(&self) -> &Arc<Field> {
+        self.get_field("name").unwrap()
+    }
+    fn bakery_id(&self) -> &Arc<Field> {
+        self.get_field("bakery_id").unwrap()
+    }
+
+    // pub fn stock(&self) -> Arc<Field> {
+    //     self.get_join("i").unwrap().get_field("stock").unwrap()
+    // }
+}
+
+impl ProductTable for Table<Postgres, Product> {
+    fn with_inventory(self) -> Table<Postgres, Product> {
+        self.with_join(
+            Table::new_with_entity("inventory", postgres())
+                .with_alias("i")
+                .with_id_field("product_id")
+                .with_field("stock"),
+            "id",
+        )
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[tokio::test]
+//     async fn test_product() {
+//         let table = Product::table();
+//         let _field = table.name();
+
+//         let table = table.with_inventory();
+//         // let _field = table.stock();
+//     }
+// }

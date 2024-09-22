@@ -57,12 +57,12 @@ INSERT INTO client (name, contact_details, bakery_id) VALUES
 ('Doc Brown', '555-1885', 1),
 ('Biff Tannen', '555-1955', 1);
 
-INSERT INTO product (name, bakery_id) VALUES
-('Flux Capacitor Cupcake', 1),
-('DeLorean Doughnut', 1),
-('Time Traveler Tart', 1),
-('Enchantment Under the Sea Pie', 1),
-('Hoverboard Cookies', 1);
+INSERT INTO product (name, calories, bakery_id) VALUES
+('Flux Capacitor Cupcake', 300, 1),
+('DeLorean Doughnut', 250, 1),
+('Time Traveler Tart', 200, 1),
+('Enchantment Under the Sea Pie', 350, 1),
+('Hoverboard Cookies', 150, 1);
 
 INSERT INTO inventory (product_id, stock) VALUES
 (1, 50),

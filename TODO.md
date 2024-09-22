@@ -1,6 +1,6 @@
 MVP:
 
-0.1.0: Query Building
+0.0.1: Query Building
 
 - [x] create a basic query type
 - [x] have query ability to render into a SQL query
@@ -15,7 +15,7 @@ MVP:
 - [x] implement operations: (field.eq(otherfield))
 - [x] implement parametric queries
 
-  0.2.0: Nested Query Building
+  0.0.2: Nested Query Building
 
 - [x] properly handle nested queries
 - [x] table should own DataSource, which should be cloneable and use Arc for client
@@ -26,7 +26,7 @@ MVP:
 - [x] implemented TableDelegate trait
 - [x] implemented Query::add_join()
 
-  0.3.0: Table Structure
+  0.0.3: Table Structure
 
 - [x] add uniq id vendor
 - [x] implemented Table::join_table() for merging tables
@@ -36,9 +36,18 @@ MVP:
 - [x] When joining table, combine their UniqueIdVendors into one
 - [x] Implement has_one and has_many in a lazy way
 - [x] Implement expressions in a lazy way
+- [x] Implemented bakery example
 
-  0.4.0: Features for multiple table queries
+  0.0.4: Improve Entity tracking and add target documentation
 
+- [x] Add documentation for target vision of the library
+- [x] Add "Entity" concept into Table
+- [x] Add example on how to use traits for augmenting Table of specific Entity
+- [ ] Check on "Join", they should allow for Entity mutation (joined table associated with a different entity)
+- [ ] Implement has_one and has_many in a correct way, moving functionality to Related Reference
+- [ ] Implement Unrelated Reference (when ref leads to a table with different Data Source)
+- [ ] Implement a better data fetching mechanism, using default entity
+- [ ] Restore functionality of bakery example
 - [ ] Implement ability to include sub-queries based on related tables
 
 Create integration test-suite for SQL testing
@@ -47,8 +56,8 @@ Create integration test-suite for SQL testing
 - [x] Implement testcontainers postgres connectivity
 - [ ] Get rid of testcontainers (they don't work anyway), use regular Postgres
 - [ ] Create separate test-suite, connect DB etc
-- [ ] Populate Bakery tables for tests
-- [ ] Seed some data into Bakery tests
+- [x] Populate Bakery tables for tests
+- [x] Seed some data into Bakery tests
 - [ ] Make use of Postgres snapshots in the tests
 
 Control field queries

@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::query::Query;
 
-pub trait DataSource: Clone + Send + Sync + std::fmt::Debug {
+pub trait DataSource: Clone + Send + Sync + std::fmt::Debug + 'static {
     // Provided with an arbitrary query, fetch the results and return (Value = arbytrary )
     async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>>;
 

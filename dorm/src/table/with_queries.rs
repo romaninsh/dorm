@@ -10,8 +10,9 @@ use crate::query::{Query, QueryType};
 use crate::table::Table;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
+use crate::traits::entity::Entity;
 
-impl<T: DataSource> Table<T> {
+impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn get_empty_query(&self) -> Query {
         let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for condition in self.conditions.iter() {
