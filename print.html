@@ -1,0 +1,1868 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>DORM - The Dry ORM</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="1-table-and-fields.html"><strong aria-hidden="true">1.1.</strong> Table and Fields</a></li><li class="chapter-item expanded "><a href="2-expressions-and-queries.html"><strong aria-hidden="true">1.2.</strong> Expressions and Queries</a></li><li class="chapter-item expanded "><a href="3-fields-and-operations.html"><strong aria-hidden="true">1.3.</strong> Fields and Operations</a></li><li class="chapter-item expanded "><a href="4-conditions.html"><strong aria-hidden="true">1.4.</strong> Conditions</a></li><li class="chapter-item expanded "><a href="5-entity-model.html"><strong aria-hidden="true">1.5.</strong> Entity Model</a></li><li class="chapter-item expanded "><a href="6-joins.html"><strong aria-hidden="true">1.6.</strong> Joins</a></li><li class="chapter-item expanded "><a href="7-fetching-data.html"><strong aria-hidden="true">1.7.</strong> Fetching Data</a></li><li class="chapter-item expanded "><a href="8-struct-entities.html"><strong aria-hidden="true">1.8.</strong> Struct Entities</a></li><li class="chapter-item expanded "><a href="9-associated-entities.html"><strong aria-hidden="true">1.9.</strong> Associated Entities</a></li><li class="chapter-item expanded "><a href="10-references.html"><strong aria-hidden="true">1.10.</strong> References</a></li><li class="chapter-item expanded "><a href="11-subquery-expressions.html"><strong aria-hidden="true">1.11.</strong> Subquery Expressions</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p>DORM is a busines entity abstraction framework for Rust.</p>
+<p>In Enterprise environment, software applications must be easy to maintain and change.
+Typical Rust applications require significant effort to maintain and change the logic,
+which makes Rust difficult to compete with languages such as Java, C# and Typescript.
+Additionally, existing ORM libraries are rigid and do not allow you to decouple your
+business logic from your database implementation detail.</p>
+<p>DORM offers opinionated abstraction over SQL for a separation between your
+physical database and business logic. Such decoupling allows you to change
+either without affecting the other.</p>
+<p>DORM also introduces great syntax sugar making your Rust code readable and
+easy to understand. To achieve this, DORM comes with the following features:</p>
+<ol>
+<li>DataSet abstraction - like a Map, but Rows are stored remotely and only fetched when needed.</li>
+<li>Expressions - use a power of SQL without writing SQL.</li>
+<li>Query - a structured query-language aware object for any SQL statement.</li>
+<li>DataSources - a way to abstract away the database implementation.</li>
+<li>Table - your in-rust version of SQL table or a view</li>
+<li>Field - representing columns or arbitrary expressions in a data set.</li>
+<li>Entity modelin - a pattern for you to create your onw business entities.</li>
+<li>CRUD operations - serde-compatible insert, update and delete operations.</li>
+<li>Joins - combining tables into a single table.</li>
+<li>Reference traversal - convert a set of records into a set of related records.</li>
+<li>Subqueries - augment a table with expressions based on related tables.</li>
+</ol>
+<p>This book will guide you through the basics of DORM features and how to use them.</p>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<p>In this book, we will be using a fictional database for your typical Bakery business.
+Primarily we will be using <code>product</code>, <code>inventory</code>, <code>order</code> and <code>client</code> tables.</p>
+<p>With DORM, creating a function to notify clients about low stock, would look
+like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn notify_clients_of_low_stock() -&gt; Result&lt;()&gt; {
+    // Start with all our products and inventory
+    let products = Products::table_with_inventory()
+        .add_condition(Products::stock().eq(0));
+
+    // Find clients who have product orders with low stock
+    let clients = products
+        .ref_order()
+        .ref_client();
+
+    // Drop clients into notification queue
+    for client_comm in cilents.get_email_comm().await? {
+        client_comm.type = ClientCommType::LowStock;
+
+        client_comm.save_into(ClientComm::queue()).await?;
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>// Create a set of products with low inventory
+let out_of_stock_products = Products::new(postgres.clone())
+.with_inventory()
+.with_condition(Products::stock().lt(5));</p>
+<p>// Traverse into suppliers of a products with low inventory
+let suppliers = out_of_stock_products.ref_supplier();</p>
+<p>// Execute query and iterate over the result
+for supplier in suppliers.get().await.unwrap() {
+order_more_stock(supplier.id());
+}</p>
+<pre><code>
+The example above demonstrates multiple DORM features together, specifically:
+
+- Abstracting entity definition into custom types such as Products and Suppliers
+- Operating with abstract set of records, for example, out_of_stock_products is not fetched until much later
+- Using type-safe conditions and expressions to filter the data
+- Traversing relationships between sets of different entity types
+- Finally - hydrating (or fetching) the data from the database (or remote API) for processing
+
+To get you started with DORM, I will introduce you to all the concepts above one by one.
+
+## The Query Languages
+
+Traditionally ORM libraries simplify interaction with the database, reducing your powerful
+SQL database to a simple key-value store. DORM takes a different approach. It takes advantage
+of the SQL language to convert your Rust code into powerful SQL queries reducing number of
+queries your application would need to execute.
+
+DORM contains 3 layers of abstraction:
+
+1.  Expressions - a parametric template system with recursive rendering capabilities.
+2.  Query - a structured query-language aware object, that can be manipulated into any query.
+3.  DataSets and Models - native Rust structures for interactign with single or multiple records.
+
+Operations ond DataSets and Models are translated into SQL queries, which are then converted into
+expressions.
+
+To understand the basics of DORM, lets start with the fundamentals of expressions.
+
+## Expressions
+
+There are two base classes that Expressions are built around:
+
+- Expression - a full ownership expression, which parameters have type of Value.
+- ExpressionArc - a shared ownership expression, which parameters can be converted into Expression
+
+Expressions are short-lived - they are created, rendered and discarded. ExpressionArc can remain
+in memory for longer time and tie together various conditions, that may have shared ownership and
+can be modified from other parts of your application, such as quick-search field.
+
+Lets create an expression first:
+
+```rust
+use dorm::prelude::*;
+
+let expr = expr!("concat({}, {})", "hello", "world");
+
+println!("{}", expr.preview());
+</code></pre>
+<p>When expression is created, the template is stored separately from the arguments. This allows
+you to use arbitrary types as arguments and also use nested queries too:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expr = expr!(
+    "concat({}, {})",
+    expr!("upper({})", "hello"),
+    "world");
+
+let expr2 = expr!("{} + {}", 2, 3);
+<span class="boring">}</span></code></pre></pre>
+<p>Method <code>preview()</code> would insert the arguments into the template, but when actually executing the query, the inserting would be done by the database driver instead.</p>
+<p>JSON values are also natively supported. You may also implement <code>SqlChunk</code> trait for your own types
+to allow them to be used in expressions too.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expr = expr!("json = {}", json!({"name": "John", "age": 25}));
+<span class="boring">}</span></code></pre></pre>
+<p>For instance, you can use Operation for creating nested expressions:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// (name = 'John' AND age &gt; 25)
+let expr_and = Operation::and(vec![
+    expr!("name = {}", "John"),
+    expr!("age &gt; {}", 25)
+]);
+
+// concat('hello', 'world')
+let fx_call = Operation::fx("concat", vec![
+    expr!("hello"), expr!("world")
+]);
+<span class="boring">}</span></code></pre></pre>
+<p>Now that you understand that expression is a building block, lets move on to Query.</p>
+<h2 id="query"><a class="header" href="#query">Query</a></h2>
+<p>Query is a way to dynamically build query:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let query = Query::new()
+    .set_table("users")
+    .add_column_field("id")
+    .add_column_field("email")
+    .add_column("full_name", Some(expr!("concat(first_name, ' ', last_name)")))
+    .add_where(expr!("age &gt; {}", 18))
+    .add_order_by(expr!("full_name"))
+<span class="boring">}</span></code></pre></pre>
+<p>Note: Query (and several other structures) use standard rust builder pattern. Methods such
+as add_column_field do not modify the object, but consume old object and retur new one.</p>
+<p>Since Query is built with Expressions, which are recrursive by design, Queries can often be nested:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let roles = Query::new()
+    .set_table("roles")
+    .add_column_field("id")
+    .add_column_field("role_name");
+
+let outer_query = Query::new()
+    .set_table("users")
+    .add_with("roles", roles)
+    .add_join(JoinQuery::new(
+        JoinType::Inner,
+        QuerySource::Table("roles".to_string(), None),
+        QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
+    ))
+    .add_column_field("user_name")
+    .add_column_field("roles.role_name");
+
+let group = Query::new()
+    .set_source(QuerySource::Query(outer_query))
+    .add_column_field("role_name")
+    .add_column_field("c", Operation::count("*"))
+    .add_group_by("role_name");
+<span class="boring">}</span></code></pre></pre>
+<p>Query cannot execute itself, but a friendly DataSource can execute your query for you:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// client is a tokio-postgres client
+let postgres = Postgres::new(Arc::new(Box::new(client)));
+
+let result = postgres.select_rows(&amp;group).await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>You also have some flexibility here - Query (assumes SQL query) can be executed by Postgres DataSource or MySQL DataSource. However - there may also be GQuery (assumes GQL) that could
+have unique implementaiton and it would need an appropriate DataSource to be executed.</p>
+<p>Result will contain Vec<Value>, where Value will be a Value::Hashmap with keys being column names,
+however for a different databases the Value could be different.</p>
+<h2 id="datasets-and-models"><a class="header" href="#datasets-and-models">DataSets and Models</a></h2>
+<p>The final layer of DORM is DataSets (and Models). DataSet represents a collection of records, while
+a Model represents a single record.</p>
+<p>Model is merely a simple rust Struct that implements Serialise and Deserialise traits, however
+before you can use a Model you will need to declare a DataSet.</p>
+<p>A simplest DataSet implementation is offered by Table:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let products = Table::new("product", postgres.clone())
+    .add_field("name")
+    .add_field("description")
+    .add_field("default_price")
+<span class="boring">}</span></code></pre></pre>
+<p>Note: current version of DORM does not support field types, however this is something that will
+be added in later.</p>
+<p>You can create clone of a table and tweak things up:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expensive_products = products.clone()
+    .add_condition(products.get_field("default_price")?.gt(100));
+<span class="boring">}</span></code></pre></pre>
+<p>Note: <code>products.get_field()</code> returns Option<Field> and can be used to build expressions. Because
+the field you specify may not exist, you need to use <code>?</code> or <code>unwrap()</code>. Typically this is hidden
+behind explicit methods of a custom struct.</p>
+<p>Declaring Set Struct that corresponds to your business models is a great way to keep your code
+clean and embedd some business logic:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ProductSet {
+    table: Table&lt;Postgres&gt;,
+}
+impl ProductSet {
+    pub fn new(ds: Postgres) -&gt; Self {
+        let table = Table::new("product", ds)
+            .add_field("name")
+            .add_field("description")
+            .add_field("default_price");
+        Self { table }
+    }
+
+    pub fn name(&amp;self) -&gt; &amp;Field {
+        self.get_field("name").unwrap()
+    }
+
+    pub fn description(&amp;self) -&gt; &amp;Field {
+        self.get_field("description").unwrap()
+    }
+
+    pub fn price(&amp;self) -&gt; &amp;Field {
+        self.get_field("default_price").unwrap()
+    }
+}
+
+pub struct ExpensiveProductSet {
+    table: Table&lt;Postgres&gt;,
+    price_threshold: Value::Integer,
+}
+impl ExpensiveProductSet {
+    pub fn new(ds: Postgres, price_threshold: Value::Integer) -&gt; Self {
+        let table = ProductSet::new(ds);
+        let table = table
+            .add_condition(table.default_price().gt(price_threshold));
+        Self { table, price_threshold }
+    }
+
+    pub fn name(&amp;self) -&gt; &amp;Field {
+        self.get_field("name").unwrap()
+    }
+
+    pub fn description(&amp;self) -&gt; &amp;Field {
+        self.get_field("description").unwrap()
+    }
+
+    pub fn price(&amp;self) -&gt; &amp;Field {
+        self.get_field("default_price").unwrap()
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Note: at some point there should be a macro for unrolling field methods. Now that you
+have defined your sets, you can easily work with them:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product_data = ProductSet::new(postgres.clone()).get().await.unwrap(); // Vec&lt;Value&gt;
+
+let expensive_sum = ExpensiveProductSet::new(postgres.clone(),100)
+    .sum("default_price")
+    .await
+    .unwrap(); // Value::Integer
+<span class="boring">}</span></code></pre></pre>
+<p>Finally, lets see how you can work with Models:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+pub struct Product {
+    pub name: String,
+    pub description: String,
+    pub default_price: i32,
+}
+
+// Increase our expensive prices a little
+ExpensiveProductSet::new(postgres.clone(),100)
+    .map::&lt;Product&gt;(|p|p.default_price += 10)
+    .await
+    .unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="relations-and-nested-models"><a class="header" href="#relations-and-nested-models">Relations and Nested Models</a></h2>
+<p>The rest of DSQL is designed to help you map your business logic into models. For instance, you
+may want to join several tables.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let basket_items = Table::new("basket_item", postgres.clone())
+    .add_field("basket_id")
+    .add_field("product_id")
+    .add_field("quantity");
+
+let basket_items = basket_items.add_join(ProductSet::new(postgres.clone()), "product_id", "id");
+<span class="boring">}</span></code></pre></pre>
+<p>You can also declare a relation between tables, rather then joining them:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let basket_items = basket_items.has_one(
+    "basket",
+    Table::new("basket", postgres.clone()).add_field("date"),
+    "basket_id",
+    "id");
+<span class="boring">}</span></code></pre></pre>
+<p>Relationship does not have any impact on the generated query, but you can easily join it or
+import fields.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let basket_items_subselect = basket_items
+    .clone();
+
+let basket_items_subselect = basket_items_subselect
+    .add_field_expr("basket_date", basket_items_subselect.get_ref("basket")?.get_field("date")?)
+// (select date from basket where basket.id = basket_id) as basket_date
+
+
+let basket_items_join = basket_items
+    .clone()
+    .join_ref("basket");
+
+let basket_items_join = basket_items_join
+    .add_field_expr("basket_date", basket_items_join.get_join("basket")?.get_field("date")?)
+// select basket.date as basket_date ... join basket on basket.id = basket_id
+<span class="boring">}</span></code></pre></pre>
+<p>Of course, once you wrap this into your custom Structs it becomes very beautiful and usable:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct BasketSet {
+    table: Table&lt;Postgres&gt;,
+}
+impl BasketSet {
+    pub fn new(ds: Postgres) -&gt; Self {
+        let table = Table::new("basket", ds.clone())
+            .add_field("date")
+            .add_field_id("id")
+
+            .has_many_cb("items", ||BasketItemSet::new(ds.clone()), "id", "basket_id")
+            .add_field_cb("item_count", |t|t.ref_items().count())
+            .add_field_cb("total", |t|t.ref_items().total_price())
+
+            .add_cb_field("items", |t|t.ref_items())
+        ;
+        Self { table }
+    }
+
+    pub fn date(&amp;self) -&gt; &amp;Field {
+        self.get_field("date").unwrap()
+    }
+
+    pub fn ref_items(&amp;self) -&gt; &amp;BasketItemSet {
+        self.get_ref("items").unwrap()
+    }
+
+    pub fn items(&amp;self) -&gt; &amp;Field {
+        self.ref_field("items").unwrap()
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>and BasketItem:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct BasketItemSet {
+    table: Table&lt;Postgres&gt;,
+}
+impl BasketItemSet {
+    pub fn new(ds: Postgres) -&gt; Self {
+        let table = Table::new("basket_item", ds.clone())
+            .add_field("basket_id")
+            .add_field("product_id")
+            .add_field("quantity")
+            .has_one_cb("basket", ||BasketSet::new(ds.clone()), "basket_id", "id")
+            .has_one_cb("product", ||ProductSet::new(ds.clone()), "product_id", "id")
+
+            // Add some optional fields
+            .add_field_cb("basket_date", |t|t.ref_basket().date())
+            .add_field_cb("default_price", |t|t.ref_product().default_price());
+            .add_field_cb("total_price", |t|expr!(
+                "{} * {}",
+                t.quantity(),
+                t.ref_product().default_price()
+            ));
+        Self { table }
+    }
+
+    pub fn basket_id(&amp;self) -&gt; &amp;Field {
+        self.get_field("basket_id").unwrap()
+    }
+
+    pub fn product_id(&amp;self) -&gt; &amp;Field {
+        self.get_field("product_id").unwrap()
+    }
+
+    pub fn quantity(&amp;self) -&gt; &amp;Field {
+        self.get_field("quantity").unwrap()
+    }
+    pub fn total_price(&amp;self) -&gt; &amp;Field {
+        self.get_field("total_price").unwrap()
+    }
+
+    pub fn ref_basket(&amp;self) -&gt; &amp;BasketSet {
+        self.get_ref("basket").unwrap()
+    }
+    pub fn ref_product(&amp;self) -&gt; &amp;ProductSet {
+        self.get_ref("product").unwrap()
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Finally, putting this all together, here is a beautiful example of using a single select to
+calculate basket total price.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+struct Basket {
+    item_count: i32,
+    total: i32,
+}
+
+let my_basket = BasketSet::new(postgres.clone())
+    .load(123)
+    .into::&lt;Basket&gt;();
+
+println!("Basket total: {} for {} items", my_basket.total_price, my_basket.item_count);
+<span class="boring">}</span></code></pre></pre>
+<h2 id="callback-joins-and-fields"><a class="header" href="#callback-joins-and-fields">Callback joins and fields</a></h2>
+<p>In some cases, it makes sense to define your data set as a join between several tables. When you
+are performing a join, it will collect the fields from both tables together (even if they already
+have made some joins before).</p>
+<p>In other cases, you would want a join to be optional. This can only be done with a LEFT join,
+because any other join would affect number of columns returned with/without, but a LEFT join is
+fully optional (as long as it matches into unique field).</p>
+<p>You may also define some callback fields. This is good for some complex calculations, that you
+wouldn't want to always happen like with the <code>total</code> and <code>item_count</code>.</p>
+<p>DORM relies on the entity you pass in and it's deserialization details to infer which fields
+you want to load:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+struct BasketDate {
+    date: Date,
+}
+
+let my_basket_totals = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::&lt;Basket&gt;();
+
+let my_basket_date = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::&lt;BasketDate&gt;();
+
+<span class="boring">}</span></code></pre></pre>
+<p>DataSet's into() function will determine which fields to load based on the type you are converting
+into and the line above <code>with_id(123)</code> will infer the conditoin for loading the record. The code
+above will generate 2 different queries - one for the totals and another for the date.</p>
+<p>You may use as many different Structs as you want, there is no explicit bindings a transient
+Model struct and the DataSet.</p>
+<h2 id="nested-data-structures"><a class="header" href="#nested-data-structures">Nested data structures</a></h2>
+<p><code>Table::add_field_cb</code> is a powerful tool to implement various kinds of fields. Field may define a
+component of a Query , so when DORM is fetching Model data it would amend the query in anticipation,
+alternatively it may result in another DataSet.</p>
+<p>If DataSet is returned and it cannot be easily incorporated into the main query, DORM will perform
+a separate query to fill in the result:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+struct BasketItems {
+    date: Date,
+    items: Vec&lt;BasketItem&gt;,
+}
+
+let my_basket_items = BasketSet::new(postgres.clone())
+    .with_id(123)
+    .into::&lt;BasketItems&gt;();
+<span class="boring">}</span></code></pre></pre>
+<p>In this case DORM will look into the <code>items</code> field, which is a callback and returns a
+BasketItemSet. To fill in the Vec of basket items, additional query will be performed.</p>
+<p>I want also to point out that the ref_items() will produce a secondary DataSet which
+has the same DataSource.</p>
+<p>If the DataSource is identical (cloned Arc of the same instance), that means we are
+querying from the same database. But potentially the related DataSet could be linked
+to a different DataSource.</p>
+<p>This powerful abstraction makes it possible for a model to fetch data from multiple
+physical databases, sources or APIs and combine them seamlessly.</p>
+<h2 id="deleting-inserting-or-updating-items"><a class="header" href="#deleting-inserting-or-updating-items">Deleting, Inserting or Updating items</a></h2>
+<p>So far we have been using a pretty bare-bones structures for a model. We are able to
+load data into a struct. There are also ways to store data or delete rows.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>BasketSet::new(postgres.clone())
+    .with_id(123)
+    .delete();
+
+let new_basket_id = BasketSet::new(postgres.clone())
+    .insert(my_basket_items);
+<span class="boring">}</span></code></pre></pre>
+<p>Methods <code>delete()</code> and <code>insert()</code> are can be added to your DataSet structure by a macro but
+would look like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl BasketSet {
+    pub fn delete(&amp;self) {
+        self.table.delete();
+    }
+
+    pub fn insert(&amp;self, item: impl Serialise) -&gt; Value {
+        self.table.insert(item)
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Method <code>update()</code> is also there, but you must not forget to specify <code>with_id()</code> before using it,
+otherwise it may affect multiple rows.</p>
+<p>Note: See also a map() method that can be used to individually update multiple rows in a DataSet.
+It is an expensive operation though, and will result in multiple updates.</p>
+<p>This brings us to the need of having a primary key inside Models.</p>
+<h2 id="persistence-aware-models"><a class="header" href="#persistence-aware-models">Persistence-aware Models</a></h2>
+<p>A pesistence-awer model has a field refering to it's data source and a key. This makes
+it easier for developer to load a record, modify and then store it back.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize)]
+#[dorm_model]
+pub struct Basket {
+    // _ds: (DataSource, id)
+    date: Date,
+    item_count: Option&lt;i32&gt;,
+    total: Option&lt;i32&gt;,
+    items: Vec&lt;BasketItem&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The <code>_ds</code> field is a special field that is used to store the DataSource, key and an initial
+values of the record from the database.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut my_basket = Basket::load(BasketSet::new(ds.clone()), basket_id);
+
+my_basket.date = Date::now();
+my_basket.items.push(new_item);
+let res = my_basket.save().await;
+<span class="boring">}</span></code></pre></pre>
+<p>When record is being saved back, only the fields you have modified will be updated. Additionally
+the data can only be saved into the original DataSet, if you modify some essential fields, that
+would make it go outside of the DataSet, this will result in an error:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut my_basket = Basket::load(BasketSet::new(ds.clone()), basket_id);
+
+my_basket.shipped = true;
+let res = my_basket.save_into(ShippedBasketSet::new(ds.clone())).await;
+<span class="boring">}</span></code></pre></pre>
+<p>This provides an essential guardrails for business application to avoid accidental logical errors.</p>
+<h2 id="validation-and-sanitization"><a class="header" href="#validation-and-sanitization">Validation and Sanitization</a></h2>
+<p>DORM does not offer a way for validation and sanitization of the data, but we recommend using
+"nutype". Make sure that Serde is able to serialize your data structure and it will work fine
+with DORM.</p>
+<h2 id="making-dataset-static"><a class="header" href="#making-dataset-static">Making DataSet static</a></h2>
+<p>You may see a problem with this code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expensive_products = ProductSet::new(postgres.clone());
+let expensive_products = expensive_products
+    .add_condition(expensive_products.default_price().gt(100));
+<span class="boring">}</span></code></pre></pre>
+<p>The problem here is that add_condition takes <code>self</code> and this does not allow default_price() to
+be borrow same object. This is a common problem with Rust. There are two ways to solve it.</p>
+<p>First lets create condition in a temporary variable:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expensive_products = ProductSet::new(postgres.clone());
+let condition = expensive_products.default_price().gt(100);
+let expensive_products = expensive_products
+    .add_condition(condition);
+<span class="boring">}</span></code></pre></pre>
+<p>This works now fine, but code readability suffers a lot. Let me show you a better way, that
+also speeds things up a little. This relies on Lazy Statics.</p>
+<p>First, lets rebuild our ProductSet to be static:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::OnceLock;
+use dorm::prelude::*;
+use crate::postgres;
+
+pub struct ProductSet {
+    table: Table&lt;Postgres&gt;,
+}
+
+impl ProductSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        ProductSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        let table = TABLE.get_or_init(|| {
+            Table::new("product", ds)
+                .add_field("name")
+                .add_field("description")
+                .add_field("default_price");
+        });
+
+        table
+    }
+    pub fn name() -&gt; &amp;'static Field {
+        ProductSet::table().get_field("name")
+    }
+    pub fn profit_margin() -&gt; &amp;'static Field {
+        ProductSet::table().get_field("profit_margin")
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>This implementation allows us to use ProducSet::name() without creating a new instance of
+ProductSet. Next lets look how <code>fn main()</code> needs to change to provide postgres() connection:</p>
+<pre><pre class="playground"><code class="language-rust">static POSTGRESS: OnceLock&lt;Postgres&gt; = OnceLock::new();
+
+pub fn postgres() -&gt; Postgres {
+    POSTGRESS
+        .get()
+        .expect("Postgres has not been initialized")
+        .clone()
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;()&gt; {
+    let (client, connection) = tokio_postgres::connect("host=localhost dbname=postgres", NoTls)
+        .await
+        .context("Failed to connect to Postgres")?;
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    POSTGRESS
+        .set(Postgres::new(Arc::new(Box::new(client))))
+        .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))?;
+}</code></pre></pre>
+<p>Finally - here is the code to create expensive product set once again:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expensive_products = ProductSet::new().add_condition(ProductSet::default_price().gt(100));
+<span class="boring">}</span></code></pre></pre>
+<p>In fact you can move that into a method of a ProductSet:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl ProductSet {
+    pub fn expensive() -&gt; Table&lt;Postgres&gt; {
+        ProductSet::new().add_condition(ProductSet::default_price().gt(100))
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>And your code will look like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expensive_products = ProductSet::expensive();
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="table-and-fields"><a class="header" href="#table-and-fields">Table and Fields</a></h1>
+<p>In DORM, you define your business entities by creating a Table. A Table is associated with a
+physical DataSource and a table. Tables will also contain Fields, Conditions, Joins etc.
+Lets start with a simple example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use dorm::prelude::*;
+
+let products = Table::new("product", postgres.clone())
+    .with_field("name")
+    .with_field("description")
+    .with_field("default_price");
+<span class="boring">}</span></code></pre></pre>
+<p>Tables are created by calling <code>Table::new()</code> and passing it a table name and a DataSource.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let products = Table::new("product", postgres.clone())
+<span class="boring">}</span></code></pre></pre>
+<p>The following invocations to <code>with_field()</code> are going to replace your "table" instance
+with a new one. Our original code is equivalent to:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let products = products.with_field("name");
+let products = products.with_field("description");
+let products = products.with_field("default_price");
+<span class="boring">}</span></code></pre></pre>
+<p>If you prefer to mutate your table, you can use <code>add_field()</code> instead:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut products = Table::new("product", postgres.clone());
+products.add_field("name");
+products.add_field("description");
+products.add_field("default_price");
+<span class="boring">}</span></code></pre></pre>
+<p>You will see the above method chaining used quite often in DORM. In most cases both methods
+will have the identical arguments, but please check with the documentation.</p>
+<h2 id="datasource"><a class="header" href="#datasource">DataSource</a></h2>
+<p>One of the puproses of DORM is to convert your business logic into a set of queries. Because
+query languages differ between databases (such as Postgres, MySQL, SQLite, etc), DORM
+provides a DataSource abstraction. A DataSource is a trait that defines how to execute
+queries and fetch data.</p>
+<p>A DataSource for Postgress can be created like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let postgress_client = tokio_postgres::connect("host=localhost dbname=postgres", NoTls)
+    .await
+    .context("Failed to connect to Postgres")?;
+
+let postgres = Postgres::new(Arc::new(Box::new(postgress_client)));
+<span class="boring">}</span></code></pre></pre>
+<p>When you create a Table, you pass it a clone of your DataSource. You may use different
+DataSources for different tables and DORM will make to execute queries correctly even
+if you are traversing relationships between different DataSources.</p>
+<h2 id="what-exactly-is-a-field"><a class="header" href="#what-exactly-is-a-field">What exactly is a Field?</a></h2>
+<p>In the example above, we used a pretty generic method to create a field.
+In reality, DORM has a very loose definition of what a field is. Lets look at SQL first:</p>
+<pre><code class="language-sql">SELECT id, CONCAT(first_name, ' ', last_name) AS full_name, father.name AS father_name
+FROM person
+JOIN father ON person.father_id = father.id
+</code></pre>
+<p>The above query will return table with 3 columns: id, full_name and father_name. From
+the DORM perspective, all three are valid fields.</p>
+<ul>
+<li>id: This is not only a field, but also a "id" field.</li>
+<li>full_name: This field is represented by a SQL expression.</li>
+<li>father_name: This field is imported from another table.</li>
+</ul>
+<p>Although the DORM code is a bit complex at this point, I'll still include
+it here. Don't worry if you don't understand it all yet, we'll get to
+learning about expressions and joins in later chapters.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let person = Table::new("person", postgres.clone())
+    .with_id_field("id")
+    .with_field("first_name")
+    .with_field("last_name")
+    .with_field("father_id");
+    .with_expression(
+        "full_name",
+        expr_arc!("CONCAT({}, ' ', {})",
+            &amp;person.get_field("first_name").unwrap(),
+            &amp;person.get_field("last_name").unwrap()
+        )
+    );
+
+let father = person.clone().with_alias("father");
+
+let person_with_father = person
+    .with_join("father", father, "father_id")
+    .unwrap();
+
+let query = person_with_father.get_select_query_for_field_names(&amp;["id", "full_name", "father_name"]);
+
+writeln!(query.preview());
+<span class="boring">}</span></code></pre></pre>
+<p>An important takeaway from this example is that we define table along
+with the fileds so that we could generate a query out of it. For now,
+lets simplify the example and talk about the query generation.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span>let person = Table::new("person", postgres.clone())
+    .with_field("id")
+    .with_field("first_name")
+    .with_field("last_name");
+
+let query = person.get_select_query();
+
+writeln!(query.preview());
+<span class="boring">}</span></code></pre></pre>
+<p>The result of this query should be:</p>
+<pre><code class="language-sql">SELECT id, first_name, last_name FROM person
+</code></pre>
+<p>So what is Query?</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="queries"><a class="header" href="#queries">Queries</a></h1>
+<p>In DORM, query is a dynamic representation of a SQL query. You already
+saw how to create a query in the previous chapter, but now we will
+learn how to create query from scratch.</p>
+<h2 id="expressions"><a class="header" href="#expressions">Expressions</a></h2>
+<p>Expression is a building block of a query as well as a template engine
+for your query parameters. Lets start with a simple example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expression = Expression::new(
+    "SELECT * FROM product WHERE name = {}",
+    vec![json!("DeLorian Doughnut")]);
+
+writeln!(expression.preview());
+<span class="boring">}</span></code></pre></pre>
+<p>The above expression will be rendered as:</p>
+<pre><code class="language-sql">SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+</code></pre>
+<p>Expressions do not know anything about the underlying database and
+they cannot execute themselves. Parameters you are passing, must be
+of type <code>serde_json::Value</code>.</p>
+<p>To simplify the process DORM offers you a <code>expr!</code> macro:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expression = expr!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
+<span class="boring">}</span></code></pre></pre>
+<p>The parameters to <code>expr!</code> macro can be any owned scalar types, as long
+as they can be converted to <code>serde_json::Value</code> using <code>serde_json::json!</code>.
+macro.</p>
+<p>While convenient, there is a significant limitation to Expressions -
+they cannot be nested. This is because Expression cannot render itself
+into a json::Value.</p>
+<p>To overcome this limitation, DORM offers a ExpressionArc type.</p>
+<h2 id="expression-arc"><a class="header" href="#expression-arc">Expression Arc</a></h2>
+<p>As the name implies, ExpressionAarc keeps its parameters inside an Arc
+and therefore parameters can be dynamic objects. Anything that implements
+<code>SqlChunk</code> trait can be used as a parameter.</p>
+<p>Naturally both <code>Expression</code> and <code>ExpressionArc</code> implement <code>SqlChunk</code>, but
+there are more types that implement <code>SqlChunk</code> trait and we will look
+at them later.</p>
+<p>ExpressionArc can be created through a <code>expr_arc!</code> macro:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expression = expr_arc!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
+writeln!(expression.preview());
+
+// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+<span class="boring">}</span></code></pre></pre>
+<p>You can now pass expresisons recursively:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let condition = expr_arc!("name = {}", "DeLorian Doughnut");
+let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
+writeln!(expression.preview());
+
+// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+<span class="boring">}</span></code></pre></pre>
+<p>You might have noticed, that nested expressions are not escaped, but
+rest assured, parameters are never inserted into the SQL query.
+Both Expression and ExpressionArc can cloned and passed around freely.</p>
+<h2 id="flattening-expressions"><a class="header" href="#flattening-expressions">Flattening Expressions</a></h2>
+<p>As you can see in the example above, <code>SqlChunk</code> can have many sub-objects.
+When we need to send off expression to the database, we need to flattern it.</p>
+<p><code>SqlChunk</code> trait has a <code>render_chunk()</code> method that will convert itself
+into a static <code>Expression</code> type:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let condition = expr_arc!("name = {}", "DeLorian Doughnut");
+let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
+let flattened = expression.render_chunk();
+
+dbg!(flattened.sql());
+dbg!(flattened.params());
+
+// renders into: SELECT * FROM product WHERE name = {}
+// params: [json!("DeLorian Doughnut")]
+<span class="boring">}</span></code></pre></pre>
+<p>In the example above, we used <code>render_chunk()</code> method on <code>ExpressionArc</code>
+to convert it into a static <code>Expression</code> type. Then sql() and params()
+methods can be called to get the final template and parameters. Template
+has correctly combined nested condition, while leaving parameter value
+separated.</p>
+<h2 id="how-query-uses-expressions-"><a class="header" href="#how-query-uses-expressions-">How Query uses Expressions ?</a></h2>
+<p>A query object is designed as a template engine. It contains maps
+of various columns, conditions, joins etc. Query implements <code>SqlChunk</code>
+and query itself can be contained inside expression or another query.</p>
+<p>Query implements wide range of "with_*" methods that can be used to
+manipulate the query. Lets create a query that will select all
+columns from "product" table, where name is "DeLorian Doughnut"
+and age is greater than 30:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let expr1 = expr!("name = {}", "John");
+let expr2 = expr!("age &gt; {}", 30);
+
+let query = Query::new()
+    .with_table("users", None)
+    .with_column_field("id")
+    .with_column_field("name")
+    .with_condition(expr1)
+    .with_condition(expr2);
+
+writeln!(query.preview());
+
+// renders into: SELECT id, name FROM users WHERE name = 'John' AND age &gt; 30
+<span class="boring">}</span></code></pre></pre>
+<p>Query does not know anything about the underlying database and therefore
+cannot execute itself. It can only be rendered into a template and
+parameters.</p>
+<p>Query is immutable calling <code>with_*</code> methods will take the ownership,
+modify and return a new instance, making it perfect for chaining.</p>
+<p>Methods like <code>with_condition</code> can accept any argument
+that implements <code>SqlChunk</code> trait, lets create another query,
+based on the one we had above:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// query is from example above
+let query2 = Query::new()
+    .with_table("orders", None)
+    .with_condition(expr_arc!("user_id in {}",
+        query
+            .clone()
+            .without_columns()
+            .with_column_field("id")
+    ));
+
+writeln!(query2.preview());
+
+// renders into: SELECT * FROM orders WHERE user_id in (SELECT id, name, age FROM users WHERE name = 'John' AND age &gt; 30)
+<span class="boring">}</span></code></pre></pre>
+<p>Importantly - the two parameters which were set (and then cloned)
+for the <code>query</code> are kept separate from a final query rendering and
+will be passed into DataSource separately. This ensures that
+SQL injection is never possible.</p>
+<p>Next, lets explore some other kinds of <code>SqlChunk</code> implementation,
+that are more intuitive to use over Expressions.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fields-and-operations"><a class="header" href="#fields-and-operations">Fields and Operations</a></h1>
+<p>Well, Query stores columns as a Map&lt;Arc&lt;Box<dyn Column>&gt;&gt;
+and there are several types that implement <code>Column</code> trait,
+but the simplest would be a <code>Field</code> type:</p>
+<p>To add a <code>Field</code> to your <code>Query</code> you can call <code>with_column_field</code>
+method:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let query = Query::new()
+    .with_table("product")
+    .with_column_field("name")
+<span class="boring">}</span></code></pre></pre>
+<p>Another type that implements <code>Column</code> trait is <code>Expression</code>. Lets
+modify our query by adding an expression by invoking <code>with_column</code> method.
+This method is more generic than "with_column_field" and will accept
+two arguments - a name of the column and a static <code>Column</code> object.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let person = person
+    .with_column("name_caps".to_string(), expr!("UPPER(name)"));
+<span class="boring">}</span></code></pre></pre>
+<p>If you call <code>preview()</code> on your query now, you should see this:</p>
+<pre><code class="language-sql">SELECT name, UPPER(name) AS name_caps FROM product
+</code></pre>
+<p>Query is not very long-lived. Once created, it can be executed,
+but that's it. More interesting for us - Table objects can
+convert themselves into a Query object.</p>
+<p>This is our <code>Table</code> object from earlier:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span>let product = Table::new("product", postgres.clone())
+    .with_field("id")
+    .with_field("name");
+<span class="boring">}</span></code></pre></pre>
+<p>You already know that <code>Table</code> can produce a <code>Query</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let query = product.get_select_query();
+writeln!(query.preview());
+
+// renders into: SELECT id, name FROM product
+<span class="boring">}</span></code></pre></pre>
+<p>There should be a way to add a "expression" to our query by
+defining it in our table, right?</p>
+<p>As it turns out, tables are quite lazy when it comes to expressions.
+They do not recognize them as fields, and instead will pop them
+into your "select_query" just at the last moment and only when
+you explicitly need that expresison field. This allows you to
+have wide range of expressions in your table and optimize select
+query automatically.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = product
+    .with_expression(
+        "name_caps",
+        |t| expr_arc!("UPPER({})", t.get_field("name").unwrap())
+    );
+<span class="boring">}</span></code></pre></pre>
+<p>You have probably noticed, that rather then hard-coding name in
+the expression, we are using <code>get_field</code> method. This method
+will return a &amp;Field object, which we can include in our
+ExpressionArc. Field implements <code>SqlChunk</code>, right?</p>
+<p>Executing <code>get_select_query()</code> will will not include <code>name_caps</code>
+by default. You can explicitly ask which fields you'd like to see
+by usign <code>with_select_query_for_field_names</code> method:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let query = product.get_select_query_for_field_names(&amp;["name", "name_caps"]);
+writeln!(query.preview());
+
+// renders into: SELECT name, UPPER(name) AS name_caps FROM product
+<span class="boring">}</span></code></pre></pre>
+<h2 id="operations"><a class="header" href="#operations">Operations</a></h2>
+<p>Relying ot an arbitrary expression macro sometimes is not very
+convenient. DORM offers an <code>Operations</code> trait, that can be used
+to generate some commonly used expressions:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = product
+    .with_expression(
+        "name_caps",
+        |t| t.get_field("name").unwrap().upper()
+    );
+<span class="boring">}</span></code></pre></pre>
+<p>Operations can also be used for generating conditions, lets
+look into that next.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="conditions"><a class="header" href="#conditions">Conditions</a></h1>
+<p>By default, when you create a <code>Table</code> object, it will represent
+a set of all rows in the table. Sometimes you want to filter
+the rows. Our <code>product</code> SQL table contains a <code>calories</code> column,
+so lets define it and use it for filtering:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = Table::new("product", postgres.clone())
+    .with_field("id")
+    .with_field("name")
+    .with_field("calories");
+
+let low_cal_products = product
+    .with_condition(
+        product
+            .get_field("calories")
+            .unwrap()
+            .lt(100)
+    );
+
+let query = low_cal_products.get_select_query();
+writeln!(query.preview());
+
+// renders into: SELECT id, name, calories FROM product WHERE (calories &lt; 100)
+<span class="boring">}</span></code></pre></pre>
+<p>Condition can be created from various other types, but the most
+convenient way is through the use of Operator.</p>
+<ol>
+<li>get_field returns a Option&lt;Arc<Field>&gt; object</li>
+<li>unwrap() as we know for sure field exists</li>
+<li>Arc<Field> implements Operator trait</li>
+<li>Operator::lt() returns a Condition object</li>
+<li>Condition implements SqlChunk, so it can be part of a query</li>
+</ol>
+<p>DORM capabilities allow you to be very flexible with defining
+your entities and we are just scratching the surface here.</p>
+<p>Before we continue, let me address one annoying bit here. So far
+each chapter we have been re-creating our <code>product</code> table.</p>
+<p>In the real world, you would typically have a pre-defined table
+structure, so that no matter how many times you need to operate
+with a <code>product</code> table, you can easily create it.</p>
+<p>DORM has a recommended pattern for generating tables and we
+will explore it next.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="entity-model"><a class="header" href="#entity-model">Entity Model</a></h1>
+<p>So we need to conveniently create a <code>product</code> table objects,
+but we don't want to re-populate all the fields and conditions
+every time.</p>
+<p>DORM recommends you to have a object called <code>Product</code> that
+would vend <code>Table</code> objects. We will place the code inside
+a <code>model</code> subfolder.</p>
+<p>While we are building our <code>Product</code> type, lets also create
+a static instance of our DataSource:</p>
+<p>inside your model/mod.rs:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use dorm::prelude::Postgres;
+
+pub mod products;
+pub use products::*;
+
+static POSTGRESS: OnceLock&lt;Postgres&gt; = OnceLock::new();
+
+pub fn set_postgres(postgres: Postgres) -&gt; Result&lt;()&gt; {
+    POSTGRESS
+        .set(postgres)
+        .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))
+}
+
+pub fn postgres() -&gt; Postgres {
+    POSTGRESS
+        .get()
+        .expect("Postgres has not been initialized")
+        .clone()
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Now you would need to call set_postgress() when your
+tokio_postgress client is ready and you can import and
+call postgress() from your models.</p>
+<p>Lets create file <code>models/products.rs</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use dorm::prelude::*;
+use crate::postgres;
+
+pub struct Product {}
+impl Product {
+    pub fn table() -&gt; Table&lt;Postgres&gt; {
+        Product::static_table().clone()
+    }
+    pub fn static_table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("product", postgres())
+                .with_id_field("id")
+                .with_field("name")
+        })
+    }
+
+    pub fn name() -&gt; Arc&lt;Field&gt; {
+        Product::static_table().get_field("name").unwrap()
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Now that you have created a Product type, we can reference
+it in your application like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use model;
+
+let products = model::Product::table();
+writeln!(products.get_select_query().preview());
+
+// renders into: SELECT id, name FROM product
+
+let low_cal_products = model::Product::table()
+    .with_condition(
+        model::Products::calories().lt(100)
+    );
+writeln!(low_cal_products.get_select_query().preview());
+
+// renders into: SELECT id, name, calories FROM product WHERE (calories &lt; 100)
+<span class="boring">}</span></code></pre></pre>
+<p>This is already much more portable, but we can do better.
+Add this to your <code>model/products.rs</code> and</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct LowCalProduct {}
+impl LowCalProduct {
+    pub fn table() -&gt; Table&lt;Postgres&gt; {
+        Product::table().with_condition(
+            Product::calories().lt(100)
+        )
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>You can addopt a different approach here, those are just
+a few recommendations. Later we will explore a way to
+create a dynamic business entity pattern, but now
+we will focus on something more fun - joins.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="joins"><a class="header" href="#joins">Joins</a></h1>
+<p>Join can happen between two tables with one-to-some(one) relationship.</p>
+<p>A good example for us is if we add a new table called <code>inventory</code> that
+joins <code>product</code> table:</p>
+<pre><code class="language-sql">CREATE TABLE inventory (
+    product_id SERIAL PRIMARY KEY,
+    stock INT DEFAULT NULL
+);
+</code></pre>
+<p>In this case, inventory does not particularly useful ol its own,
+so we can make it part of the Products type:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl Product {
+    pub fn table_with_inventory() -&gt; Self {
+        Product::table()
+            .with_alias("p")
+            .with_join(
+                Table::new("inventory", postgres())
+                    .with_alias("i")
+                    .with_id_field("product_id")
+                    .with_field("stock"),
+                "id",
+            )
+        }
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The beautiful syntax here is going to give you exactly
+what you expect:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let prod_inv = model::Product::table_with_inventory();
+writeln!(prod_inv.get_select_query().preview());
+
+// renders into: SELECT p.id, p.name, i.stock FROM product p LEFT JOIN inventory i ON (p.id = i.product_id)
+<span class="boring">}</span></code></pre></pre>
+<p>How is that possible? Well, DORM's "with_join" method will
+consume the table object that you pass and will move its
+fields into the original table. The joined table will be
+wrapped into a Join object and will instruct query builder
+to add join into your query.</p>
+<p>There are ways to create different kind of joins too, but
+api for that is not yet stable.</p>
+<p>As you will see later, DORM operates with joined tables
+just as good as with a single table.</p>
+<p>Now is probably a great time to look into DORMs capabilities
+of operating with your entities.</p>
+<p>So far we only used Table to create select queries, but
+we can in fact hydrate our entities with data from the
+database.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fetching-data"><a class="header" href="#fetching-data">Fetching Data</a></h1>
+<p>So far we were creating tables and were generating queries
+from them, but wouldn't it be great if we could fetch data
+directly from the table object?</p>
+<p>If you recall - our table is already associated with DataSource,
+but when we execute <code>get_select_query()</code> the resulting Query
+is not associated with any DataSource.</p>
+<p>There is a type called <code>AssociatedQuery</code> that can be produced
+by a table object and it has some beautiful methods to
+actually fetch data.</p>
+<p>Lets explore:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let low_cal_products = model::LowCalProduct::table();
+
+let count = low_cal_products.count().get_one().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Table::count() is a method that returns a query for counting
+rows in a table. Because our LowCalProducts contains a
+condition, this will return a count of rows that match
+the condition.</p>
+<p>You could use count().preview() still to confirm,
+that DORM won't attept to fetch all records and iterate
+over them, but instead will use a SUM() function to count rows:</p>
+<pre><code class="language-sql">SELECT COUNT(*) FROM "product" WHERE "calories" &lt;= 100
+</code></pre>
+<p>Calling <code>get_one</code> will instead allow us to fetch the value
+directly into a variable. We do not know what type our query
+would produce, so get_one() returns json::Value and you can
+use "as_i64" to cast it into a numeric type:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let count = model::LowCalProduct::table()
+    .count()
+    .get_one()
+    .await?
+    .as_i64()?
+<span class="boring">}</span></code></pre></pre>
+<p>Previously I was using unwrap() and now I am using "?" to unwrap.
+This is because previously our code was certain that a field
+woudl exist, since we added it ourselves, but with .get_one()
+we are not sure about the response. Perhaps query execution
+would fail, so we need a proper error handling.</p>
+<p>Lets explore another method:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let total_calories = model::LowCalProduct::new()
+    .sum(model::Product::calories())
+    .get_one()
+    .await?
+    .as_i64()?
+<span class="boring">}</span></code></pre></pre>
+<p>Here we are passing a Column object to the sum() method.</p>
+<p>Some of those methods will be useful for us later, but for now
+lets look at the way to fetch data from a table:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>for product in model::LowCalProduct::table().get_all_data().await? {
+    println!("{} ({} kcal)", product["name"]?, product["calories"]?);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Next we will look at how to use power of Deserialize trait
+of your custom type.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="struct-entities"><a class="header" href="#struct-entities">Struct Entities</a></h1>
+<p>So far we have defined our Product type without any fields.
+Lets add some fields to it:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize, Clone)]
+pub struct Product {
+    id: Option&lt;i64&gt;,
+    name: String,
+    calories: i64,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>You can now use get<Product>() to fetch data from the database
+much more conveniently:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>for product in model::LowCalProduct::table().get&lt;Product&gt;().await? {
+    println!("{} ({} kcal)", product.name, product.calories);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>There is now your type safety. You also can see that we can
+use any type that implements Serialize and Deserialize traits
+in get() method.</p>
+<p>However, now that we have implemented a struct for our entity,
+we can start modifying our data. Check this code out:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::LowCalProduct::table().map&lt;Product&gt;(|product| async move {
+    product.calorues += 1;
+})().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>This allows you to iterate over your data as you did before,
+but map() will also store data back to the database. You
+just need to remember to have <code>id</code> field in your struct. Here
+is what happens:</p>
+<ol>
+<li>DORM determines the type of your struct (Product)</li>
+<li>DORM will fetch row from a query that includes your condition</li>
+<li>DORM will deserialize the row into your struct</li>
+<li>DORM will call your closure</li>
+<li>DORM will serialize your struct back to a row</li>
+<li>DORM will replace row in the database with the new values</li>
+</ol>
+<p>The map() method does not know if you have changed struct, so
+it will always try to execute "REPLACE" query and based on
+your unique id field, it should rewrite the row.</p>
+<p>You can also use insert() method on your table to add a new
+row to the database:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::Product::table().insert(Product {
+    id: None,
+    name: "New Product".to_string(),
+    calories: 100,
+})
+.await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Deleting is also possible, but you need to be careful. delete_all()
+method will remove all rows.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::LowCalProduct::table().delete_all().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>If you want to delete a specific row, you can set a condition:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::Product::table().with_id(1).delete_all();
+<span class="boring">}</span></code></pre></pre>
+<p>Although a more convenient method delete() exists too:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::Product::table().delete(1).await?;
+<span class="boring">}</span></code></pre></pre>
+<p>I should probably mention, that delete() method will not
+affect rows in a table, which do not match the condition:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>model::LowCalProduct::table().delete(4).await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Here a row with id=4 will only be deleted if calories is
+less than 100 for this row.</p>
+<p>This will be useful for us later.</p>
+<p>Next I want to tell you about associated entities.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="associated-entities"><a class="header" href="#associated-entities">Associated Entities</a></h1>
+<p>Do you remember how we used Query type only to discover that
+there is also AssociatedQuery type?</p>
+<p>Well, in the last chapter we used our custom entity type
+Product and now it turns out you can have an associated
+entity type too.</p>
+<p>AssociatedEntity<T> is the way how your entity can remain
+linked to the Table object. To save you from headache of
+object lifetimes, it will actually contain a clone of a
+table as well as ID field. Therefore your type will
+no longer need an "id" field.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize, Clone)]
+pub struct Product {
+    name: String,
+    calories: i64,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Now when we deal with associated entities, we load() and save()
+them:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = model::Product::table().load&lt;Product&gt;(4).await?;
+
+product.calories = 56;
+product.save().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>AssociatedEntity derefs itself so that you can still access
+the fields. Additionally the following methods are added:</p>
+<ul>
+<li>reload() - reload entity from the database</li>
+<li>id() - return id of the entity</li>
+<li>delete() - delete the entity from the database</li>
+<li>save() - saves the entity to the database</li>
+<li>save_into() - saves entity into a different table</li>
+</ul>
+<p>Here is example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if let Some(product) = model::LowCalProduct::table().load_any::&lt;Product&gt;().await? {
+    writeln!("Low-cal Product {} has {} calories", product.name, product.calories);
+    product.calories += 100; // no londer LowCalProduct
+
+    // product.save().await?; // will Err because of condition
+    product.save_into(model::Product::table()).await?;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>It should no longer be a surprise to you that you can do the exactly same
+stuff with a table which relies on Join:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span>struct ProductInventory {
+    name: String,
+    stock: i64,
+}
+
+if let Some(product) = model::Product::with_inventory().load::&lt;ProductInventory&gt;(4).await? {
+    writeln!("Product {} has {} items in stock", product.name, product.stock);
+    if product.stock &gt; 0 {
+        product.stock -= 1;
+        product.save().await?;
+    } else {
+        product.delete().await?;
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>DORM will automatically understand, which fields you have changed (stock)
+and will only update those fields. DORM will also delete the row from
+both "product" and "inventory" tables if stock is 0.</p>
+<p>Your code remains intuitive, while DORM takes care of the rest, but
+lets make the code even better:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>
+<span class="boring">fn main() {
+</span>impl AssociatedEntity&lt;ProductInventory&gt; {
+    pub async fn sell(self, qty: i64) -&gt; Result&lt;()&gt; {
+        if qty &gt; self.stock {
+            return Err(anyhow::anyhow!("Not enough items in stock"));
+        }
+        self.stock -= qty;
+        if self.stock == 0 {
+            self.delete().await?;
+        } else {
+            self.save().await?;
+        }
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Now you can use your method like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = model::Product::with_inventory().load::&lt;ProductInventory&gt;(4).await?;
+product.sell(10).await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Rust never looked so good!</p>
+<p>But hey, that's not all. DORM also supports associations between two tables.
+Keep reading!</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="references"><a class="header" href="#references">References</a></h1>
+<p>DORM allows you to connect tables together. Lets create two new tables
+in addition to "Product" that we have already:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Order {
+    product: Product,
+    client: Client,
+}
+
+struct Client {
+    name: String,
+    contact_details: String,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The definition of the tables would be just like in chapter 5-Entity Model, however
+we will use "has_one" and "has_many" methods:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl Product {
+    pub fn static_table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("product", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .has_many("orders", "product_id", || Order::table())
+        })
+    }
+}
+
+
+impl Order {
+    pub fn static_table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("order", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .has_one("client", "client_id", || Client::table())
+                .has_one("product", "product_id", || Product::table())
+        })
+    }
+}
+
+impl Client {
+    pub fn static_table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("client", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .with_field("contact_details")
+                .has_many("orders", "client_id", || Order::table())
+        })
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Given one Table, DORM lets you traverse relationships between tables.
+Lets say we want to see how many orders does product with id=4 have:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = model::Product::table().with_id(4);
+
+let orders_count = product.get_ref("orders").unwrap().count().get_one().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Here is what happens under the hood:</p>
+<ol>
+<li>A query is generated for the Product where id=4</li>
+<li>product query is used as a condition for a order query</li>
+<li>order query is executed for counting rows</li>
+</ol>
+<pre><code class="language-sql">SELECT COUNT(*) FROM order WHERE (product_id = in (SELECT id FROM product WHERE (id = 4)));
+</code></pre>
+<p>This query may seem a bit redundant, but lets see how many LowCalProduct
+orders we have:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let product = model::LowCalProduct::table();
+
+let low_cal_orders = product.get_ref("orders").unwrap().count().get_one().await?;
+<span class="boring">}</span></code></pre></pre>
+<p>Resulting query now looks like this:</p>
+<pre><code class="language-sql">SELECT COUNT(*) FROM order WHERE (product_id IN (SELECT id FROM product WHERE (calories &lt; 100)));
+</code></pre>
+<p>In DORM relationship traversal is always converting one "set" into another "set".</p>
+<p>In fact - if you want to calculate how many clients have placed orders for
+Low Calory Products, you can do it like this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let low_cal_products = model::LowCalProduct::table();
+let clients_on_diet = low_cal_products
+    .get_ref("orders")
+    .unwrap()
+    .get_ref("client")
+    .unwrap()
+    .count()
+    .get_one()
+    .await?;
+<span class="boring">}</span></code></pre></pre>
+<p>But lets not stop here. Suppose you wanted to send all clients who are
+on a diet some email about a new product:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let low_cal_products = model::LowCalProduct::table();
+let clients_on_diet = low_cal_products
+    .get_ref("orders")
+    .unwrap()
+    .get_ref("client")
+    .unwrap();
+
+for client in clients_on_diet.get&lt;Client&gt;().await? {
+    client.send_email("New low carb product is out!").await?;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Imagine all the other things you could do. Yet once again,
+DORM has more surprises for you.</p>
+<p>We have learned about expressions before, right? Well, expressions
+can be built from subqueries.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="subquery-expressions"><a class="header" href="#subquery-expressions">Subquery Expressions</a></h1>
+<p>Once we have used "has_one" and "has_many" methods, we can now
+add some expressions as well.</p>
+<p>I'll start by extending our "Client::table()" with "total_orders" field.
+Place that inside static_table() method:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>Table::new("client", postgres())
+    .with_id_field("id")
+    .with_field("name")
+    .with_field("contact_details")
+    .has_many("orders", "client_id", || Order::table())
+    .with_expression("total_orders", move |t| {
+        t.get_ref_related("orders").unwrap().count()
+    })
+<span class="boring">}</span></code></pre></pre>
+<p>What happens here then?</p>
+<ol>
+<li>A query is generated for the Client</li>
+<li>If "total_orders" field is requested, a callback is called</li>
+<li>The callback is passed a Table object ("client"), which has a reference to the "orders" table</li>
+<li>get_ref_related() is similar to get_ref(), but is suitable for subquery expressions</li>
+<li>get_ref_related() returns a Table object</li>
+<li>count() is called on the Table object, producting a SqlChunk object</li>
+<li>The SqlChunk object is is aliased into "total_orders" field inside Query</li>
+<li>Query is executed</li>
+</ol>
+<p>Lets also modify "Client" struct:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Client {
+    name: String,
+    contact_details: String,
+    total_orders: Option&lt;i64&gt;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Now that we have know how many orders clients have placed, we can use it
+as a condition.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let vip_clients = clients.with_condition(clients.field("total_orders").gt(4));
+<span class="boring">}</span></code></pre></pre>
+<p>Lets also calculate how many low_cal_orders clients have placed:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>.with_expression("low_cal_orders", move |t| {
+    t
+        .get_ref_related("orders")
+        .with_condition(t.get_filed("calories").unwrap().lt(100))
+        .unwrap()
+        .count()
+})
+.with_expression("high_cal_orders", move |t| {
+    t
+        .get_ref_related("orders")
+        .with_condition(t
+            .get_field("calories")
+            .unwrap()
+            .gt(100)
+            .or(t.get_filed("calories").unwrap().eq(100))
+        )
+        .unwrap()
+        .count()
+})
+<span class="boring">}</span></code></pre></pre>
+<p>We just casually added 2 more expressions to our Client table. Those
+normally won't be queried unless needed. However, we can use them
+to calculate conditions:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let diet_clients = clients
+    .with_condition(clients
+        .field("low_cal_orders")
+        .gt(clients.field("high_cal_orders"))
+    );
+<span class="boring">}</span></code></pre></pre>
+<p>Finally to clean things up a bit, we can move some of this logic
+into our <code>model/*.rs</code> files.</p>
+<p>Overall, you are now familiar with the basics of DORM and can start
+building business model abstractions for your application.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </div>
+    </body>
+</html>
