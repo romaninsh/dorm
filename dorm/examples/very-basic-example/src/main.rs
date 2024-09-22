@@ -20,7 +20,7 @@ struct Product {
 }
 
 struct ProductSet {
-    table: Table<Postgres>,
+    table: Table<Postgres, EmptyEntity>,
 }
 
 impl ProductSet {

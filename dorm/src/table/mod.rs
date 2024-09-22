@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -9,9 +10,10 @@ use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
 use crate::query::Query;
-use crate::reference::Reference;
+use crate::traits::any::{AnyTable, RelatedTable};
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
+use crate::traits::entity::{EmptyEntity, Entity};
 use crate::uniqid::UniqueIdVendor;
 use anyhow::Result;
 use indexmap::IndexMap;
@@ -21,8 +23,9 @@ use serde_json::{Map, Value};
 // instead we want to use 3rd party SQL builders, that cary table schema information.
 
 #[derive(Debug)]
-pub struct Table<T: DataSource> {
+pub struct Table<T: DataSource, E: Entity> {
     data_source: T,
+    _phantom: std::marker::PhantomData<E>,
 
     table_name: String,
     table_alias: Option<String>,
@@ -31,22 +34,22 @@ pub struct Table<T: DataSource> {
 
     conditions: Vec<Condition>,
     fields: IndexMap<String, Arc<Field>>,
-    joins: IndexMap<String, Arc<Join<T>>>,
-    lazy_expressions: IndexMap<String, LazyExpression<T>>,
-    refs: IndexMap<String, Reference<T>>,
-
+    joins: IndexMap<String, Arc<Join<T, E>>>,
+    lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
+    // refs: IndexMap<String, Reference<T, E>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
 
 mod with_fields;
 mod with_joins;
 mod with_queries;
-mod with_refs;
+// mod with_refs;
 
-impl<T: DataSource + Clone> Clone for Table<T> {
+impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
         Table {
             data_source: self.data_source.clone(),
+            _phantom: self._phantom.clone(),
 
             table_name: self.table_name.clone(),
             table_alias: self.table_alias.clone(),
@@ -57,7 +60,7 @@ impl<T: DataSource + Clone> Clone for Table<T> {
             fields: self.fields.clone(),
             joins: self.joins.clone(),
             lazy_expressions: self.lazy_expressions.clone(),
-            refs: self.refs.clone(),
+            // refs: self.refs.clone(),
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
@@ -65,10 +68,23 @@ impl<T: DataSource + Clone> Clone for Table<T> {
     }
 }
 
-impl<T: DataSource> Table<T> {
-    pub fn new(table_name: &str, data_source: T) -> Table<T> {
+impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn get_field(&self, name: &str) -> Option<&Arc<Field>> {
+        self.fields.get(name)
+    }
+    fn add_condition(&mut self, condition: Condition) {
+        self.conditions.push(condition);
+    }
+}
+
+impl<T: DataSource, E: Entity> Table<T, E> {
+    pub fn new_with_entity(table_name: &str, data_source: T) -> Table<T, E> {
         Table {
             data_source,
+            _phantom: std::marker::PhantomData,
 
             table_name: table_name.to_string(),
             table_alias: None,
@@ -79,12 +95,34 @@ impl<T: DataSource> Table<T> {
             fields: IndexMap::new(),
             joins: IndexMap::new(),
             lazy_expressions: IndexMap::new(),
-            refs: IndexMap::new(),
-
+            // refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
         }
     }
+}
 
+impl<T: DataSource> Table<T, EmptyEntity> {
+    pub fn new(table_name: &str, data_source: T) -> Table<T, EmptyEntity> {
+        Table {
+            data_source,
+            _phantom: std::marker::PhantomData,
+
+            table_name: table_name.to_string(),
+            table_alias: None,
+            id_field: None,
+            title_field: None,
+
+            conditions: Vec::new(),
+            fields: IndexMap::new(),
+            joins: IndexMap::new(),
+            lazy_expressions: IndexMap::new(),
+            // refs: IndexMap::new(),
+            table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
+        }
+    }
+}
+
+impl<T: DataSource, E: Entity> Table<T, E> {
     /// Use a callback with a builder pattern:
     /// ```
     /// let books = BookSet::new().with(|b| {
@@ -144,7 +182,7 @@ impl<T: DataSource> Table<T> {
     pub fn add_expression(
         &mut self,
         name: &str,
-        expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
+        expression: impl Fn(&Table<T, E>) -> Expression + 'static + Sync + Send,
     ) {
         self.lazy_expressions.insert(
             name.to_string(),
@@ -155,7 +193,7 @@ impl<T: DataSource> Table<T> {
     pub fn with_expression(
         mut self,
         name: &str,
-        expression: impl Fn(&Table<T>) -> Expression + 'static + Sync + Send,
+        expression: impl Fn(&Table<T, E>) -> Expression + 'static + Sync + Send,
     ) -> Self {
         self.add_expression(name, expression);
         self
@@ -180,7 +218,7 @@ impl<T: DataSource> Table<T> {
     }
 }
 
-impl<T: DataSource> ReadableDataSet for Table<T> {
+impl<T: DataSource, E: Entity> ReadableDataSet for Table<T, E> {
     fn select_query(&self) -> Query {
         self.get_select_query()
     }
@@ -192,7 +230,7 @@ impl<T: DataSource> ReadableDataSet for Table<T> {
     }
 }
 
-impl<T: DataSource> WritableDataSet for Table<T> {
+impl<T: DataSource, E: Entity> WritableDataSet for Table<T, E> {
     fn insert_query(&self) -> Query {
         todo!()
     }
@@ -206,13 +244,13 @@ impl<T: DataSource> WritableDataSet for Table<T> {
     }
 }
 
-pub trait TableDelegate<T: DataSource> {
-    fn table(&self) -> &Table<T>;
+pub trait TableDelegate<T: DataSource, E: Entity> {
+    fn table(&self) -> &Table<T, E>;
 
     fn id(&self) -> Arc<Field> {
         self.table().id()
     }
-    fn add_condition(&self, condition: Condition) -> Table<T> {
+    fn add_condition(&self, condition: Condition) -> Table<T, E> {
         self.table().clone().with_condition(condition)
     }
     fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {

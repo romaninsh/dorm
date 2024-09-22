@@ -1,16 +1,23 @@
+use std::any::Any;
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 
+use crate::condition::Condition;
+use crate::field::Field;
 use crate::prelude::Operations;
 use crate::reference::Reference;
 use crate::table::Table;
+use crate::traits::any::AnyTable;
 use crate::traits::datasource::DataSource;
+use crate::traits::entity::Entity;
 
-impl<T: DataSource> Table<T> {
+impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn has_many(
         mut self,
         relation: &str,
         foreign_key: &str,
-        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
+        cb: impl Fn() -> Box<dyn AnyTable> + 'static + Sync + Send,
     ) -> Self {
         let foreign_key = foreign_key.to_string();
         self.add_ref(relation, move |p| {
@@ -32,7 +39,7 @@ impl<T: DataSource> Table<T> {
         mut self,
         relation: &str,
         foreign_key: &str,
-        cb: impl Fn() -> Table<T> + 'static + Sync + Send,
+        cb: impl Fn() -> Box<dyn AnyTable> + 'static + Sync + Send,
     ) -> Self {
         let foreign_key = foreign_key.to_string();
         self.add_ref(relation, move |p| {
@@ -53,18 +60,26 @@ impl<T: DataSource> Table<T> {
     pub fn add_ref(
         &mut self,
         relation: &str,
-        cb: impl Fn(&Table<T>) -> Table<T> + 'static + Sync + Send,
+        cb: impl Fn(&Table<T, E>) -> Box<dyn AnyTable> + 'static + Sync + Send,
     ) {
         let reference = Reference::new(cb);
         self.refs.insert(relation.to_string(), reference);
     }
 
-    pub fn get_ref(&self, field: &str) -> Result<Table<T>> {
-        Ok(self
-            .refs
+    pub fn get_ref(&self, field: &str) -> Result<Box<dyn AnyTable>> {
+        self.refs
             .get(field)
-            .ok_or_else(|| anyhow!("Reference not found"))?
-            .table(self))
+            .map(|reference| reference.as_table(self))
+            .ok_or_else(|| anyhow!("Reference not found"))
+    }
+
+    pub fn get_ref_as<T2: DataSource, E2: Entity>(&self, field: &str) -> Result<Table<T2, E2>> {
+        let table = self.get_ref(field)?;
+        table
+            .as_any()
+            .downcast_ref::<Table<T2, E2>>()
+            .map(|t| t.clone())
+            .ok_or_else(|| anyhow!("Failed to downcast to specific table type"))
     }
 }
 

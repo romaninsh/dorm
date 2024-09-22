@@ -6,10 +6,11 @@ use crate::prelude::{Operations, SqlChunk};
 use crate::query::{JoinQuery, JoinType, QueryConditions};
 use crate::table::Table;
 use crate::traits::datasource::DataSource;
+use crate::traits::entity::Entity;
 use crate::uniqid::UniqueIdVendor;
 
-impl<T: DataSource> Table<T> {
-    pub fn with_join(mut self, their_table: Table<T>, our_foreign_id: &str) -> Self {
+impl<T: DataSource, E: Entity> Table<T, E> {
+    pub fn with_join(mut self, their_table: Table<T, E>, our_foreign_id: &str) -> Self {
         //! Mutate self with a join to another table.
         //!
         //! See [Table::add_join] for more details.
@@ -70,7 +71,11 @@ impl<T: DataSource> Table<T> {
         self
     }
 
-    pub fn add_join(&mut self, mut their_table: Table<T>, our_foreign_id: &str) -> Arc<Join<T>> {
+    pub fn add_join(
+        &mut self,
+        mut their_table: Table<T, E>,
+        our_foreign_id: &str,
+    ) -> Arc<Join<T, E>> {
         //! Combine two tables with 1 to 1 relationship into a single table.
         //!
         //! Left-Joins their_table table and return self. Assuming their_table has set id field,
@@ -151,7 +156,7 @@ impl<T: DataSource> Table<T> {
         self.get_join(&their_table_alias).unwrap()
     }
 
-    pub fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>> {
+    pub fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T, E>>> {
         self.joins.get(table_alias).map(|r| r.clone())
     }
 }
