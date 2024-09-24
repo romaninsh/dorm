@@ -1,10 +1,7 @@
-use std::sync::{Arc, OnceLock};
-
-// use crate::bakery::BakerySet;
+use crate::postgres;
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use crate::postgres;
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Product {

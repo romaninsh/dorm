@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::any::Any;
 use std::sync::Arc;
 
@@ -25,7 +26,9 @@ use super::entity::Entity;
 /// has_many(), which rely on RelatedTable trait.
 ///
 pub trait AnyTable: Any + Send + Sync {
-    fn as_any(&self) -> &dyn Any;
+    fn as_any(self) -> Box<dyn Any>;
+
+    fn as_any_ref(&self) -> &dyn Any;
 
     fn get_field(&self, name: &str) -> Option<&Arc<Field>>;
 

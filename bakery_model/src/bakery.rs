@@ -1,44 +1,52 @@
+use crate::{postgres, product::Product};
+use dorm::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
 
-use crate::client::ClientSet;
-use crate::product::Products;
-use dorm::prelude::*;
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct Bakery {
+    id: i64,
+    name: String,
+    profit_margin: String,
+}
+impl Entity for Bakery {}
 
-use crate::postgres;
-
-pub struct BakerySet {}
-
-impl BakerySet {
-    pub fn new() -> Table<Postgres> {
-        BakerySet::table().clone()
-    }
-    pub fn table() -> &'static Table<Postgres> {
-        static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+impl Bakery {
+    pub fn static_table() -> &'static Table<Postgres, Bakery> {
+        static TABLE: OnceLock<Table<Postgres, Bakery>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new("bakery", postgres())
+            Table::new_with_entity("bakery", postgres())
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("profit_margin")
-                .has_many("clients", "bakery_id", || ClientSet::new())
-                .has_many("products", "bakery_id", || Products::new().table())
+                // .has_many("clients", "bakery_id", || ClientSet::new())
+                .has_many("products", "bakery_id", || Box::new(Product::table()))
         })
     }
+    pub fn table() -> Table<Postgres, Bakery> {
+        Bakery::static_table().clone()
+    }
+}
 
-    pub fn id() -> Arc<Field> {
-        BakerySet::table().get_field("id").unwrap()
+trait BakeryTable: AnyTable {
+    fn as_table(&self) -> &Table<Postgres, Bakery> {
+        self.as_any_ref().downcast_ref().unwrap()
     }
-    pub fn name() -> Arc<Field> {
-        BakerySet::table().get_field("name").unwrap()
+    fn id(&self) -> &Arc<Field> {
+        self.get_field("id").unwrap()
     }
-    pub fn profit_margin() -> Arc<Field> {
-        BakerySet::table().get_field("profit_margin").unwrap()
+    fn name(&self) -> &Arc<Field> {
+        self.get_field("name").unwrap()
+    }
+    fn profit_margin(&self) -> &Arc<Field> {
+        self.get_field("profit_margin").unwrap()
     }
 
-    pub fn ref_clients(&self) -> Table<Postgres> {
-        BakerySet::table().get_ref("clients").unwrap()
-    }
-    pub fn ref_products() -> Products {
-        Products::from_table(BakerySet::table().get_ref("products").unwrap())
+    // fn ref_clients(&self) -> Table<Postgres> {
+    //     self.table().get_ref("clients").unwrap()
+    // }
+    fn ref_products(&self) -> Table<Postgres, Product> {
+        self.as_table().get_ref_as("products").unwrap()
     }
 }
