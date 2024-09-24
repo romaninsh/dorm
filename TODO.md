@@ -44,7 +44,7 @@ MVP:
 - [x] Add "Entity" concept into Table
 - [x] Add example on how to use traits for augmenting Table of specific Entity
 - [ ] Check on "Join", they should allow for Entity mutation (joined table associated with a different entity)
-- [ ] Implement has_one and has_many in a correct way, moving functionality to Related Reference
+- [x] Implement has_one and has_many in a correct way, moving functionality to Related Reference
 - [ ] Implement Unrelated Reference (when ref leads to a table with different Data Source)
 - [ ] Implement a better data fetching mechanism, using default entity
 - [ ] Restore functionality of bakery example
