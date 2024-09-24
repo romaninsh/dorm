@@ -22,8 +22,8 @@ pub struct UnrelatedReference<T: DataSource, E: Entity> {
 impl<T: DataSource, E: Entity> UnrelatedReference<T, E> {
     pub fn new<F>(get_table: F) -> UnrelatedReference<T, E>
     where
-        F: 'static
-            + Fn(&Table<T, E>) -> Pin<Box<dyn Future<Output = Box<dyn AnyTable>> + Send + Sync>>
+        F: Fn(&Table<T, E>) -> Pin<Box<dyn Future<Output = Box<dyn AnyTable>> + Send + Sync>>
+            + 'static
             + Send
             + Sync,
     {
@@ -52,29 +52,29 @@ mod tests {
     use crate::prelude::{Operations, SqlChunk};
     use crate::traits::entity::EmptyEntity;
 
-    // #[tokio::test]
-    // async fn test_unrelated_reference() {
-    //     let data = json!([]);
-    //     let data_source = MockDataSource::new(&data);
+    #[tokio::test]
+    async fn test_unrelated_reference() {
+        let data = json!([]);
+        let data_source = MockDataSource::new(&data);
 
-    //     let reference = UnrelatedReference::new(|t: &Table<MockDataSource, EmptyEntity>| async {
-    //         let mut t = Table::new("cached_orders", data_source.clone())
-    //             .with_field("cached_order_id")
-    //             .with_field("cached_data");
+        let reference = UnrelatedReference::new(|t: &Table<MockDataSource, EmptyEntity>| async {
+            let mut t = Table::new("cached_orders", data_source.clone())
+                .with_field("cached_order_id")
+                .with_field("cached_data");
 
-    //         let user_id = t.field_query("user_id").get_one().await.unwrap();
+            let user_id = t.field_query("user_id").get_one().await.unwrap();
 
-    //         t.add_condition(t.get_field("cached_order_id").unwrap().eq(&user_id));
+            t.add_condition(t.get_field("cached_order_id").unwrap().eq(&user_id));
 
-    //         Box::new(t) as Box<dyn AnyTable>
-    //     });
+            Box::new(t) as Box<dyn AnyTable>
+        });
 
-    //     let table = reference
-    //         .as_table(&Table::new("users", data_source.clone()))
-    //         .await;
+        let table = reference
+            .as_table(&Table::new("users", data_source.clone()))
+            .await;
 
-    //     let result = table.get_all_data().await;
+        let result = table.get_all_data().await;
 
-    //     assert_eq!(result.unwrap(), *data_source.data());
-    // }
+        assert_eq!(result.unwrap(), *data_source.data());
+    }
 }

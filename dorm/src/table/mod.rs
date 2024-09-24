@@ -10,6 +10,7 @@ use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
 use crate::query::Query;
+use crate::reference::RelatedReference;
 use crate::traits::any::{AnyTable, RelatedTable};
 use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
@@ -36,14 +37,14 @@ pub struct Table<T: DataSource, E: Entity> {
     fields: IndexMap<String, Arc<Field>>,
     joins: IndexMap<String, Arc<Join<T, E>>>,
     lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
-    // refs: IndexMap<String, Reference<T, E>>,
+    refs: IndexMap<String, RelatedReference<T, E>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
 
 mod with_fields;
 mod with_joins;
 mod with_queries;
-// mod with_refs;
+mod with_refs;
 
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
@@ -60,7 +61,7 @@ impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
             fields: self.fields.clone(),
             joins: self.joins.clone(),
             lazy_expressions: self.lazy_expressions.clone(),
-            // refs: self.refs.clone(),
+            refs: self.refs.clone(),
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
@@ -69,7 +70,10 @@ impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
 }
 
 impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
-    fn as_any(&self) -> &dyn Any {
+    fn as_any(self) -> Box<dyn Any> {
+        Box::new(self)
+    }
+    fn as_any_ref(&self) -> &dyn Any {
         self
     }
     fn get_field(&self, name: &str) -> Option<&Arc<Field>> {
@@ -77,6 +81,13 @@ impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
     }
     fn add_condition(&mut self, condition: Condition) {
         self.conditions.push(condition);
+    }
+}
+
+impl<T: DataSource, E: Entity> RelatedTable<T> for Table<T, E> {
+    fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
+        let query = self.get_empty_query().with_column(field.name(), field);
+        AssociatedQuery::new(query, self.data_source.clone())
     }
 }
 
@@ -95,7 +106,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             fields: IndexMap::new(),
             joins: IndexMap::new(),
             lazy_expressions: IndexMap::new(),
-            // refs: IndexMap::new(),
+            refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
         }
     }
@@ -116,7 +127,7 @@ impl<T: DataSource> Table<T, EmptyEntity> {
             fields: IndexMap::new(),
             joins: IndexMap::new(),
             lazy_expressions: IndexMap::new(),
-            // refs: IndexMap::new(),
+            refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
         }
     }
