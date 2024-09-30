@@ -1,4 +1,5 @@
-use bakery_model::product::Product;
+use bakery_model::bakery::*;
+use bakery_model::product::*;
 use dorm::prelude::*;
 use serde_json::Value;
 
@@ -39,7 +40,7 @@ async fn main() {
 
     // // Finally lets see how many products we have in the bakery
 
-    let products = Product::table();
+    let products = bakeries.ref_products();
 
     println!(
         "There are {} products in the bakery.",

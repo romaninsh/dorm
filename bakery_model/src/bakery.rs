@@ -29,7 +29,7 @@ impl Bakery {
     }
 }
 
-trait BakeryTable: AnyTable {
+pub trait BakeryTable: AnyTable {
     fn as_table(&self) -> &Table<Postgres, Bakery> {
         self.as_any_ref().downcast_ref().unwrap()
     }
@@ -49,4 +49,10 @@ trait BakeryTable: AnyTable {
     fn ref_products(&self) -> Table<Postgres, Product> {
         self.as_table().get_ref_as("products").unwrap()
     }
+}
+impl BakeryTable for Table<Postgres, Bakery> {}
+
+fn test() {
+    let table = Bakery::table();
+    let products = table.ref_products();
 }
