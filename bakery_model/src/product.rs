@@ -35,7 +35,7 @@ impl Product {
     }
 }
 
-trait ProductTable: AnyTable {
+pub trait ProductTable: AnyTable {
     fn with_inventory(self) -> Table<Postgres, Product>;
 
     fn id(&self) -> &Arc<Field> {
