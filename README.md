@@ -35,13 +35,12 @@ an Entity Model.
 Once your entities are defined, you can manipulate data through query-building
 and controlled execution of those queries for operations like fetching, inserting,
 mapping and traversing. To help with data manipulation, you can use a regular
-Rust struct or an associated struct.
+Rust struct to represent a record or associated record.
 
-While regular Struct is great for fetching or inserting data, associated struct
-maps into a physical record inside a specific Record Set. This means you can
-update and save the record back. You can also access related records too.
+Using a regular record is great for fetching or inserting data, associated records
+is mut and can be saved back into RecordSet.
 
-I suppose at the end DORM is also an ORM.
+I suppose at the end DORM implements ORM too.
 
 ## DORM use example
 
