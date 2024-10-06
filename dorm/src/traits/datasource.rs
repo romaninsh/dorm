@@ -1,10 +1,8 @@
 #![allow(async_fn_in_trait)]
 
-use anyhow::Result;
-use serde_json::Map;
-use serde_json::Value;
-
 use crate::query::Query;
+use anyhow::Result;
+use serde_json::{Map, Value};
 
 pub trait DataSource: Clone + Send + Sync + std::fmt::Debug + 'static {
     // Provided with an arbitrary query, fetch the results and return (Value = arbytrary )

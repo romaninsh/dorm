@@ -11,6 +11,8 @@ use tokio_postgres::NoTls;
 use dorm::prelude::Postgres;
 
 pub mod bakery;
+pub use bakery::*;
+
 // pub mod cake;
 // pub mod cakes_bakers;
 // pub mod client;

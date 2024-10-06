@@ -1,5 +1,4 @@
-use bakery_model::bakery::*;
-use bakery_model::product::*;
+use bakery_model::*;
 use dorm::prelude::*;
 use serde_json::Value;
 
@@ -18,15 +17,17 @@ async fn main() {
     client.batch_execute(&schema).await.unwrap();
 
     // Ok, now lets work with the models directly
-    let bakeries = bakery_model::bakery::Bakery::table();
-    let query = bakeries.get_select_query();
-    let result = dorm_client.query_raw(&query).await.unwrap();
+    let bakery = Bakery::table().with_id(1.into());
 
-    let Some(Value::String(bakery)) = result[0].get("name") else {
+    // let query = bakeries.get_select_query();
+    // let result = dorm_client.query_raw(&query).await.unwrap();
+
+    let Some(bakery) = bakery.get_some().await.unwrap() else {
         panic!("No bakery found");
     };
+
     println!("-----------------------------");
-    println!("Working for the bakery: {}", bakery);
+    println!("Working for the bakery: {}", bakery.name);
     println!("");
 
     // // Now, lets see how many clients bakery has
@@ -40,12 +41,12 @@ async fn main() {
 
     // // Finally lets see how many products we have in the bakery
 
-    let products = bakeries.ref_products();
+    // let products = bakeries.ref_products();
 
-    println!(
-        "There are {} products in the bakery.",
-        products.count().get_one().await.unwrap()
-    );
+    // println!(
+    //     "There are {} products in the bakery.",
+    //     products.count().get_one().await.unwrap()
+    // );
 
     /*
     // How many products are there with the name

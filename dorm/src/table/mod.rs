@@ -9,10 +9,8 @@ use crate::field::Field;
 use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
-use crate::query::Query;
 use crate::reference::RelatedReference;
 use crate::traits::any::{AnyTable, RelatedTable};
-use crate::traits::dataset::{ReadableDataSet, WritableDataSet};
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::{EmptyEntity, Entity};
 use crate::uniqid::UniqueIdVendor;
@@ -41,6 +39,7 @@ pub struct Table<T: DataSource, E: Entity> {
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
 
+mod with_fetching;
 mod with_fields;
 mod with_joins;
 mod with_queries;
@@ -229,31 +228,19 @@ impl<T: DataSource, E: Entity> Table<T, E> {
     }
 }
 
-impl<T: DataSource, E: Entity> ReadableDataSet for Table<T, E> {
-    fn select_query(&self) -> Query {
-        self.get_select_query()
-    }
+// impl<T: DataSource, E: Entity> WritableDataSet for Table<T, E> {
+//     fn insert_query(&self) -> Query {
+//         todo!()
+//     }
 
-    async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
-        let q = self.select_query();
-        let x = self.data_source.query_fetch(&q).await;
-        x
-    }
-}
+//     fn update_query(&self) -> Query {
+//         todo!()
+//     }
 
-impl<T: DataSource, E: Entity> WritableDataSet for Table<T, E> {
-    fn insert_query(&self) -> Query {
-        todo!()
-    }
-
-    fn update_query(&self) -> Query {
-        todo!()
-    }
-
-    fn delete_query(&self) -> Query {
-        todo!()
-    }
-}
+//     fn delete_query(&self) -> Query {
+//         todo!()
+//     }
+// }
 
 pub trait TableDelegate<T: DataSource, E: Entity> {
     fn table(&self) -> &Table<T, E>;

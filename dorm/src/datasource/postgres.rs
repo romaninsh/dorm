@@ -207,8 +207,14 @@ impl SelectRows for Postgres {
 }
 
 impl DataSource for Postgres {
-    async fn query_fetch(&self, _query: &Query) -> Result<Vec<serde_json::Map<String, Value>>> {
-        todo!()
+    async fn query_fetch(&self, _query: &Query) -> Result<Vec<Map<String, Value>>> {
+        let res = self.query_raw(_query).await?;
+        let res = res
+            .into_iter()
+            .map(|v| v.as_object().unwrap().clone())
+            // TODO: unwanted clone
+            .collect();
+        Ok(res)
     }
 
     async fn query_exec(&self, _query: &Query) -> Result<()> {
