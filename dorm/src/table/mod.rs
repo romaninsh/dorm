@@ -9,7 +9,6 @@ use crate::field::Field;
 use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
-use crate::query::Query;
 use crate::reference::RelatedReference;
 use crate::traits::any::{AnyTable, RelatedTable};
 use crate::traits::datasource::DataSource;
