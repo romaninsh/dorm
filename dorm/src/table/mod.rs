@@ -218,7 +218,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
             conditions: self.conditions,
             fields: self.fields,
-            joins: IndexMap::new(),            // TODO: cast proprely
+            joins: self.joins,
             lazy_expressions: IndexMap::new(), // TODO: cast proprely
             refs: IndexMap::new(),             // TODO: cast proprely
 
