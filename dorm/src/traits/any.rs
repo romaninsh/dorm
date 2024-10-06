@@ -1,10 +1,13 @@
 use anyhow::Result;
+use indexmap::IndexMap;
 use std::any::Any;
 use std::sync::Arc;
 
 use crate::condition::Condition;
 use crate::field::Field;
+use crate::join::Join;
 use crate::prelude::AssociatedQuery;
+use crate::query::Query;
 use crate::table::Table;
 
 use super::datasource::DataSource;
@@ -30,7 +33,7 @@ pub trait AnyTable: Any + Send + Sync {
 
     fn as_any_ref(&self) -> &dyn Any;
 
-    fn get_field(&self, name: &str) -> Option<&Arc<Field>>;
+    fn get_field(&self, name: &str) -> Option<Arc<Field>>;
 
     fn add_condition(&mut self, condition: Condition);
 }
@@ -43,4 +46,13 @@ pub trait AnyTable: Any + Send + Sync {
 ///
 pub trait RelatedTable<T: DataSource>: AnyTable {
     fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T>;
+    fn add_fields_into_query(&self, query: Query, alias_prefix: Option<&str>) -> Query;
+    fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>>;
+
+    fn get_alias(&self) -> Option<&String>;
+    fn get_table_name(&self) -> Option<&String>;
+
+    fn set_alias(&mut self, alias: &str);
+
+    fn get_fields(&self) -> &IndexMap<String, Arc<Field>>;
 }

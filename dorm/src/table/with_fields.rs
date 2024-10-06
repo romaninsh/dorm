@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::condition::Condition;
 use crate::field::Field;
 use crate::lazy_expression::LazyExpression;
-use crate::prelude::Operations;
+use crate::prelude::{AnyTable, Operations};
 use crate::table::Table;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
@@ -19,10 +19,10 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self.fields.insert(field_name, Arc::new(field));
     }
 
-    /// Returns a field reference by name.
-    pub fn get_field(&self, field: &str) -> Option<Arc<Field>> {
-        self.fields.get(field).map(|f| f.clone())
-    }
+    // /// Returns a field reference by name.
+    // pub fn get_field(&self, field: &str) -> Option<Arc<Field>> {
+    //     self.fields.get(field).map(|f| f.clone())
+    // }
 
     /// Handy way to access fields
     pub fn fields(&self) -> &IndexMap<String, Arc<Field>> {
@@ -88,7 +88,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         // maybe joined table have a field we want
         for (_, join) in self.joins.iter() {
             if let Some(field) = join.table().get_field(field_name) {
-                return Some(Box::new(field));
+                return Some(Box::new(field.clone()));
             }
         }
 
@@ -112,7 +112,7 @@ mod tests {
 
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{Operations, SqlChunk},
+        prelude::{AnyTable, Operations, SqlChunk},
         table::Table,
     };
 

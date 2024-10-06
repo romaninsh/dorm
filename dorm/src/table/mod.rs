@@ -33,7 +33,7 @@ pub struct Table<T: DataSource, E: Entity> {
 
     conditions: Vec<Condition>,
     fields: IndexMap<String, Arc<Field>>,
-    joins: IndexMap<String, Arc<Join<T, E>>>,
+    joins: IndexMap<String, Arc<Join<T>>>,
     lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
     refs: IndexMap<String, RelatedReference<T, E>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
@@ -75,8 +75,8 @@ impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
     fn as_any_ref(&self) -> &dyn Any {
         self
     }
-    fn get_field(&self, name: &str) -> Option<&Arc<Field>> {
-        self.fields.get(name)
+    fn get_field(&self, name: &str) -> Option<Arc<Field>> {
+        self.fields.get(name).cloned()
     }
     fn add_condition(&mut self, condition: Condition) {
         self.conditions.push(condition);
@@ -87,6 +87,61 @@ impl<T: DataSource, E: Entity> RelatedTable<T> for Table<T, E> {
     fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         let query = self.get_empty_query().with_column(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
+    }
+
+    // TODO: debug why this overwrites the previous fields
+    fn add_fields_into_query(&self, mut query: Query, alias_prefix: Option<&str>) -> Query {
+        for (field_key, field_val) in &self.fields {
+            let field_val = if let Some(alias_prefix) = &alias_prefix {
+                let alias = format!("{}_{}", alias_prefix, field_key);
+                let mut field_val = field_val.deref().clone();
+                field_val.set_field_alias(alias);
+                Arc::new(field_val)
+            } else {
+                field_val.clone()
+            };
+            query = query.with_column(
+                field_val
+                    .deref()
+                    .get_field_alias()
+                    .unwrap_or_else(|| field_key.clone()),
+                field_val,
+            );
+        }
+
+        for (alias, join) in &self.joins {
+            query = join.add_fields_into_query(query, Some(alias));
+        }
+
+        query
+    }
+
+    fn get_alias(&self) -> Option<&String> {
+        self.table_alias.as_ref()
+    }
+    fn set_alias(&mut self, alias: &str) {
+        if let Some(alias) = &self.table_alias {
+            self.table_aliases.lock().unwrap().dont_avoid(alias);
+        }
+        self.table_alias = Some(alias.to_string());
+        self.table_aliases.lock().unwrap().avoid(alias);
+        for field in self.fields.values_mut() {
+            let mut new_field = field.deref().deref().clone();
+            new_field.set_table_alias(alias.to_string());
+            *field = Arc::new(new_field);
+        }
+        for condition in &mut self.conditions {
+            condition.set_table_alias(alias);
+        }
+    }
+    fn get_table_name(&self) -> Option<&String> {
+        Some(&self.table_name)
+    }
+    fn get_fields(&self) -> &IndexMap<String, Arc<Field>> {
+        &self.fields
+    }
+    fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>> {
+        self.joins.get(table_alias).map(|r| r.clone())
     }
 }
 
@@ -150,29 +205,30 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
-    pub fn set_alias(&mut self, alias: &str) {
-        if let Some(alias) = &self.table_alias {
-            self.table_aliases.lock().unwrap().dont_avoid(alias);
-        }
-        self.table_alias = Some(alias.to_string());
-        self.table_aliases.lock().unwrap().avoid(alias);
-        for field in self.fields.values_mut() {
-            let mut new_field = field.deref().deref().clone();
-            new_field.set_table_alias(alias.to_string());
-            *field = Arc::new(new_field);
-        }
-        for condition in &mut self.conditions {
-            condition.set_table_alias(alias);
+    pub fn into_entity<E2: Entity>(self) -> Table<T, E2> {
+        Table {
+            data_source: self.data_source,
+            _phantom: std::marker::PhantomData,
+
+            table_name: self.table_name,
+            table_alias: self.table_alias,
+            id_field: self.id_field,
+            title_field: self.title_field,
+
+            conditions: self.conditions,
+            fields: self.fields,
+            joins: self.joins,
+            lazy_expressions: IndexMap::new(), // TODO: cast proprely
+            refs: IndexMap::new(),             // TODO: cast proprely
+
+            // Perform a deep clone of the UniqueIdVendor
+            table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
         }
     }
 
     pub fn with_alias(mut self, alias: &str) -> Self {
         self.set_alias(alias);
         self
-    }
-
-    pub fn get_alias(&self) -> Option<&String> {
-        self.table_alias.as_ref()
     }
 
     /// Add a condition to the table, limiting what records

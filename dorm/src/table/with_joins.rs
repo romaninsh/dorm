@@ -2,9 +2,10 @@ use std::ptr::eq;
 use std::sync::Arc;
 
 use crate::join::Join;
-use crate::prelude::{Operations, SqlChunk};
+use crate::prelude::{AnyTable, Operations, SqlChunk};
 use crate::query::{JoinQuery, JoinType, QueryConditions};
 use crate::table::Table;
+use crate::traits::any::RelatedTable;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use crate::uniqid::UniqueIdVendor;
@@ -71,11 +72,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
-    pub fn add_join(
-        &mut self,
-        mut their_table: Table<T, E>,
-        our_foreign_id: &str,
-    ) -> Arc<Join<T, E>> {
+    pub fn add_join(&mut self, mut their_table: Table<T, E>, our_foreign_id: &str) -> Arc<Join<T>> {
         //! Combine two tables with 1 to 1 relationship into a single table.
         //!
         //! Left-Joins their_table table and return self. Assuming their_table has set id field,
@@ -150,14 +147,10 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         );
         self.joins.insert(
             their_table_alias.clone(),
-            Arc::new(Join::new(their_table, join)),
+            Arc::new(Join::new(their_table.into_entity(), join)),
         );
 
         self.get_join(&their_table_alias).unwrap()
-    }
-
-    pub fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T, E>>> {
-        self.joins.get(table_alias).map(|r| r.clone())
     }
 }
 

@@ -39,7 +39,27 @@ impl<T: DataSource, E: Entity> ReadableDataSet<E> for Table<T, E> {
             .collect())
     }
 
+    async fn get_as<T2: DeserializeOwned>(&self) -> Result<Vec<T2>> {
+        let data = self.get_all_untyped().await?;
+        Ok(data
+            .into_iter()
+            .map(|row| serde_json::from_value(Value::Object(row)).unwrap())
+            .collect())
+    }
+
     async fn get_some(&self) -> Result<Option<E>> {
+        let query = self.select_query();
+        let data = self.data_source.query_fetch(&query).await?;
+        if data.len() > 0 {
+            let row = data[0].clone();
+            let row = serde_json::from_value(Value::Object(row)).unwrap();
+            Ok(Some(row))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_some_as<T2: DeserializeOwned>(&self) -> Result<Option<T2>> {
         let query = self.select_query();
         let data = self.data_source.query_fetch(&query).await?;
         if data.len() > 0 {

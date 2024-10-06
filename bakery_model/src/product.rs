@@ -1,7 +1,10 @@
 use crate::postgres;
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, OnceLock};
+use std::{
+    any::Any,
+    sync::{Arc, OnceLock},
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Product {
@@ -36,15 +39,15 @@ impl Product {
 }
 
 pub trait ProductTable: AnyTable {
-    fn with_inventory(self) -> Table<Postgres, Product>;
+    fn with_inventory(self) -> Table<Postgres, ProductInventory>;
 
-    fn id(&self) -> &Arc<Field> {
+    fn id(&self) -> Arc<Field> {
         self.get_field("id").unwrap()
     }
-    fn name(&self) -> &Arc<Field> {
+    fn name(&self) -> Arc<Field> {
         self.get_field("name").unwrap()
     }
-    fn bakery_id(&self) -> &Arc<Field> {
+    fn bakery_id(&self) -> Arc<Field> {
         self.get_field("bakery_id").unwrap()
     }
 
@@ -54,16 +57,31 @@ pub trait ProductTable: AnyTable {
 }
 
 impl ProductTable for Table<Postgres, Product> {
-    fn with_inventory(self) -> Table<Postgres, Product> {
-        self.with_join(
+    fn with_inventory(self) -> Table<Postgres, ProductInventory> {
+        let t = self.into_entity::<ProductInventory>();
+        let t = t.with_join(
             Table::new_with_entity("inventory", postgres())
                 .with_alias("i")
                 .with_id_field("product_id")
                 .with_field("stock"),
             "id",
-        )
+        );
+        t
     }
 }
+
+pub trait ProductInventoryTable: RelatedTable<Postgres> {
+    fn j_stock(&self) -> Table<Postgres, EmptyEntity> {
+        let j = self.get_join("i").unwrap();
+        j.table().clone()
+    }
+
+    fn stock(&self) -> Arc<Field> {
+        let j = self.j_stock();
+        j.get_field("stock").unwrap()
+    }
+}
+impl ProductInventoryTable for Table<Postgres, ProductInventory> {}
 
 // #[cfg(test)]
 // mod tests {

@@ -1,28 +1,33 @@
+use anyhow::Result;
 use bakery_model::*;
 use dorm::prelude::*;
-use serde_json::Value;
 
-#[tokio::main]
-async fn main() {
-    bakery_model::connect_postgres().await.unwrap();
+/// This is a helper function to create the database
+/// and tables for the bakery model.
+async fn create_bootstrap_db() -> Result<()> {
+    // Connect to postgress and store client statically
+    bakery_model::connect_postgres().await?;
 
+    // Get the postgres client for batch execution
     let dorm_client = bakery_model::postgres();
-
-    // this is tokio_postgres::Client
     let client = dorm_client.client();
 
+    // Read the schema from the file and execute it
     let schema = tokio::fs::read_to_string("bakery_model/schema-pg.sql")
         .await
         .unwrap();
-    client.batch_execute(&schema).await.unwrap();
+    client.batch_execute(&schema).await?;
 
-    // Ok, now lets work with the models directly
-    let bakery = Bakery::table().with_id(1.into());
+    Ok(())
+}
 
-    // let query = bakeries.get_select_query();
-    // let result = dorm_client.query_raw(&query).await.unwrap();
+#[tokio::main]
+async fn main() -> Result<()> {
+    create_bootstrap_db().await?;
 
-    let Some(bakery) = bakery.get_some().await.unwrap() else {
+    // Example 1: load a single record from table
+    let my_bakery = Bakery::table().with_id(1.into());
+    let Some(bakery) = my_bakery.get_some().await.unwrap() else {
         panic!("No bakery found");
     };
 
@@ -30,23 +35,26 @@ async fn main() {
     println!("Working for the bakery: {}", bakery.name);
     println!("");
 
-    // // Now, lets see how many clients bakery has
-    // let client_set = bakery_set.get_ref("clients").unwrap();
-    // let client_count = client_set.count();
+    // Example 2: referencing other tables from current record set
+    let clients = my_bakery.ref_clients();
 
-    // println!(
-    //     "There are {} clients in the bakery.",
-    //     client_count.get_one().await.unwrap()
-    // );
+    println!(
+        "There are {} clients in this bakery.",
+        clients.count().get_one().await.unwrap()
+    );
 
-    // // Finally lets see how many products we have in the bakery
+    // Example 3: referencing products, but augmenting it with a join
+    let products = my_bakery.ref_products();
+    let products_with_inventory = products.with_inventory();
 
-    // let products = bakeries.ref_products();
-
-    // println!(
-    //     "There are {} products in the bakery.",
-    //     products.count().get_one().await.unwrap()
-    // );
+    println!(
+        "There are {} stock in the inventory.",
+        products_with_inventory
+            .sum(products_with_inventory.stock().clone())
+            .get_one()
+            .await
+            .unwrap()
+    );
 
     /*
     // How many products are there with the name
@@ -95,4 +103,5 @@ async fn main() {
         println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
     }
     */
+    Ok(())
 }

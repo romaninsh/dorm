@@ -13,12 +13,14 @@ use dorm::prelude::Postgres;
 pub mod bakery;
 pub use bakery::*;
 
+pub mod client;
+pub use client::*;
+
+pub mod product;
+pub use product::*;
+
 // pub mod cake;
 // pub mod cakes_bakers;
-// pub mod client;
-// pub mod customer;
-pub mod product;
-
 // pub mod lineitem;
 // pub mod order;
 

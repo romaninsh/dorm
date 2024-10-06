@@ -53,7 +53,7 @@ impl<T: DataSource, E: Entity> RelatedReference<T, E> {
                 .get_field("id")
                 .unwrap_or_else(|| panic!("Field 'id' not found"));
 
-            c.add_condition(foreign_field.in_expr(&p.field_query(id_field)));
+            c.add_condition(foreign_field.in_expr(&p.field_query(id_field.clone())));
             c
         })
     }

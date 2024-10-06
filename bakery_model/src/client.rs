@@ -1,27 +1,29 @@
+use crate::{postgres, Bakery};
+use dorm::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
 
-use dorm::prelude::*;
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct Client {
+    id: i64,
+    name: String,
+    contact_details: String,
+    bakery_id: i64,
+}
+impl Entity for Client {}
 
-use crate::postgres;
-
-use super::{bakery::BakerySet, order::OrderSet};
-
-pub struct ClientSet {}
-impl ClientSet {
-    pub fn new() -> Table<Postgres> {
-        ClientSet::table().clone()
-    }
-    pub fn table() -> &'static Table<Postgres> {
-        static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+impl Client {
+    pub fn static_table() -> &'static Table<Postgres, Client> {
+        static TABLE: OnceLock<Table<Postgres, Client>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new("client", postgres())
+            Table::new_with_entity("client", postgres())
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("contact_details")
                 .with_field("bakery_id")
-                .has_one("bakery", "bakery_id", || BakerySet::new())
-                .has_many("orders", "client_id", || OrderSet::new())
+                .has_one("bakery", "bakery_id", || Box::new(Bakery::table()))
+            // .has_many("orders", "client_id", || OrderSet::new())
             // .has_many("baked_cakes", "baker_id", || {
             //     // add baker_id field into Cake through a left join
             //     CakeSet::new().with_join(
@@ -33,12 +35,36 @@ impl ClientSet {
             // })
         })
     }
-
-    pub fn name() -> Arc<Field> {
-        ClientSet::table().get_field("name").unwrap()
-    }
-
-    pub fn contact_details() -> Arc<Field> {
-        ClientSet::table().get_field("contact_details").unwrap()
+    pub fn table() -> Table<Postgres, Client> {
+        Client::static_table().clone()
     }
 }
+
+pub trait ClientTable: AnyTable {
+    fn as_table(&self) -> &Table<Postgres, Client> {
+        self.as_any_ref().downcast_ref().unwrap()
+    }
+    fn id(&self) -> Arc<Field> {
+        self.get_field("id").unwrap()
+    }
+    fn name(&self) -> Arc<Field> {
+        self.get_field("name").unwrap()
+    }
+    fn contact_details(&self) -> Arc<Field> {
+        self.get_field("contact_details").unwrap()
+    }
+    fn bakery_id(&self) -> Arc<Field> {
+        self.get_field("bakery_id").unwrap()
+    }
+
+    fn ref_bakery(&self) -> Table<Postgres, Bakery> {
+        self.as_table().get_ref_as("bakery").unwrap()
+    }
+    // fn ref_orders(&self) -> Table<Postgres, Order> {
+    //     self.as_table().get_ref_as("orders").unwrap()
+    // }
+    // fn ref_cakes(&self) -> Table<Postgres, Cake> {
+    //     self.as_table().get_ref_as("cakes").unwrap()
+    // }
+}
+impl ClientTable for Table<Postgres, Client> {}
