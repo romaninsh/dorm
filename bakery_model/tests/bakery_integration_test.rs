@@ -1,15 +1,5 @@
-use std::{
-    sync::{Arc, OnceLock},
-    thread,
-    time::{Duration, Instant},
-};
-
-use anyhow::{Context, Result};
-use dorm::prelude::*;
-use serde_json::json;
-use tokio_postgres::NoTls;
-
-use bakery_model::{self, connect_postgres, postgres};
+use anyhow::Context;
+use bakery_model::{self, connect_postgres};
 
 // async fn create_bootstrap_db() -> Result<()> {
 //     let client = POSTGRESS.get().unwrap().client();

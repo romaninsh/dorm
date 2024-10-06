@@ -8,6 +8,7 @@ use crate::field::Field;
 use crate::prelude::AssociatedQuery;
 use crate::query::{Query, QueryType};
 use crate::table::Table;
+use crate::traits::any::RelatedTable;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
@@ -21,33 +22,6 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         for (alias, join) in &self.joins {
             query = query.with_join(join.join_query().clone());
         }
-        query
-    }
-
-    // TODO: debug why this overwrites the previous fields
-    fn add_fields_into_query(&self, mut query: Query, alias_prefix: Option<&str>) -> Query {
-        for (field_key, field_val) in &self.fields {
-            let field_val = if let Some(alias_prefix) = &alias_prefix {
-                let alias = format!("{}_{}", alias_prefix, field_key);
-                let mut field_val = field_val.deref().clone();
-                field_val.set_field_alias(alias);
-                Arc::new(field_val)
-            } else {
-                field_val.clone()
-            };
-            query = query.with_column(
-                field_val
-                    .deref()
-                    .get_field_alias()
-                    .unwrap_or_else(|| field_key.clone()),
-                field_val,
-            );
-        }
-
-        for (alias, join) in &self.joins {
-            query = join.add_fields_into_query(query, Some(alias));
-        }
-
         query
     }
 
@@ -119,7 +93,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::prelude::ExpressionArc;
+    use crate::prelude::*;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 

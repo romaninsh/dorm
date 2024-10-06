@@ -1,8 +1,11 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use crate::{
-    prelude::{JoinQuery, Table},
-    traits::{datasource::DataSource, entity::Entity},
+    prelude::{EmptyEntity, JoinQuery, Table},
+    traits::{any::RelatedTable, datasource::DataSource, entity::Entity},
 };
 
 #[derive(Clone, Debug)]
@@ -13,14 +16,35 @@ enum JoinType {
     Full,
 }
 
-#[derive(Clone, Debug)]
-pub struct Join<T: DataSource, E: Entity> {
-    table: Table<T, E>,
+pub struct Join<T: DataSource> {
+    // table: Table<T, E>,
+    table: Table<T, EmptyEntity>,
     join_query: JoinQuery,
 }
 
-impl<T: DataSource, E: Entity> Join<T, E> {
-    pub fn new(table: Table<T, E>, join_query: JoinQuery) -> Join<T, E> {
+impl<T: DataSource> Join<T> {
+    fn clone(&self) -> Self {
+        Join {
+            table: self.table.clone(),
+            join_query: self.join_query.clone(),
+        }
+    }
+}
+
+impl<T: DataSource> std::fmt::Debug for Join<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Join")
+            .field("table", &self.table.get_table_name())
+            .field("fields", &self.table.get_fields())
+            .field("join_query", &self.join_query)
+            .finish()
+    }
+}
+
+impl<T: DataSource> Join<T> {
+    pub fn new(table: Table<T, EmptyEntity>, join_query: JoinQuery) -> Self {
+        // Related table should have alias
+
         Join { table, join_query }
     }
     pub fn alias(&self) -> &str {
@@ -29,23 +53,23 @@ impl<T: DataSource, E: Entity> Join<T, E> {
     pub fn join_query(&self) -> &JoinQuery {
         &self.join_query
     }
-    pub fn table(&self) -> &Table<T, E> {
+    pub fn table(&self) -> &Table<T, EmptyEntity> {
         &self.table
     }
-    pub fn table_mut(&mut self) -> &mut Table<T, E> {
+    pub fn table_mut(&mut self) -> &mut Table<T, EmptyEntity> {
         &mut self.table
     }
 }
 
-impl<T: DataSource, E: Entity> Deref for Join<T, E> {
-    type Target = Table<T, E>;
+impl<T: DataSource> Deref for Join<T> {
+    type Target = Table<T, EmptyEntity>;
 
     fn deref(&self) -> &Self::Target {
         &self.table
     }
 }
 
-impl<T: DataSource, E: Entity> DerefMut for Join<T, E> {
+impl<T: DataSource> DerefMut for Join<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.table
     }
