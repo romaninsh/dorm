@@ -5,9 +5,9 @@ use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Bakery {
-    id: i64,
-    name: String,
-    profit_margin: String,
+    pub id: i64,
+    pub name: String,
+    pub profit_margin: i64,
 }
 impl Entity for Bakery {}
 
