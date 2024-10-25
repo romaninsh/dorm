@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::future::Future;
 
 /// Represents a [`dataset`] that may can add or modify records.
@@ -30,6 +31,10 @@ pub trait WritableDataSet<E> {
     /// peter_orders.update(|orders| orders.qty += 1).await?;
     /// ```
     fn update<F>(&self, f: F) -> impl Future<Output = Result<()>>;
+
+    fn update_with<F, E2>(&self, values: E2) -> impl Future<Output = Result<()>>
+    where
+        E2: Serialize + Clone;
 
     /// Delete all records in the DataSet. When working with Table, it's important to set a condition
     /// if you only want to delete some records.
