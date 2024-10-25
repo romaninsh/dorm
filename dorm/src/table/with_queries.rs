@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{to_value, Value};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -97,6 +97,37 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         query
     }
 
+    pub fn get_update_query<E2>(&self, values: E2) -> Query
+    where
+        E2: Serialize,
+    {
+        let mut query = Query::new()
+            .with_table(&self.table_name, None)
+            .with_type(QueryType::Update);
+
+        let serde_json::Value::Object(value_map) = serde_json::to_value(values).unwrap() else {
+            panic!("Values must be a struct");
+        };
+
+        for (field, _) in &self.fields {
+            let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
+
+            if field_object.calculated() {
+                continue;
+            };
+
+            let Some(value) = value_map.get(field) else {
+                continue;
+            };
+
+            query = query.with_set_field(field, value.clone());
+        }
+        for condition in self.conditions.iter() {
+            query = query.with_condition(condition.clone());
+        }
+        query
+    }
+
     pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
         let query = self.get_empty_query().with_column(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
@@ -145,6 +176,35 @@ mod tests {
         );
         assert_eq!(query.1[0], json!("John"));
         assert_eq!(query.1[1], json!("Doe"));
+    }
+
+    #[test]
+    fn test_update_query() {
+        #[derive(Serialize, Deserialize, Clone)]
+        struct UserName {
+            name: String,
+        }
+
+        let data =
+            json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
+        let db = MockDataSource::new(&data);
+
+        let table = Table::new("users", db)
+            .with_id_field("id")
+            .with_id(1.into())
+            .with_field("name")
+            .with_field("surname");
+
+        let query = table
+            .get_update_query(UserName {
+                name: "John".to_string(),
+            })
+            .render_chunk()
+            .split();
+
+        assert_eq!(query.0, "UPDATE users SET name = {} WHERE (id = {})");
+        assert_eq!(query.1[0], json!("John"));
+        assert_eq!(query.1[1], json!(1));
     }
 
     #[test]
