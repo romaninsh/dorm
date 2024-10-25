@@ -1,6 +1,6 @@
+use crate::dataset::ReadableDataSet;
 use crate::query::Query;
 use crate::table::Table;
-use crate::traits::dataset::ReadableDataSet;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use anyhow::Result;

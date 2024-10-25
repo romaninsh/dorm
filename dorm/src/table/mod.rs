@@ -45,6 +45,7 @@ mod with_fields;
 mod with_joins;
 mod with_queries;
 mod with_refs;
+mod with_updates;
 
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
