@@ -111,7 +111,6 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
-    use super::*;
     use crate::{expr_arc, mocks::datasource::MockDataSource, prelude::SqlChunk};
 
     #[derive(Serialize, Deserialize, Clone)]

@@ -10,6 +10,7 @@ use super::Query;
 pub enum QueryType {
     Select,
     Insert,
+    Update,
     Replace,
     Delete,
     Expression(Expression),

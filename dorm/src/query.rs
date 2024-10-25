@@ -146,11 +146,7 @@ impl Query {
 
     pub fn with_set_field(mut self, field: &str, value: Value) -> Self {
         match self.query_type {
-            QueryType::Insert => {
-                self.set_fields.insert(field.to_string(), value);
-                self
-            }
-            QueryType::Replace => {
+            QueryType::Insert | QueryType::Update | QueryType::Replace => {
                 self.set_fields.insert(field.to_string(), value);
                 self
             }
@@ -242,14 +238,6 @@ impl Query {
             .collect::<Vec<String>>()
             .join(", ");
 
-        // let fields = self
-        //     .columns
-        //     .iter()
-        //     .filter(|f| !f.1.calculated())
-        //     .map(|f| f.0.clone())
-        //     .collect::<Vec<String>>()
-        //     .join(", ");
-
         let values_str = self
             .set_fields
             .iter()
@@ -263,13 +251,6 @@ impl Query {
             .map(|(_, f)| f.clone())
             .collect::<Vec<Value>>();
 
-        // let values = self
-        //     .columns
-        //     .iter()
-        //     .filter(|f| !f.1.calculated())
-        //     .map(|_| json!(None as Option<Value>))
-        //     .collect::<Vec<Value>>();
-
         Ok(expr_arc!(
             format!(
                 "{} INTO {} ({}) VALUES ({{}}) returning id",
@@ -282,6 +263,31 @@ impl Query {
                 fields
             ),
             Expression::new(values_str, values)
+        )
+        .render_chunk())
+    }
+
+    fn render_update(&self) -> Result<Expression> {
+        let QuerySource::Table(table, _) = self.table.clone() else {
+            return Err(anyhow!("Call set_table() for insert query"));
+        };
+
+        let set_fields = self
+            .set_fields
+            .iter()
+            .map(|(k, v)| {
+                let expr = expr_arc!(format!("{} = {{}}", k), v.clone());
+                let boxed_chunk: Box<dyn SqlChunk> = Box::new(expr);
+                Arc::new(boxed_chunk)
+            })
+            .collect::<Vec<Arc<Box<dyn SqlChunk>>>>();
+
+        let set_fields = ExpressionArc::from_vec(set_fields, ", ");
+
+        Ok(expr_arc!(
+            format!("UPDATE {} SET {{}}{{}}", table),
+            set_fields,
+            self.render_where()
         )
         .render_chunk())
     }
@@ -304,6 +310,7 @@ impl SqlChunk for Query {
         match &self.query_type {
             QueryType::Select => self.render_select(),
             QueryType::Insert | QueryType::Replace => self.render_insert(),
+            QueryType::Update => self.render_update(),
             QueryType::Delete => self.render_delete(),
             QueryType::Expression(expr) => Ok(expr.clone()),
         }
@@ -370,6 +377,29 @@ mod tests {
         assert_eq!(params[0], json!("John"));
         assert_eq!(params[1], json!("Doe"));
         assert_eq!(params[2], json!(30));
+    }
+
+    #[test]
+    fn test_update() {
+        let (sql, params) = Query::new()
+            .with_table("users", None)
+            .with_type(QueryType::Update)
+            .with_set_field("name", "John".into())
+            .with_set_field("surname", "Doe".into())
+            .with_set_field("age", 30.into())
+            .with_condition(expr!("id = {}", 1))
+            .render_chunk()
+            .split();
+
+        assert_eq!(
+            sql,
+            "UPDATE users SET name = {}, surname = {}, age = {} WHERE id = {}"
+        );
+        assert_eq!(params.len(), 4);
+        assert_eq!(params[0], json!("John"));
+        assert_eq!(params[1], json!("Doe"));
+        assert_eq!(params[2], json!(30));
+        assert_eq!(params[3], json!(1));
     }
 
     #[test]
