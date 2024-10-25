@@ -24,6 +24,8 @@ pub struct Query {
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
     conditions: Vec<Arc<Box<dyn SqlChunk>>>,
 
+    set_fields: IndexMap<String, Value>,
+
     where_conditions: QueryConditions,
     having_conditions: QueryConditions,
     joins: Vec<JoinQuery>,
@@ -47,6 +49,9 @@ impl Query {
             query_type: QueryType::Select,
             columns: IndexMap::new(),
             conditions: Vec::new(),
+
+            set_fields: IndexMap::new(),
+
             where_conditions: QueryConditions::where_(),
             having_conditions: QueryConditions::having(),
             joins: Vec::new(),
@@ -139,6 +144,22 @@ impl Query {
         )
     }
 
+    pub fn with_set_field(mut self, field: &str, value: Value) -> Self {
+        match self.query_type {
+            QueryType::Insert => {
+                self.set_fields.insert(field.to_string(), value);
+                self
+            }
+            QueryType::Replace => {
+                self.set_fields.insert(field.to_string(), value);
+                self
+            }
+            _ => {
+                panic!("Call set_set_field() for insert query");
+            }
+        }
+    }
+
     fn render_with(&self) -> Expression {
         if self.with.is_empty() {
             Expression::empty()
@@ -215,27 +236,39 @@ impl Query {
         };
 
         let fields = self
-            .columns
+            .set_fields
             .iter()
-            .filter(|f| !f.1.calculated())
-            .map(|f| f.0.clone())
+            .map(|(k, _)| k.clone())
             .collect::<Vec<String>>()
             .join(", ");
 
+        // let fields = self
+        //     .columns
+        //     .iter()
+        //     .filter(|f| !f.1.calculated())
+        //     .map(|f| f.0.clone())
+        //     .collect::<Vec<String>>()
+        //     .join(", ");
+
         let values_str = self
-            .columns
+            .set_fields
             .iter()
-            .filter(|f| !f.1.calculated())
             .map(|_| "{}".to_string())
             .collect::<Vec<String>>()
             .join(", ");
 
         let values = self
-            .columns
+            .set_fields
             .iter()
-            .filter(|f| !f.1.calculated())
-            .map(|_| json!(None as Option<Value>))
+            .map(|(_, f)| f.clone())
             .collect::<Vec<Value>>();
+
+        // let values = self
+        //     .columns
+        //     .iter()
+        //     .filter(|f| !f.1.calculated())
+        //     .map(|_| json!(None as Option<Value>))
+        //     .collect::<Vec<Value>>();
 
         Ok(expr_arc!(
             format!(
@@ -323,9 +356,9 @@ mod tests {
         let (sql, params) = Query::new()
             .with_table("users", None)
             .with_type(QueryType::Insert)
-            .with_column_field("name")
-            .with_column_field("surname")
-            .with_column_field("age")
+            .with_set_field("name", "John".into())
+            .with_set_field("surname", "Doe".into())
+            .with_set_field("age", 30.into())
             .render_chunk()
             .split();
 
@@ -334,9 +367,9 @@ mod tests {
             "INSERT INTO users (name, surname, age) VALUES ({}, {}, {}) returning id"
         );
         assert_eq!(params.len(), 3);
-        assert_eq!(params[0], Value::Null);
-        assert_eq!(params[1], Value::Null);
-        assert_eq!(params[2], Value::Null);
+        assert_eq!(params[0], json!("John"));
+        assert_eq!(params[1], json!("Doe"));
+        assert_eq!(params[2], json!(30));
     }
 
     #[test]

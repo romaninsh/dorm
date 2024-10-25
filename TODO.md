@@ -50,6 +50,13 @@ MVP:
 - [ ] Restore functionality of bakery example
 - [ ] Implement ability to include sub-queries based on related tables
 
+  0.0.5: Refactor internal crates
+
+- [x] Move ReadableDataSet and WritableDataSet to separate crate and document
+- [x] Implement WritableDataSet for Table (almost)
+- [ ] Implement todo in update() in WritableDataSet for Table
+- [ ] Continue through the docs - align crates with documentation
+
 Create integration test-suite for SQL testing
 
 - [x] Quality of life improvements - nextest and improved assert_eq
@@ -59,6 +66,7 @@ Create integration test-suite for SQL testing
 - [x] Populate Bakery tables for tests
 - [x] Seed some data into Bakery tests
 - [ ] Make use of Postgres snapshots in the tests
+- [ ] Add integration tests for update() and delete() for Table
 
 Control field queries
 

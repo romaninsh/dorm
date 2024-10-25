@@ -72,13 +72,27 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self.get_select_query_for_fields(i)
     }
 
-    pub fn get_insert_query(&self) -> Query {
+    pub fn get_insert_query(&self, values: E) -> Query {
         let mut query = Query::new()
             .with_table(&self.table_name, None)
             .with_type(QueryType::Insert);
+
+        let serde_json::Value::Object(value_map) = serde_json::to_value(values).unwrap() else {
+            panic!("Values must be a struct");
+        };
+
         for (field, _) in &self.fields {
             let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
-            query = query.with_column(field.clone(), field_object);
+
+            if field_object.calculated() {
+                continue;
+            };
+
+            let Some(value) = value_map.get(field) else {
+                continue;
+            };
+
+            query = query.with_set_field(field, value.clone());
         }
         query
     }
@@ -99,24 +113,39 @@ mod tests {
 
     use super::*;
     use crate::{expr_arc, mocks::datasource::MockDataSource, prelude::SqlChunk};
+
+    #[derive(Serialize, Deserialize, Clone)]
+    struct User {
+        name: String,
+        surname: String,
+    }
+
+    impl Entity for User {}
+
     #[test]
     fn test_insert_query() {
         let data =
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let db = MockDataSource::new(&data);
 
-        let table = Table::new("users", db)
+        let table = Table::new_with_entity("users", db)
             .with_field("name")
             .with_field("surname");
 
-        let query = table.get_insert_query().render_chunk().split();
+        let query = table
+            .get_insert_query(User {
+                name: "John".to_string(),
+                surname: "Doe".to_string(),
+            })
+            .render_chunk()
+            .split();
 
         assert_eq!(
             query.0,
             "INSERT INTO users (name, surname) VALUES ({}, {}) returning id"
         );
-        assert_eq!(query.1[0], Value::Null);
-        assert_eq!(query.1[1], Value::Null);
+        assert_eq!(query.1[0], json!("John"));
+        assert_eq!(query.1[1], json!("Doe"));
     }
 
     #[test]

@@ -1,3 +1,6 @@
+// Define dataset traits
+pub mod dataset;
+
 mod condition;
 mod datasource;
 pub mod expression;
@@ -9,6 +12,6 @@ mod operations;
 pub mod prelude;
 pub mod query;
 mod reference;
-mod table;
+pub mod table;
 mod traits;
 mod uniqid;
