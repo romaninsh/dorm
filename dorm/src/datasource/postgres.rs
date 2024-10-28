@@ -3,10 +3,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::expression::{Expression, ExpressionArc};
 use crate::query::Query;
+use crate::sql::chunk::SqlChunk;
+use crate::sql::expression::{Expression, ExpressionArc};
 use crate::traits::datasource::DataSource;
-use crate::traits::sql_chunk::SqlChunk;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;

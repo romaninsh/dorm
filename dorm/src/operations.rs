@@ -3,8 +3,8 @@ use std::sync::Arc;
 use crate::{
     condition::Condition,
     expr_arc,
-    expression::{Expression, ExpressionArc},
-    traits::sql_chunk::SqlChunk,
+    sql::chunk::SqlChunk,
+    sql::expression::{Expression, ExpressionArc},
 };
 
 pub trait Operations: SqlChunk {

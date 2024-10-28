@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::condition::Condition;
 use crate::expr;
-use crate::expression::expression_arc::WrapArc;
-use crate::expression::Expression;
 use crate::operations::Operations;
+use crate::sql::chunk::SqlChunk;
+use crate::sql::Expression;
+use crate::sql::WrapArc;
 use crate::traits::column::Column;
-use crate::traits::sql_chunk::SqlChunk;
 
 #[derive(Debug, Clone)]
 pub struct Field {

@@ -1,7 +1,6 @@
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{to_value, Value};
-use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::field::Field;

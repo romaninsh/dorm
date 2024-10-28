@@ -1,6 +1,6 @@
-use crate::expression::Expression;
+use crate::sql::Expression;
 
-use super::sql_chunk::SqlChunk;
+use super::super::sql::chunk::SqlChunk;
 
 pub trait Column: SqlChunk {
     fn render_column(&self, alias: Option<&str>) -> Expression;

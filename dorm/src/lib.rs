@@ -3,7 +3,6 @@ pub mod dataset;
 
 mod condition;
 mod datasource;
-pub mod expression;
 mod field;
 mod join;
 mod lazy_expression;
@@ -12,6 +11,7 @@ mod operations;
 pub mod prelude;
 pub mod query;
 mod reference;
+pub mod sql;
 pub mod table;
 mod traits;
 mod uniqid;

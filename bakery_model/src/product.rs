@@ -1,10 +1,7 @@
 use crate::postgres;
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{
-    any::Any,
-    sync::{Arc, OnceLock},
-};
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Product {

@@ -1,9 +1,7 @@
-use crate::expression::Expression;
+use crate::sql::Expression;
 use rust_decimal::Decimal;
 use serde_json::{to_value, Value};
 use std::fmt::Debug;
-
-// use crate::operations::Operations;
 
 /// A `SqlChunk` trait for generating SQL queries and their associated parameters
 ///
@@ -131,7 +129,7 @@ mod tests {
     use serde_json::json;
 
     use crate::expr;
-    use crate::expression::Expression;
+    use crate::sql::Expression;
 
     use super::*;
 

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::future::Future;
 
 /// Represents a [`dataset`] that may can add or modify records.
