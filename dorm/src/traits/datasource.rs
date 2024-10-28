@@ -1,6 +1,6 @@
 #![allow(async_fn_in_trait)]
 
-use crate::query::Query;
+use crate::sql::Query;
 use anyhow::Result;
 use serde_json::{Map, Value};
 

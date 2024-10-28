@@ -3,9 +3,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::query::Query;
-use crate::sql::chunk::SqlChunk;
+use crate::sql::chunk::Chunk;
 use crate::sql::expression::{Expression, ExpressionArc};
+use crate::sql::Query;
 use crate::traits::datasource::DataSource;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
@@ -261,9 +261,11 @@ impl<T: DataSource> AssociatedExpressionArc<T> {
     pub async fn get_one(&self) -> Result<Value> {
         let one = self
             .ds
-            .query_one(&Query::new().with_type(crate::query::QueryType::Expression(
-                self.expr.render_chunk(),
-            )))
+            .query_one(
+                &Query::new().with_type(crate::sql::query::QueryType::Expression(
+                    self.expr.render_chunk(),
+                )),
+            )
             .await?;
         Ok(one)
     }
@@ -292,7 +294,7 @@ impl<T: DataSource> AssociatedQuery<T> {
         self.ds.query_one(&self.query).await
     }
 }
-impl<T: DataSource + Sync> SqlChunk for AssociatedQuery<T> {
+impl<T: DataSource + Sync> Chunk for AssociatedQuery<T> {
     fn render_chunk(&self) -> Expression {
         self.query.render_chunk()
     }

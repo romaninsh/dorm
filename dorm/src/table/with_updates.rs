@@ -1,5 +1,6 @@
 use crate::{
-    dataset::WritableDataSet, prelude::Entity, query::QueryType, traits::datasource::DataSource,
+    dataset::WritableDataSet, prelude::Entity, sql::query::QueryType,
+    traits::datasource::DataSource,
 };
 
 use super::Table;

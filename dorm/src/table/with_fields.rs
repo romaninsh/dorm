@@ -3,11 +3,11 @@ use indexmap::IndexMap;
 use serde_json::Value;
 use std::sync::Arc;
 
-use crate::condition::Condition;
 use crate::field::Field;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AnyTable, Operations};
-use crate::sql::chunk::SqlChunk;
+use crate::sql::chunk::Chunk;
+use crate::sql::Condition;
 use crate::table::Table;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
@@ -55,7 +55,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self,
         field: &'static str,
         op: &'static str,
-        value: impl SqlChunk + 'static,
+        value: impl Chunk + 'static,
     ) -> Result<Self> {
         let field = self
             .get_field(field)
@@ -112,7 +112,7 @@ mod tests {
 
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Operations, SqlChunk},
+        prelude::{AnyTable, Chunk, Operations},
         table::Table,
     };
 

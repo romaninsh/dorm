@@ -1,5 +1,5 @@
 use crate::dataset::ReadableDataSet;
-use crate::query::Query;
+use crate::sql::Query;
 use crate::table::Table;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;

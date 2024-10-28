@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use crate::expr;
 use crate::prelude::Field;
-use crate::sql::chunk::SqlChunk;
 use crate::sql::expression::{Expression, ExpressionArc};
+use crate::sql::Chunk;
 
 #[derive(Debug, Clone)]
 enum ConditionOperand {
@@ -19,16 +19,12 @@ enum ConditionOperand {
 pub struct Condition {
     field: ConditionOperand,
     operation: String,
-    value: Arc<Box<dyn SqlChunk>>,
+    value: Arc<Box<dyn Chunk>>,
 }
 
 #[allow(dead_code)]
 impl Condition {
-    pub fn from_field(
-        field: Arc<Field>,
-        operation: &str,
-        value: Arc<Box<dyn SqlChunk>>,
-    ) -> Condition {
+    pub fn from_field(field: Arc<Field>, operation: &str, value: Arc<Box<dyn Chunk>>) -> Condition {
         Condition {
             field: ConditionOperand::Field(field),
             operation: operation.to_string(),
@@ -38,7 +34,7 @@ impl Condition {
     pub fn from_expression(
         expression: Expression,
         operation: &str,
-        value: Arc<Box<dyn SqlChunk>>,
+        value: Arc<Box<dyn Chunk>>,
     ) -> Condition {
         Condition {
             field: ConditionOperand::Expression(Box::new(expression)),
@@ -49,7 +45,7 @@ impl Condition {
     pub fn from_condition(
         condition: Condition,
         operation: &str,
-        value: Arc<Box<dyn SqlChunk>>,
+        value: Arc<Box<dyn Chunk>>,
     ) -> Condition {
         Condition {
             field: ConditionOperand::Condition(Box::new(condition)),
@@ -70,7 +66,7 @@ impl Condition {
         }
     }
 
-    pub fn from_value(operand: Value, operation: &str, value: Arc<Box<dyn SqlChunk>>) -> Condition {
+    pub fn from_value(operand: Value, operation: &str, value: Arc<Box<dyn Chunk>>) -> Condition {
         Condition {
             field: ConditionOperand::Value(operand),
             operation: operation.to_string(),
@@ -96,7 +92,7 @@ impl Condition {
     }
 }
 
-impl SqlChunk for Condition {
+impl Chunk for Condition {
     fn render_chunk(&self) -> Expression {
         ExpressionArc::new(
             format!("({{}} {} {{}})", self.operation),

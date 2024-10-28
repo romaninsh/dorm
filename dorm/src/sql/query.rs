@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::{
     expr_arc,
     field::Field,
-    sql::chunk::SqlChunk,
+    sql::chunk::Chunk,
     sql::expression::{Expression, ExpressionArc},
     traits::column::Column,
 };
@@ -23,7 +23,7 @@ pub struct Query {
     distinct: bool,
     query_type: QueryType,
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
-    conditions: Vec<Arc<Box<dyn SqlChunk>>>,
+    conditions: Vec<Arc<Box<dyn Chunk>>>,
 
     set_fields: IndexMap<String, Value>,
 
@@ -118,11 +118,11 @@ impl Query {
         self
     }
 
-    pub fn with_condition(self, cond: impl SqlChunk + 'static) -> Self {
+    pub fn with_condition(self, cond: impl Chunk + 'static) -> Self {
         self.with_condition_arc(Arc::new(Box::new(cond)))
     }
 
-    pub fn with_condition_arc(mut self, cond: Arc<Box<dyn SqlChunk>>) -> Self {
+    pub fn with_condition_arc(mut self, cond: Arc<Box<dyn Chunk>>) -> Self {
         self.conditions.push(cond);
         self
     }
@@ -278,10 +278,10 @@ impl Query {
             .iter()
             .map(|(k, v)| {
                 let expr = expr_arc!(format!("{} = {{}}", k), v.clone());
-                let boxed_chunk: Box<dyn SqlChunk> = Box::new(expr);
+                let boxed_chunk: Box<dyn Chunk> = Box::new(expr);
                 Arc::new(boxed_chunk)
             })
-            .collect::<Vec<Arc<Box<dyn SqlChunk>>>>();
+            .collect::<Vec<Arc<Box<dyn Chunk>>>>();
 
         let set_fields = ExpressionArc::from_vec(set_fields, ", ");
 
@@ -306,7 +306,7 @@ impl Query {
     }
 }
 
-impl SqlChunk for Query {
+impl Chunk for Query {
     fn render_chunk(&self) -> Expression {
         match &self.query_type {
             QueryType::Select => self.render_select(),

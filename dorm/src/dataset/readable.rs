@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crate::query::Query;
+use crate::sql::Query;
 use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};

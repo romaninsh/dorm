@@ -2,21 +2,21 @@ use super::Expression;
 use std::sync::Arc;
 
 use crate::{
-    sql::chunk::SqlChunk,
+    sql::chunk::Chunk,
     // operations::Operations,
     traits::column::Column,
 };
 
 pub trait WrapArc {
-    fn wrap_arc(self) -> Arc<Box<dyn SqlChunk>>;
+    fn wrap_arc(self) -> Arc<Box<dyn Chunk>>;
 }
-impl<T: SqlChunk + 'static> WrapArc for T {
-    fn wrap_arc(self) -> Arc<Box<dyn SqlChunk>> {
+impl<T: Chunk + 'static> WrapArc for T {
+    fn wrap_arc(self) -> Arc<Box<dyn Chunk>> {
         Arc::new(Box::new(self))
     }
 }
-impl WrapArc for Arc<Box<dyn SqlChunk>> {
-    fn wrap_arc(self) -> Arc<Box<dyn SqlChunk>> {
+impl WrapArc for Arc<Box<dyn Chunk>> {
+    fn wrap_arc(self) -> Arc<Box<dyn Chunk>> {
         self
     }
 }
@@ -36,18 +36,18 @@ macro_rules! expr_arc {
 #[derive(Debug)]
 pub struct ExpressionArc {
     expression: String,
-    parameters: Vec<Arc<Box<dyn SqlChunk>>>,
+    parameters: Vec<Arc<Box<dyn Chunk>>>,
 }
 
 impl ExpressionArc {
-    pub fn new<'b>(expression: String, parameters: Vec<Arc<Box<dyn SqlChunk>>>) -> ExpressionArc {
+    pub fn new<'b>(expression: String, parameters: Vec<Arc<Box<dyn Chunk>>>) -> ExpressionArc {
         ExpressionArc {
             expression,
             parameters,
         }
     }
 
-    pub fn from_vec(vec: Vec<Arc<Box<dyn SqlChunk>>>, delimiter: &str) -> Self {
+    pub fn from_vec(vec: Vec<Arc<Box<dyn Chunk>>>, delimiter: &str) -> Self {
         let expression = vec
             .iter()
             .map(|_| "{}")
@@ -66,7 +66,7 @@ impl ExpressionArc {
     }
 }
 
-impl SqlChunk for ExpressionArc {
+impl Chunk for ExpressionArc {
     fn render_chunk(&self) -> Expression {
         let token = "{}";
 
@@ -108,7 +108,7 @@ impl Column for ExpressionArc {
 mod tests {
     use super::*;
     use serde_json::json;
-    use SqlChunk;
+    use Chunk;
 
     #[test]
     fn test_expression() {
@@ -182,9 +182,9 @@ mod tests {
 
     #[test]
     fn test_multiple_replacements() {
-        let a = Arc::new(Box::new(json!(10)) as Box<dyn SqlChunk>);
-        let b = Arc::new(Box::new(json!(5)) as Box<dyn SqlChunk>);
-        let c = Arc::new(Box::new(json!(5)) as Box<dyn SqlChunk>);
+        let a = Arc::new(Box::new(json!(10)) as Box<dyn Chunk>);
+        let b = Arc::new(Box::new(json!(5)) as Box<dyn Chunk>);
+        let c = Arc::new(Box::new(json!(5)) as Box<dyn Chunk>);
         let expression = ExpressionArc::new("{} - {} = {}".to_string(), vec![a, b, c]);
 
         let (sql, params) = expression.render_chunk().split();
@@ -198,7 +198,7 @@ mod tests {
     fn test_nested_expr() {
         let a = "10".to_owned();
         let b = "5";
-        let c = Arc::new(Box::new(4) as Box<dyn SqlChunk>); // not double-wrapped
+        let c = Arc::new(Box::new(4) as Box<dyn Chunk>); // not double-wrapped
 
         let expr2 = expr_arc!("{} + {}", b, c);
         let expr1 = expr_arc!("{} + {}", a, expr2);
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_lifetimes() {
         let expr2 =
-            Arc::new(Box::new(Expression::new("Hello".to_string(), vec![])) as Box<dyn SqlChunk>);
+            Arc::new(Box::new(Expression::new("Hello".to_string(), vec![])) as Box<dyn Chunk>);
         {
             let expr1 = ExpressionArc::new("{}".to_string(), vec![expr2.clone()]);
             drop(expr1);

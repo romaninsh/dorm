@@ -2,11 +2,11 @@ use indexmap::IndexMap;
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::condition::Condition;
 use crate::field::Field;
 use crate::join::Join;
 use crate::prelude::AssociatedQuery;
-use crate::query::Query;
+use crate::sql::Condition;
+use crate::sql::Query;
 
 use super::datasource::DataSource;
 
