@@ -2,8 +2,9 @@ use super::Expression;
 use std::sync::Arc;
 
 use crate::{
+    sql::chunk::SqlChunk,
     // operations::Operations,
-    traits::{column::Column, sql_chunk::SqlChunk},
+    traits::column::Column,
 };
 
 pub trait WrapArc {
@@ -26,7 +27,7 @@ macro_rules! expr_arc {
         ExpressionArc::new(
             $fmt.to_string(),
             vec![
-                $( $crate::expression::expression_arc::WrapArc::wrap_arc($arg), )*
+                $( $crate::sql::WrapArc::wrap_arc($arg), )*
             ]
         )
     }}

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use indexmap::IndexMap;
 use std::any::Any;
 use std::sync::Arc;
@@ -8,10 +7,8 @@ use crate::field::Field;
 use crate::join::Join;
 use crate::prelude::AssociatedQuery;
 use crate::query::Query;
-use crate::table::Table;
 
 use super::datasource::DataSource;
-use super::entity::Entity;
 
 /// When defining references between tables, AnyTable represents
 /// a target table, that can potentially be associated with a

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::expr;
-use crate::expression::{Expression, ExpressionArc};
 use crate::prelude::Field;
-use crate::traits::sql_chunk::SqlChunk;
+use crate::sql::chunk::SqlChunk;
+use crate::sql::expression::{Expression, ExpressionArc};
 
 #[derive(Debug, Clone)]
 enum ConditionOperand {

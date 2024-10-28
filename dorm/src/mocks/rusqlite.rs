@@ -36,8 +36,8 @@ impl DataSource for Connection {
 mod tests {
 
     use super::*;
-    use crate::expression::Expression;
     use crate::table::Table;
+    use crate::Expression;
     use crate::{expr, Query};
 
     fn setup() -> Connection {

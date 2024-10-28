@@ -4,13 +4,13 @@ use std::sync::{Arc, Mutex};
 
 use crate::condition::Condition;
 use crate::expr_arc;
-use crate::expression::ExpressionArc;
 use crate::field::Field;
 use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
 use crate::query::Query;
 use crate::reference::RelatedReference;
+use crate::sql::ExpressionArc;
 use crate::traits::any::{AnyTable, RelatedTable};
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::{EmptyEntity, Entity};

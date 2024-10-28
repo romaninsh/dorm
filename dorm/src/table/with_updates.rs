@@ -5,7 +5,7 @@ use crate::{
 use super::Table;
 use anyhow::Result;
 use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::Value;
 
 // You should be able to insert and delete data in a table
 impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {

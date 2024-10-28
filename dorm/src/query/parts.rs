@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    expr, expr_arc, prelude::Expression, prelude::ExpressionArc, traits::sql_chunk::SqlChunk,
-};
+use crate::{expr, expr_arc, prelude::Expression, prelude::ExpressionArc, sql::chunk::SqlChunk};
 
 use super::Query;
 

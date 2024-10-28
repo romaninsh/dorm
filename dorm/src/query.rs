@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::{
     expr_arc,
-    expression::{Expression, ExpressionArc},
     field::Field,
-    traits::{column::Column, sql_chunk::SqlChunk},
+    sql::chunk::SqlChunk,
+    sql::expression::{Expression, ExpressionArc},
+    traits::column::Column,
 };
 
 mod parts;
@@ -321,6 +322,7 @@ impl SqlChunk for Query {
 #[cfg(test)]
 mod tests {
     use crate::expr;
+    use serde_json::json;
 
     use super::*;
 

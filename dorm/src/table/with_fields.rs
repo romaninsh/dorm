@@ -7,11 +7,11 @@ use crate::condition::Condition;
 use crate::field::Field;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AnyTable, Operations};
+use crate::sql::chunk::SqlChunk;
 use crate::table::Table;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
-use crate::traits::sql_chunk::SqlChunk;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     /// Adds a new field to the table. Note, that Field may use an alias

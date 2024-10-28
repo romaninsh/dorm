@@ -1,14 +1,8 @@
-use std::any::Any;
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
 
-use crate::condition::Condition;
-use crate::field::Field;
-use crate::prelude::Operations;
 use crate::reference::RelatedReference;
 use crate::table::Table;
-use crate::traits::any::{AnyTable, RelatedTable};
+use crate::traits::any::RelatedTable;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 
@@ -64,7 +58,7 @@ mod tests {
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{EmptyEntity, Operations, SqlChunk},
+        prelude::{AnyTable, EmptyEntity, Operations, SqlChunk},
     };
     // #[test]
     // fn test_add_ref() {

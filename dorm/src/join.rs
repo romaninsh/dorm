@@ -1,11 +1,8 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::ops::{Deref, DerefMut};
 
 use crate::{
     prelude::{EmptyEntity, JoinQuery, Table},
-    traits::{any::RelatedTable, datasource::DataSource, entity::Entity},
+    traits::{any::RelatedTable, datasource::DataSource},
 };
 
 #[derive(Clone, Debug)]
