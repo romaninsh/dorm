@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use crate::condition::Condition;
 use crate::expr;
-use crate::operations::Operations;
-use crate::sql::chunk::SqlChunk;
+use crate::sql::chunk::Chunk;
+use crate::sql::Condition;
 use crate::sql::Expression;
+use crate::sql::Operations;
 use crate::sql::WrapArc;
 use crate::traits::column::Column;
 
@@ -45,7 +45,7 @@ impl Field {
 }
 
 impl Operations for Arc<Field> {
-    fn eq(&self, other: &impl SqlChunk) -> Condition {
+    fn eq(&self, other: &impl Chunk) -> Condition {
         Condition::from_field(self.clone(), "=", WrapArc::wrap_arc(other.render_chunk()))
     }
 
@@ -55,7 +55,7 @@ impl Operations for Arc<Field> {
     // }
 }
 
-impl SqlChunk for Arc<Field> {
+impl Chunk for Arc<Field> {
     fn render_chunk(&self) -> Expression {
         Expression::new(format!("{}", self.name_with_table()), vec![])
     }

@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use crate::field::Field;
 use crate::prelude::AssociatedQuery;
-use crate::query::{Query, QueryType};
+use crate::sql::query::QueryType;
+use crate::sql::Query;
 use crate::table::Table;
 use crate::traits::any::RelatedTable;
 use crate::traits::column::Column;
@@ -141,7 +142,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
-    use crate::{expr_arc, mocks::datasource::MockDataSource, prelude::SqlChunk};
+    use crate::{expr_arc, mocks::datasource::MockDataSource, prelude::Chunk};
 
     #[derive(Serialize, Deserialize, Clone)]
     struct User {

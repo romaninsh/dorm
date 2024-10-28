@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::query::Query;
+use crate::sql::Query;
 use crate::traits::datasource::DataSource;
 use anyhow::Result;
 use serde_json::{Map, Value};
@@ -57,7 +57,7 @@ impl DataSource for MockDataSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::Query;
+    use crate::sql::Query;
     use crate::traits::datasource::DataSource;
     use serde_json::json;
     use tokio;

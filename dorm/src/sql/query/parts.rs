@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{expr, expr_arc, prelude::Expression, prelude::ExpressionArc, sql::chunk::SqlChunk};
+use crate::{expr, expr_arc, prelude::Expression, prelude::ExpressionArc, sql::chunk::Chunk};
 
 use super::Query;
 
@@ -48,7 +48,7 @@ impl QuerySource {
         }
     }
 }
-impl SqlChunk for QuerySource {
+impl Chunk for QuerySource {
     fn render_chunk(&self) -> Expression {
         self.render_prefix("FROM ")
     }
@@ -90,7 +90,7 @@ impl QueryConditions {
         self
     }
 }
-impl SqlChunk for QueryConditions {
+impl Chunk for QueryConditions {
     fn render_chunk(&self) -> Expression {
         let result = Expression::from_vec(self.conditions.clone(), " AND ");
         match self.condition_type {
@@ -128,7 +128,7 @@ impl JoinQuery {
         }
     }
 }
-impl SqlChunk for JoinQuery {
+impl Chunk for JoinQuery {
     fn render_chunk(&self) -> Expression {
         let join_type = match self.join_type {
             JoinType::Inner => "JOIN ",
@@ -147,8 +147,8 @@ mod tests {
     use serde_json::Value;
 
     use crate::{
-        condition::Condition,
         prelude::{Field, Operations},
+        sql::Condition,
     };
 
     use super::*;

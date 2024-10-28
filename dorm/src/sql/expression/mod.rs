@@ -1,4 +1,4 @@
-//! Expressions implement a recursive template system for generating SQL queries.
+//! [`Expression`] and [`ExpressionArc`] structs for building SQL query templates
 //!
 //! There are two types of SQL expressions:
 //! - [`Expression`]: A simple expression that may contain parameters of type [`serde_json::Value`].

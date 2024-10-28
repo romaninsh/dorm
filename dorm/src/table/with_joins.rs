@@ -2,8 +2,8 @@ use std::ptr::eq;
 use std::sync::Arc;
 
 use crate::join::Join;
-use crate::prelude::{AnyTable, Operations, SqlChunk};
-use crate::query::{JoinQuery, JoinType, QueryConditions};
+use crate::prelude::{AnyTable, Chunk, Operations};
+use crate::sql::query::{JoinQuery, JoinType, QueryConditions};
 use crate::table::Table;
 use crate::traits::any::RelatedTable;
 use crate::traits::datasource::DataSource;
@@ -142,7 +142,10 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         // Create a join
         let join = JoinQuery::new(
             JoinType::Left,
-            crate::query::QuerySource::Table(their_table_name, Some(their_table_alias.clone())),
+            crate::sql::query::QuerySource::Table(
+                their_table_name,
+                Some(their_table_alias.clone()),
+            ),
             on_condition,
         );
         self.joins.insert(
@@ -162,9 +165,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        condition::Condition,
         mocks::datasource::MockDataSource,
-        prelude::{Operations, SqlChunk},
+        prelude::{Chunk, Operations},
+        sql::Condition,
     };
     #[test]
     fn test_join() {

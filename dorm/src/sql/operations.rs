@@ -1,13 +1,28 @@
 use std::sync::Arc;
 
 use crate::{
-    condition::Condition,
     expr_arc,
-    sql::chunk::SqlChunk,
+    sql::chunk::Chunk,
     sql::expression::{Expression, ExpressionArc},
+    sql::Condition,
 };
 
-pub trait Operations: SqlChunk {
+/// Operations trait provides implementatoin of some common SQL operations
+/// for something like [`Expression`] or Arc<[`Field`]>:
+///
+/// ```
+/// let expr = expr!("2").gt(expr!("1"));  // "2>1"
+/// ```
+/// You may mix and match [`Expression`] and [`Field`]:
+///
+/// ```
+/// let expr = user.get_field("age")?.gt(18);  // "user.age>18"
+/// let expr = period.get_field("start")?.gt(period.get_field("end")?);  // "period.start>period.end"
+/// ```
+/// [`Table`]: crate::table::Table
+/// [`Field`]: crate::field::Field
+
+pub trait Operations: Chunk {
     // fn in_vec(&self, other: Vec<impl SqlChunk>) -> Condition {
     //     Condition::from_expression(
     //         self.render_chunk(),
@@ -18,14 +33,14 @@ pub trait Operations: SqlChunk {
     //         ))),
     //     )
     // }
-    fn in_expr(&self, other: &impl SqlChunk) -> Condition {
+    fn in_expr(&self, other: &impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             "IN",
             Arc::new(Box::new(expr_arc!("({})", other.render_chunk()))),
         )
     }
-    fn eq(&self, other: &impl SqlChunk) -> Condition {
+    fn eq(&self, other: &impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             "=",
@@ -33,7 +48,7 @@ pub trait Operations: SqlChunk {
         )
     }
 
-    fn ne(&self, other: impl SqlChunk) -> Condition {
+    fn ne(&self, other: impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             "!=",
@@ -41,7 +56,7 @@ pub trait Operations: SqlChunk {
         )
     }
 
-    fn gt(&self, other: impl SqlChunk) -> Condition {
+    fn gt(&self, other: impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             ">",
@@ -49,7 +64,7 @@ pub trait Operations: SqlChunk {
         )
     }
 
-    fn lt(&self, other: impl SqlChunk) -> Condition {
+    fn lt(&self, other: impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
             "<",
@@ -67,15 +82,15 @@ pub trait Operations: SqlChunk {
     }
     */
 
-    fn add(&self, other: impl SqlChunk) -> Expression {
+    fn add(&self, other: impl Chunk) -> Expression {
         expr_arc!("({}) + ({})", self.render_chunk(), other.render_chunk()).render_chunk()
     }
 
-    fn sub(&self, other: impl SqlChunk) -> Expression {
+    fn sub(&self, other: impl Chunk) -> Expression {
         expr_arc!("({}) - ({})", self.render_chunk(), other.render_chunk()).render_chunk()
     }
 
-    fn concat(arg: Vec<Arc<Box<dyn SqlChunk>>>) -> Expression {
+    fn concat(arg: Vec<Arc<Box<dyn Chunk>>>) -> Expression {
         ExpressionArc::from_vec(arg, ", ").render_chunk()
     }
 

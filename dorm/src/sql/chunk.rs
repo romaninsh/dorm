@@ -3,7 +3,7 @@ use rust_decimal::Decimal;
 use serde_json::{to_value, Value};
 use std::fmt::Debug;
 
-/// A `SqlChunk` trait for generating SQL queries and their associated parameters
+/// A `Chunk` trait for generating SQL queries and their associated parameters
 ///
 /// This trait is designed to allow various types of SQL statements or sub-queries
 /// to be dynamically generated, including the capability to handle parameters
@@ -61,7 +61,7 @@ use std::fmt::Debug;
 ///
 /// Standard types such as String, Vec<String>, or ToSql are implementing SqlChunk and can be used
 /// as a part of a query, typically resulting in
-pub trait SqlChunk: Debug + Sync + Send {
+pub trait Chunk: Debug + Sync + Send {
     /// Generates an SQL statement.
     ///
     /// The method should return a complete SQL statement as a `String`. An `offset`
@@ -75,49 +75,49 @@ pub trait SqlChunk: Debug + Sync + Send {
     fn render_chunk(&self) -> Expression;
 }
 
-impl SqlChunk for String {
+impl Chunk for String {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::String(self.clone())])
     }
 }
 
-impl SqlChunk for Value {
+impl Chunk for Value {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![self.clone()])
     }
 }
 
-impl SqlChunk for i64 {
+impl Chunk for i64 {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl SqlChunk for u64 {
+impl Chunk for u64 {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl SqlChunk for i32 {
+impl Chunk for i32 {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl SqlChunk for u32 {
+impl Chunk for u32 {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::Number((*self).into())])
     }
 }
 
-impl SqlChunk for &str {
+impl Chunk for &str {
     fn render_chunk(&self) -> Expression {
         Expression::new("{}".to_owned(), vec![Value::String(self.to_string())])
     }
 }
 
-impl SqlChunk for Decimal {
+impl Chunk for Decimal {
     fn render_chunk(&self) -> Expression {
         let f = to_value(self).unwrap();
         Expression::new("{}".to_owned(), vec![f])

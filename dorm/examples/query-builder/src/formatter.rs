@@ -1,4 +1,4 @@
-use dorm::{prelude::SqlChunk, query::Query};
+use dorm::{prelude::Chunk, sql::Query};
 
 use sqlformat::FormatOptions;
 use sqlformat::QueryParams;

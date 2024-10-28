@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{operations::Operations, sql::chunk::SqlChunk, traits::column::Column};
+use crate::{sql::chunk::Chunk, sql::Operations, traits::column::Column};
 
 /// Constructs [`Expression`] from a format scring and several parameters by passing those
 /// into [`json!`]
@@ -39,7 +39,7 @@ pub struct Expression {
 /// ```
 /// let expression = expr_arc!("{} + ({})", 2, expr!("3 * 4"));
 /// ```
-impl SqlChunk for Expression {
+impl Chunk for Expression {
     fn render_chunk(&self) -> Expression {
         self.clone()
     }
@@ -154,7 +154,7 @@ impl Operations for Expression {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sql::chunk::SqlChunk;
+    use crate::sql::chunk::Chunk;
     use serde_json::json;
 
     #[test]
