@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
 
     println!(
         "There are {} clients in this bakery.",
-        clients.count().get_one().await.unwrap()
+        clients.count().get_one_untyped().await.unwrap()
     );
 
     // Example 3: referencing products, but augmenting it with a join
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         "There are {} stock in the inventory.",
         products_with_inventory
             .sum(products_with_inventory.stock().clone())
-            .get_one()
+            .get_one_untyped()
             .await
             .unwrap()
     );

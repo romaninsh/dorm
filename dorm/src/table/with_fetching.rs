@@ -26,6 +26,11 @@ impl<T: DataSource, E: Entity> ReadableDataSet<E> for Table<T, E> {
         self.data_source.query_row(&query).await
     }
 
+    async fn get_col_untyped(&self) -> Result<Vec<Value>> {
+        let query = self.select_query();
+        self.data_source.query_col(&query).await
+    }
+
     async fn get_one_untyped(&self) -> Result<Value> {
         let query = self.select_query();
         self.data_source.query_one(&query).await
