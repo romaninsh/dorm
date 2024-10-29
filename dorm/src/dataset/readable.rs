@@ -34,6 +34,9 @@ pub trait ReadableDataSet<E> {
     /// Fetch a single row only. This is similar to [`get_some`], but returns [`json::Map`].
     fn get_row_untyped(&self) -> impl Future<Output = Result<Map<String, Value>>>;
 
+    /// Fetch a column of single untyped value, return it as a `Vec<Value>`.
+    fn get_col_untyped(&self) -> impl Future<Output = Result<Vec<Value>>>;
+
     /// Fetch a single row and only one column. This makes sense if your DataSet is produced
     /// from fetching arbitrary set of columns, containing a single column only.
     ///

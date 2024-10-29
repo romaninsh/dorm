@@ -317,7 +317,7 @@ impl Chunk for Query {
 
 #[cfg(test)]
 mod tests {
-    use crate::expr;
+    use crate::{expr, sql::Operations};
     use serde_json::json;
 
     use super::*;
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_where() {
         let expr1 = expr!("name = {}", "John");
-        let expr2 = expr!("age > {}", 30);
+        let expr2 = expr!("age").gt(30);
 
         let query = Query::new()
             .with_table("users", None)
@@ -336,7 +336,7 @@ mod tests {
 
         let (sql, params) = wher.render_chunk().split();
 
-        assert_eq!(sql, " WHERE name = {} AND age > {}");
+        assert_eq!(sql, " WHERE name = {} AND (age > {})");
         assert_eq!(params.len(), 2);
         assert_eq!(params[0], Value::String("John".to_string()));
         assert_eq!(params[1], Value::Number(30.into()));

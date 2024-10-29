@@ -52,6 +52,15 @@ impl DataSource for MockDataSource {
     async fn query_row(&self, query: &Query) -> Result<Map<String, Value>> {
         todo!()
     }
+    async fn query_col(&self, query: &Query) -> Result<Vec<Value>> {
+        todo!()
+    }
+}
+
+impl PartialEq for MockDataSource {
+    fn eq(&self, other: &MockDataSource) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]
