@@ -105,13 +105,6 @@ impl Chunk for Condition {
     }
 }
 
-// impl SqlChunk for &Condition {
-//     fn render_chunk(&self) -> Expression {
-//         let pr = self.value.as_ref().render_chunk();
-//         Expression::new(format!("{} {} {{}}", self.field, self.operation), vec![&pr]).render_chunk()
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;

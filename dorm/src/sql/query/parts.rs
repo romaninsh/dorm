@@ -92,11 +92,15 @@ impl QueryConditions {
 }
 impl Chunk for QueryConditions {
     fn render_chunk(&self) -> Expression {
-        let result = Expression::from_vec(self.conditions.clone(), " AND ");
-        match self.condition_type {
-            ConditionType::Where => expr_arc!("WHERE {}", result).render_chunk(),
-            ConditionType::Having => expr_arc!("HAVING {}", result).render_chunk(),
-            ConditionType::On => expr_arc!("ON {}", result).render_chunk(),
+        if self.conditions.is_empty() {
+            Expression::empty()
+        } else {
+            let result = Expression::from_vec(self.conditions.clone(), " AND ");
+            match self.condition_type {
+                ConditionType::Where => expr_arc!(" WHERE {}", result).render_chunk(),
+                ConditionType::Having => expr_arc!(" HAVING {}", result).render_chunk(),
+                ConditionType::On => expr_arc!("ON {}", result).render_chunk(),
+            }
         }
     }
 }
@@ -170,7 +174,7 @@ mod tests {
         };
         let result = conditions.render_chunk().split();
 
-        assert_eq!(result.0, "WHERE name = {} AND age > {}");
+        assert_eq!(result.0, " WHERE name = {} AND age > {}");
         assert_eq!(result.1.len(), 2);
         assert_eq!(result.1[0], Value::String("John".to_string()));
         assert_eq!(result.1[1], Value::Number(30.into()));
@@ -183,7 +187,7 @@ mod tests {
             .add_condition(expr!("age > {}", 30));
         let result = conditions.render_chunk().split();
 
-        assert_eq!(result.0, "HAVING name = {} AND age > {}");
+        assert_eq!(result.0, " HAVING name = {} AND age > {}");
         assert_eq!(result.1.len(), 2);
         assert_eq!(result.1[0], Value::String("John".to_string()));
         assert_eq!(result.1[1], Value::Number(30.into()));
@@ -201,7 +205,7 @@ mod tests {
 
         assert_eq!(
             result.0,
-            "HAVING ((name = sur.surname) OR (sur.surname = {}))"
+            " HAVING ((name = sur.surname) OR (sur.surname = {}))"
         );
         assert_eq!(result.1.len(), 1);
         assert_eq!(result.1[0], Value::Null);
