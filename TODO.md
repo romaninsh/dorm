@@ -14,7 +14,7 @@ MVP:
 - [x] implement delete query
 - [x] implement operations: (field.eq(otherfield))
 - [x] implement parametric queries
-- [ ] reimplement "with_condition" into "with_where_condition" and "with_having_condition"
+- [x] reimplement "with_condition" into "with_where_condition" and "with_having_condition"
 
   0.0.2: Nested Query Building
 

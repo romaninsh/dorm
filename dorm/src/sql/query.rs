@@ -23,8 +23,6 @@ pub struct Query {
     distinct: bool,
     query_type: QueryType,
     columns: IndexMap<String, Arc<Box<dyn Column>>>,
-    conditions: Vec<Arc<Box<dyn Chunk>>>,
-
     set_fields: IndexMap<String, Value>,
 
     where_conditions: QueryConditions,
@@ -49,7 +47,6 @@ impl Query {
             distinct: false,
             query_type: QueryType::Select,
             columns: IndexMap::new(),
-            conditions: Vec::new(),
 
             set_fields: IndexMap::new(),
 
@@ -113,18 +110,21 @@ impl Query {
         self
     }
 
+    // pub fn with_condition(mut self, cond: Condition) -> Self {
+    //     self.where_conditions = self.where_conditions.add_condition(cond);
+    // }
+
     pub fn with_join(mut self, join: JoinQuery) -> Self {
         self.joins.push(join);
         self
     }
 
     pub fn with_condition(self, cond: impl Chunk + 'static) -> Self {
-        self.with_condition_arc(Arc::new(Box::new(cond)))
+        self.with_where_condition(cond.render_chunk())
     }
 
-    pub fn with_condition_arc(mut self, cond: Arc<Box<dyn Chunk>>) -> Self {
-        self.conditions.push(cond);
-        self
+    pub fn with_condition_arc(self, cond: Arc<Box<dyn Chunk>>) -> Self {
+        self.with_where_condition(cond.render_chunk())
     }
 
     pub fn with_group_by(mut self, group_by: Expression) -> Self {
@@ -173,15 +173,6 @@ impl Query {
         }
     }
 
-    fn render_where(&self) -> Expression {
-        if self.conditions.is_empty() {
-            Expression::empty()
-        } else {
-            let conditions = ExpressionArc::from_vec(self.conditions.clone(), " AND ");
-            expr_arc!(" WHERE {}", conditions).render_chunk()
-        }
-    }
-
     fn render_group_by(&self) -> Expression {
         if self.group_by.is_empty() {
             Expression::empty()
@@ -213,16 +204,17 @@ impl Query {
 
         Ok(expr_arc!(
             format!(
-                "{{}}SELECT{} {{}} {{}}{{}}{{}}{{}}{{}}",
+                "{{}}SELECT{} {{}} {{}}{{}}{{}}{{}}{{}}{{}}",
                 if self.distinct { " DISTINCT" } else { "" }
             ),
             self.render_with(),
             fields,
             self.table.render_chunk(),
             Expression::from_vec(self.joins.iter().map(|x| x.render_chunk()).collect(), ""),
-            self.render_where(),
+            self.where_conditions.render_chunk(),
             self.render_group_by(),
-            self.render_order_by()
+            self.render_order_by(),
+            self.having_conditions.render_chunk()
         )
         .render_chunk())
     }
@@ -288,7 +280,7 @@ impl Query {
         Ok(expr_arc!(
             format!("UPDATE {} SET {{}}{{}}", table),
             set_fields,
-            self.render_where()
+            self.where_conditions.render_chunk()
         )
         .render_chunk())
     }
@@ -298,7 +290,11 @@ impl Query {
             return Err(anyhow!("Call set_table() for insert query"));
         };
 
-        Ok(expr_arc!(format!("DELETE FROM {}{{}}", table), self.render_where()).render_chunk())
+        Ok(expr_arc!(
+            format!("DELETE FROM {}{{}}", table),
+            self.where_conditions.render_chunk()
+        )
+        .render_chunk())
     }
 
     pub fn preview(&self) -> String {
@@ -336,7 +332,7 @@ mod tests {
             .with_condition(expr1)
             .with_condition(expr2);
 
-        let wher = query.render_where();
+        let wher = query.where_conditions.render_chunk();
 
         let (sql, params) = wher.render_chunk().split();
 
