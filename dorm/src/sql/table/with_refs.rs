@@ -1,10 +1,11 @@
 use anyhow::{anyhow, Result};
 
 use crate::reference::RelatedReference;
-use crate::table::Table;
-use crate::traits::any::RelatedTable;
+use crate::sql::table::Table;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
+
+use super::RelatedTable;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn has_many(

@@ -3,15 +3,16 @@ use serde::Serialize;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 
-use crate::field::Field;
+use super::Field;
 use crate::prelude::AssociatedQuery;
 use crate::sql::query::QueryType;
+use crate::sql::table::Table;
 use crate::sql::Query;
-use crate::table::Table;
-use crate::traits::any::RelatedTable;
 use crate::traits::column::Column;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
+
+use super::RelatedTable;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn get_empty_query(&self) -> Query {

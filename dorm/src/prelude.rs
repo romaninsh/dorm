@@ -2,13 +2,14 @@ pub use crate::dataset::ReadableDataSet;
 pub use crate::datasource::postgres::*;
 pub use crate::expr;
 pub use crate::expr_arc;
-pub use crate::field::Field;
-pub use crate::sql::chunk::Chunk;
-pub use crate::sql::expression::{Expression, ExpressionArc};
-pub use crate::sql::Operations;
-pub use crate::sql::WrapArc;
-pub use crate::table::TableDelegate;
-pub use crate::traits::any::AnyTable;
-pub use crate::traits::any::RelatedTable;
-pub use crate::traits::entity::{EmptyEntity, Entity};
-pub use crate::{sql::query::JoinQuery, sql::query::Query, table::Table};
+pub use crate::sql::table::Field;
+pub use crate::{
+    sql::{
+        chunk::Chunk,
+        expression::{Expression, ExpressionArc},
+        query::{JoinQuery, Query},
+        table::{AnyTable, RelatedTable, Table, TableDelegate},
+        Operations, WrapArc,
+    },
+    traits::entity::{EmptyEntity, Entity},
+};

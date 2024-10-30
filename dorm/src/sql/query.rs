@@ -6,9 +6,9 @@ use serde_json::Value;
 
 use crate::{
     expr_arc,
-    field::Field,
     sql::chunk::Chunk,
     sql::expression::{Expression, ExpressionArc},
+    sql::table::Field,
     traits::column::Column,
 };
 

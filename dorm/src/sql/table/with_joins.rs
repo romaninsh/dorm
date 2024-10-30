@@ -1,15 +1,120 @@
 use std::ptr::eq;
 use std::sync::Arc;
 
-use crate::join::Join;
-use crate::prelude::{AnyTable, Chunk, Operations};
+use super::Join;
+use crate::prelude::{Chunk, Operations};
 use crate::sql::query::{JoinQuery, JoinType, QueryConditions};
-use crate::table::Table;
-use crate::traits::any::RelatedTable;
+use crate::sql::table::Table;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use crate::uniqid::UniqueIdVendor;
 
+use super::{AnyTable, RelatedTable};
+
+/// # Joins
+///
+/// A [`Table`] can be joined to another table(s). A join will not affect number
+/// of records contained in the original set, however it will add extra fields
+/// from the joined table(s).
+///
+/// To understand this, lets consider that we have 10 records in the `product`
+/// table. The `inventory` table only has 5 records (not all products have
+/// inventory yet):
+///
+/// ```
+/// struct ProductInventory {
+///     name: String,
+///     qty: Option<i32>,
+/// }
+///
+/// let product = Table::new("product", db)
+///    .with_id_field("id")
+///    .with_field("name");
+///
+/// let product_inventory = product
+///     .with_join(
+///         Table::new("inventory", db)
+///             .with_field("product_id")
+///             .with_field("qty"),
+///         "product_id"
+///     );
+///
+/// product_inventory.insert(
+///     ProductInventory {
+///         name: "foo".to_string(),
+///         qty: Some(10),
+///     }
+/// ).await?;
+/// ```
+///
+/// By joining the `product` with the `inventory` table, number of records you can
+/// load remains the same - 10, however only 5 of those would have `qty` field.
+///
+/// Once join is established, inserting a new record will additionally create a new
+/// record in the `inventory` table. So at the end of the example, you should have
+/// 11 records in the `product` table and 6 records in the `inventory` table.
+///
+/// When table is building query, it will use a `LEFT JOIN` by default. The table
+/// you are joining with, can have some conditions defined, and those conditions
+/// will not impact the number of records in your DataSet as they will be applied
+/// under the `ON` clause.
+///
+/// ```
+/// let mut inventory = Table::new("inventory", db)
+///     .with_field("product_id")
+///     .with_field("is_deleted")
+///     .with_field("qty");
+/// inventory.add_condition(inventory.get_field("is_deleted").unwrap().eq(false));
+///
+/// let mut product_inventory = product.with_join(inventory, "product_id");
+/// ```
+///
+/// You can reference fields from the joined tables and set a condition on `product_inventory`
+/// too:
+///
+/// ```
+/// product_inventory.add_condition(product_inventory.search_for_field("qty").unwrap().gt(10));
+/// ```
+///
+/// In this case the resulting DataSet will be affected as the new condition will be under `WHERE` clause
+/// of the main query.
+///
+/// TODO: Actually implement this!!
+///
+/// ## Limitations
+/// Other types of joins are likely to affect number of records in the set or will make it impossible
+/// to add new records and therefore are currently not supported.
+///
+///  - `product.product_type_id` referencing `product_type.id` may result in multiple records re-using
+///     the same type. Adding new product could result in type duplicates if not handled properly.
+///  - `product.id` referencing `product_details.id` may result in some ambiguity depending on the
+///     implementation.
+///  - not using `LEFT JOIN` may result some original records become nullable.
+///  - joining a subquery rather than a table can be handy, but will not work consistently with
+///    records being modified.
+///
+/// One way to handle this is by using [`Query::with_join()`] with [`JoinQuery`]:
+///
+/// ```
+/// let query = product.get_query()
+///     .with_join(
+///         JoinType::Inner,
+///         QuerySource::Table(inventory),
+///         QueryConditions::on().add_condition(
+///             product.get_field("id").unwrap().eq(
+///                 inventory.get_field("product_id").unwrap()
+///             )
+///         )
+///      );
+///
+/// for product: ProductInventory in query.get_as().await? {
+///     println!("Product {} has {} items in inventory", product.name, product.qty);
+/// }
+/// ```
+///
+/// [`IndexMap`]: std::collections::IndexMap
+/// [`Join`]: super::Join
+/// [`Query::with_join()`]: crate::sql::query::Query::with_join
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn with_join(mut self, their_table: Table<T, E>, our_foreign_id: &str) -> Self {
         //! Mutate self with a join to another table.
@@ -32,40 +137,43 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         //!
         //! # Example in Entity Model
         //! More commonly, you would want to perform joins between tables that are already
-        //! defined. In this example, we have existing entities for Products and Inventory.
-        //! We want to join Products with Inventory, so we can get the stock for each product.
+        //! defined. In this example, we have existing entities for Product. We want to create
+        //! a method `with_inventory` that will create a new entity for `ProductInventory`
+        //! struct:
         //!
-        //! The functionality to perform the join would be needed only in certain cases, so
-        //! we defined it as a public method on Products:
+        //! ```
+        //! let product = Product::table();                   // Table<Postgres, Product>
+        //! let product_inventory = product.with_inventory(); // Table<Postgres, ProductInventory>
+        //! ```
+        //!
+        //! To implement we need to modify entity model definition:
         //!
         //! ```rust
-        //! impl Products {
-        //!     pub fn static_table() -> &'static Table<Postgres> {
-        //!         static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+        //! pub trait ProductTable: AnyTable {
+        //!     fn with_inventory(self) -> Table<Postgres, ProductInventory>;
+        //! }
         //!
-        //!         TABLE.get_or_init(|| {
-        //!             Table::new("product", postgres())
-        //!                 .with_id_field("id")
-        //!                 .with_field("name")
-        //!         })
-        //!     }
-        //!     pub fn mod_table(self, func: impl FnOnce(Table<Postgres>) -> Table<Postgres>) -> Self {
-        //!         let table = self.table.clone();
-        //!         let table = func(table);
-        //!         Self { table }
-        //!     }
-        //!     pub fn with_inventory(self) -> Self {
-        //!         self.mod_table(|t| {
-        //!             t.with_join(
-        //!                 Table::new("inventory", postgres())
+        //! impl ProductTable for Table<Postgres, Product> {
+        //!     fn with_inventory(self) -> Table<Postgres, ProductInventory> {
+        //!         self
+        //!             .with_join(
+        //!                 Table::new_with_entity("inventory", postgres())
         //!                     .with_alias("i")
         //!                     .with_id_field("product_id")
         //!                     .with_field("stock"),
         //!                 "id",
         //!             )
-        //!         })
+        //!             .into_entity::<ProductInventory>()
         //!     }
         //! }
+        //!
+        //! pub trait ProductInventoryTable: RelatedTable<Postgres> {
+        //!     fn stock(&self) -> Arc<Field> {
+        //!         // can also use search_for_field() here
+        //!         self.get_join("i").unwrap().get_field("stock").unwrap()
+        //!     }
+        //! }
+        //! impl ProductInventoryTable for Table<Postgres, ProductInventory> {}
         //! ```
 
         self.add_join(their_table, our_foreign_id);
