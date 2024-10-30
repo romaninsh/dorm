@@ -1,17 +1,44 @@
+//! [`Table`] struct and various traits for creating SQL table abstractions
+//!
+//! Separating persistence from business logic requires the ability of a framework to
+//! map SQL tables to Rust structs. [`Table`] implements this functionality and
+//! is probably the most popular struct in this framework.
+//!
+//! While [`Table`] represents an SQL table it also implements [`ReadableDataSet`] and
+//! [`WritableDataSet`] traits, which means you can easily operate with matching records.
+//!
+//! The functionality of [`Table`] is split into several areas:
+//!  - fields - ability to define physical and logical fields, which is a distinct characteristic of an SQL table
+//!  - conditions - ability to narrow scope of a DataSet your table represents
+//!  - refs - ability to address related DataSets from your current table and its conditions
+//!  - joins - ability to store entity data across multiple tables (could be moved to a separate struct)
+//!  - queries - ability to generate [`AssociatedQuery`] (such as [`count()`] or [`sum()`]) from your current table and its conditions
+//!  - fetching - ability to interract with the table as a [`ReadableDataSet`] and [`WritableDataSet`]
+//!
+//! For more information on how to use [`Table`] see <https://romaninsh.github.io/dorm/1-table-and-fields.html>
+//!
+//! [`ReadableDataSet`]: crate::dataset::ReadableDataSet
+//! [`WritableDataSet`]: crate::dataset::WritableDataSet
+//! [`count()`]: Table::count()
+//! [`sum()`]: Table::sum()
+
 use std::any::Any;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
+mod field;
+mod join;
+
+pub use field::Field;
+pub use join::Join;
+
 use crate::expr_arc;
-use crate::field::Field;
-use crate::join::Join;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
 use crate::reference::RelatedReference;
 use crate::sql::Condition;
 use crate::sql::ExpressionArc;
 use crate::sql::Query;
-use crate::traits::any::{AnyTable, RelatedTable};
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::{EmptyEntity, Entity};
 use crate::uniqid::UniqueIdVendor;
@@ -19,8 +46,69 @@ use anyhow::Result;
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 
-// Generic implementation of SQL table. We don't really want to use this extensively,
-// instead we want to use 3rd party SQL builders, that cary table schema information.
+/// When defining references between tables, AnyTable represents
+/// a target table, that can potentially be associated with a
+/// different data source.
+///
+/// The implication is that reference fields need to be explicitly
+/// fetched and resulting set of "id"s can then be used to define
+/// related queries.
+///
+/// Table::has_unrelated() can be used to define relation like this.
+/// To traverse the relation, use Table::get_unrelated_ref("relation") or
+/// Table::get_unrelated_ref_as<D: DataSource, E: Entity>(ds, "relation").
+///
+/// If tables are defined in the same data source, use has_one(),
+/// has_many(), which rely on RelatedTable trait.
+///
+pub trait AnyTable: Any + Send + Sync {
+    fn as_any(self) -> Box<dyn Any>;
+
+    fn as_any_ref(&self) -> &dyn Any;
+
+    fn get_field(&self, name: &str) -> Option<Arc<Field>>;
+
+    fn add_condition(&mut self, condition: Condition);
+}
+
+/// When defining references between tables, RelatedTable represents
+/// a target table, that resides in the same DataSource and
+/// therefore can be referenced inside a query without explicitly
+/// fetching the "id"s.
+///
+///
+pub trait RelatedTable<T: DataSource>: AnyTable {
+    fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T>;
+    fn add_fields_into_query(&self, query: Query, alias_prefix: Option<&str>) -> Query;
+    fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>>;
+
+    fn get_alias(&self) -> Option<&String>;
+    fn get_table_name(&self) -> Option<&String>;
+
+    fn set_alias(&mut self, alias: &str);
+
+    fn get_fields(&self) -> &IndexMap<String, Arc<Field>>;
+}
+
+/// Generic implementation of SQL table.
+///
+/// Represents a table in the SQL DataSource (potentially with joins and sub-queries)
+///
+/// ```
+/// use dorm::prelude::*;
+///
+/// let users = Table::new("users", postgres())
+///     .with_id_field("id")
+///     .with_field("name")
+/// ```
+///
+/// To avoid repetition when defining a table, use Entity definition pattern as described in
+/// <https://romaninsh.github.io/dorm/5-entity-model.html>
+///
+/// # Deciding on `add_` vs `with_` method use
+///
+/// It is recommended to use `with_` methods for building a table, however `add_` methods are
+/// available and will require you to use mutable table reference
 
 #[derive(Debug)]
 pub struct Table<T: DataSource, E: Entity> {
@@ -40,12 +128,13 @@ pub struct Table<T: DataSource, E: Entity> {
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 }
 
-mod with_fetching;
 mod with_fields;
 mod with_joins;
 mod with_queries;
 mod with_refs;
 mod with_updates;
+
+mod with_fetching;
 
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
@@ -77,6 +166,10 @@ impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
     fn as_any_ref(&self) -> &dyn Any {
         self
     }
+
+    /// Handy way to reference field by name, for example to use with [`Operations`].
+    ///
+    /// [`Operations`]: super::super::operations::Operations
     fn get_field(&self, name: &str) -> Option<Arc<Field>> {
         self.fields.get(name).cloned()
     }
@@ -366,11 +459,11 @@ mod tests {
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let data_source = MockDataSource::new(&data);
 
-        let table = Table::new("users", data_source.clone())
+        let mut table = Table::new("users", data_source.clone())
             .with_field("name")
-            .with_field("surname")
-            .add_condition_on_field("name", "=", "John".to_owned())
-            .unwrap();
+            .with_field("surname");
+
+        table.add_condition(table.get_field("name").unwrap().eq(&"John".to_string()));
 
         let query = table.get_select_query().render_chunk().split();
 
@@ -388,17 +481,17 @@ mod tests {
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let db = MockDataSource::new(&data);
 
-        let vip_client = Table::new("client", db)
+        let mut vip_client = Table::new("client", db)
             .with_title_field("name")
             .with_field("is_vip")
-            .with_field("total_spent")
-            .add_condition_on_field("is_vip", "is", "true".to_owned())
-            .unwrap();
+            .with_field("total_spent");
+
+        vip_client.add_condition(vip_client.get_field("is_vip").unwrap().eq(&true));
 
         let sum = vip_client.sum(vip_client.get_field("total_spent").unwrap());
         assert_eq!(
             sum.render_chunk().sql().clone(),
-            "SELECT (SUM(total_spent)) AS sum FROM client WHERE (is_vip is {})".to_owned()
+            "SELECT (SUM(total_spent)) AS sum FROM client WHERE (is_vip = {})".to_owned()
         );
     }
 }

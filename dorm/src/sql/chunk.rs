@@ -117,6 +117,12 @@ impl Chunk for &str {
     }
 }
 
+impl Chunk for bool {
+    fn render_chunk(&self) -> Expression {
+        Expression::new("{}".to_owned(), vec![Value::Bool(*self)])
+    }
+}
+
 impl Chunk for Decimal {
     fn render_chunk(&self) -> Expression {
         let f = to_value(self).unwrap();

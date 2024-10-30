@@ -1,8 +1,8 @@
 use core::fmt;
 use std::sync::Arc;
 
-use crate::prelude::{Operations, Table};
-use crate::traits::any::{AnyTable, RelatedTable};
+use crate::prelude::{AnyTable, Operations, Table};
+use crate::sql::table::RelatedTable;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 

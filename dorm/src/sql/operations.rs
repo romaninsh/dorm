@@ -40,6 +40,15 @@ pub trait Operations: Chunk {
             Arc::new(Box::new(expr_arc!("({})", other.render_chunk()))),
         )
     }
+
+    fn is(&self, other: &impl Chunk) -> Condition {
+        Condition::from_expression(
+            self.render_chunk(),
+            "IS",
+            Arc::new(Box::new(other.render_chunk())),
+        )
+    }
+
     fn eq(&self, other: &impl Chunk) -> Condition {
         Condition::from_expression(
             self.render_chunk(),
