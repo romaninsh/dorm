@@ -136,6 +136,8 @@ mod with_updates;
 
 mod with_fetching;
 
+// mod extensions;
+
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
         Table {

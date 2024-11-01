@@ -45,6 +45,7 @@ MVP:
 - [x] Add "Entity" concept into Table
 - [x] Add example on how to use traits for augmenting Table of specific Entity
 - [x] Implement rendering of QueryType::Update so that we could update records
+- [ ] Refine "AnyTable" concept, so that we can use table as dyn without (if we want)
 - [ ] Check on "Join", they should allow for Entity mutation (joined table associated with a different entity)
 - [x] Implement has_one and has_many in a correct way, moving functionality to Related Reference
 - [ ] Implement Unrelated Reference (when ref leads to a table with different Data Source)
