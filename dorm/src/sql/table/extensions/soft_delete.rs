@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde_json::json;
 
 use crate::{
-    prelude::{AnyTable, Entity, Table},
+    prelude::{SqlTable, Table},
     sql::{Field, Operations, Query},
     traits::datasource::DataSource,
 };
@@ -20,18 +20,18 @@ impl SoftDelete {
             soft_delete_field: soft_delete_field.to_string(),
         }
     }
-    fn is_deleted(&self, table: Arc<Box<dyn AnyTable>>) -> Arc<Field> {
+    fn is_deleted(&self, table: Arc<Box<dyn SqlTable>>) -> Arc<Field> {
         table.get_field(&self.soft_delete_field).unwrap()
     }
 }
 
 impl TableExtension for SoftDelete {
     /// When selecting records, exclude deleted records
-    fn before_select_query(&self, table: Arc<Box<dyn AnyTable>>, query: Query) -> Query {
+    fn before_select_query(&self, table: Arc<Box<dyn SqlTable>>, query: Query) -> Query {
         query.with_condition(self.is_deleted(table).eq(&false))
     }
     /// When deleting records, mark them as deleted instead
-    fn before_delete_query(&self, _table: Arc<Box<dyn AnyTable>>, query: Query) -> Query {
+    fn before_delete_query(&self, _table: Arc<Box<dyn SqlTable>>, query: Query) -> Query {
         query
             .with_type(crate::sql::query::QueryType::Update)
             .with_set_field(&self.soft_delete_field, json!(true))
@@ -40,10 +40,12 @@ impl TableExtension for SoftDelete {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Deref;
+
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{Chunk, Operations},
+        prelude::{AnyTable, Chunk, Operations, SqlTable, TableWithFields},
         sql::table::extensions::Hooks,
     };
 
@@ -57,15 +59,15 @@ mod tests {
             .with_field("name")
             .with_field("surname");
 
-        let table: Arc<Box<dyn AnyTable>> = Arc::new(Box::new(table));
-
-        let mut ext = Hooks::new();
-        ext.add_hook(table, Box::new(SoftDelete::new("is_deleted")));
-
         table.add_condition(table.get_field("name").unwrap().eq(&"John".to_string()));
 
+        let table: Box<dyn SqlTable> = Box::new(table);
+
+        let mut ext = Hooks::new();
+        ext.add_hook(Arc::new(table), Box::new(SoftDelete::new("is_deleted")));
+
         let query = table.get_select_query();
-        let query = ext.before_select_query(Arc::new(Box::new(table)), query);
+        let query = ext.before_select_query(Arc::new(table), query);
 
         let result = query.render_chunk().split();
 

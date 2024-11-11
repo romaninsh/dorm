@@ -1,7 +1,7 @@
 use std::ptr::eq;
 use std::sync::Arc;
 
-use super::Join;
+use super::{Join, TableWithFields};
 use crate::prelude::{Chunk, Operations};
 use crate::sql::query::{JoinQuery, JoinType, QueryConditions};
 use crate::sql::table::Table;
@@ -274,7 +274,7 @@ mod tests {
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{Chunk, Operations},
+        prelude::{Chunk, Operations, TableWithQueries},
         sql::Condition,
     };
     #[test]

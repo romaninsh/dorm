@@ -7,6 +7,8 @@ use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
+use super::TableWithQueries;
+
 /// Implementing fetching methods for table, including
 /// combinations of query building and executing for
 /// single or multiple rows.

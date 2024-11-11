@@ -3,7 +3,7 @@ use crate::{
     traits::datasource::DataSource,
 };
 
-use super::Table;
+use super::{Table, TableWithQueries};
 use anyhow::Result;
 use serde::Serialize;
 use serde_json::Value;

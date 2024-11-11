@@ -129,6 +129,9 @@ pub struct Table<T: DataSource, E: Entity> {
 }
 
 mod with_fields;
+pub use with_fields::TableWithFields;
+pub use with_queries::TableWithQueries;
+
 mod with_joins;
 mod with_queries;
 mod with_refs;
@@ -137,6 +140,10 @@ mod with_updates;
 mod with_fetching;
 
 // mod extensions;
+
+pub trait SqlTable: TableWithFields + TableWithQueries {}
+
+impl<T: DataSource, E: Entity> SqlTable for Table<T, E> {}
 
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
@@ -395,7 +402,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 //     }
 // }
 
-pub trait TableDelegate<T: DataSource, E: Entity> {
+pub trait TableDelegate<T: DataSource, E: Entity>: TableWithFields {
     fn table(&self) -> &Table<T, E>;
 
     fn id(&self) -> Arc<Field> {
