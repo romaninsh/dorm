@@ -1,4 +1,4 @@
-use crate::{postgres, Bakery};
+use crate::{order::Order, postgres, Bakery};
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
@@ -23,7 +23,7 @@ impl Client {
                 .with_field("contact_details")
                 .with_field("bakery_id")
                 .has_one("bakery", "bakery_id", || Box::new(Bakery::table()))
-            // .has_many("orders", "client_id", || OrderSet::new())
+                .has_many("orders", "client_id", || Box::new(Order::table()))
             // .has_many("baked_cakes", "baker_id", || {
             //     // add baker_id field into Cake through a left join
             //     CakeSet::new().with_join(
@@ -60,9 +60,9 @@ pub trait ClientTable: AnyTable {
     fn ref_bakery(&self) -> Table<Postgres, Bakery> {
         self.as_table().get_ref_as("bakery").unwrap()
     }
-    // fn ref_orders(&self) -> Table<Postgres, Order> {
-    //     self.as_table().get_ref_as("orders").unwrap()
-    // }
+    fn ref_orders(&self) -> Table<Postgres, Order> {
+        self.as_table().get_ref_as("orders").unwrap()
+    }
     // fn ref_cakes(&self) -> Table<Postgres, Cake> {
     //     self.as_table().get_ref_as("cakes").unwrap()
     // }

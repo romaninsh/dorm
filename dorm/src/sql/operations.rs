@@ -95,8 +95,16 @@ pub trait Operations: Chunk {
         expr_arc!("({}) + ({})", self.render_chunk(), other.render_chunk()).render_chunk()
     }
 
+    fn mul(&self, other: impl Chunk) -> Expression {
+        expr_arc!("({}) * ({})", self.render_chunk(), other.render_chunk()).render_chunk()
+    }
+
     fn sub(&self, other: impl Chunk) -> Expression {
         expr_arc!("({}) - ({})", self.render_chunk(), other.render_chunk()).render_chunk()
+    }
+
+    fn div(&self, other: impl Chunk) -> Expression {
+        expr_arc!("({}) / ({})", self.render_chunk(), other.render_chunk()).render_chunk()
     }
 
     fn concat(arg: Vec<Arc<Box<dyn Chunk>>>) -> Expression {

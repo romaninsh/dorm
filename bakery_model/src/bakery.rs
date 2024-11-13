@@ -16,12 +16,14 @@ impl Bakery {
         static TABLE: OnceLock<Table<Postgres, Bakery>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new_with_entity("bakery", postgres())
+            let mut t = Table::new_with_entity("bakery", postgres())
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("profit_margin")
                 .has_many("clients", "bakery_id", || Box::new(Client::table()))
-                .has_many("products", "bakery_id", || Box::new(Product::table()))
+                .has_many("products", "bakery_id", || Box::new(Product::table()));
+            t.add_condition(t.get_field("profit_margin").unwrap().gt(10));
+            t
         })
     }
     pub fn table() -> Table<Postgres, Bakery> {
@@ -33,6 +35,8 @@ pub trait BakeryTable: AnyTable {
     fn as_table(&self) -> &Table<Postgres, Bakery> {
         self.as_any_ref().downcast_ref().unwrap()
     }
+
+    // fields
     fn id(&self) -> Arc<Field> {
         self.get_field("id").unwrap()
     }
@@ -43,6 +47,7 @@ pub trait BakeryTable: AnyTable {
         self.get_field("profit_margin").unwrap()
     }
 
+    // references
     fn ref_clients(&self) -> Table<Postgres, Client> {
         self.as_table().get_ref_as("clients").unwrap()
     }

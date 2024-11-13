@@ -1,54 +1,59 @@
 use std::sync::{Arc, OnceLock};
 
 use dorm::prelude::*;
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    postgres,
-    {cake::CakeSet, order::OrderSet},
-};
+use crate::{order::Order, postgres, Product};
 
-pub struct LineitemSet {}
-impl LineitemSet {
-    pub fn new() -> Table<Postgres> {
-        LineitemSet::table().clone()
-    }
-    pub fn table() -> &'static Table<Postgres> {
-        static TABLE: OnceLock<Table<Postgres>> = OnceLock::new();
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct LineItem {
+    pub id: i64,
+    pub price: i64,
+    pub quantity: i64,
+    pub order_id: i64,
+    pub cake_id: i64,
+}
+
+impl Entity for LineItem {}
+
+impl LineItem {
+    pub fn static_table() -> &'static Table<Postgres, LineItem> {
+        static TABLE: OnceLock<Table<Postgres, LineItem>> = OnceLock::new();
 
         TABLE.get_or_init(|| {
-            Table::new("lineitem", postgres())
+            Table::new_with_entity("order_line", postgres())
                 .with_field("price")
                 .with_field("quantity")
                 .with_field("order_id")
-                .with_field("cake_id")
-                .has_one("order", "order_id", || OrderSet::new())
-                .has_one("cake", "cake_id", || CakeSet::new())
+                .with_field("product_id")
+                .with_expression("total", |t| t.price().mul(t.quantity()))
+                .has_one("order", "order_id", || Box::new(Order::table()))
+                .has_one("product", "product_id", || Box::new(Product::table()))
         })
     }
-
-    pub fn create() -> &'static str {
-        "create table if not exists lineitem (
-            id serial primary key,
-            price integer not null,
-            quantity integer not null,
-            order_id integer not null,
-            cake_id integer not null
-        )"
-    }
-
-    pub fn order_id() -> Arc<Field> {
-        LineitemSet::table().get_field("order_id").unwrap()
-    }
-
-    pub fn cake_id() -> Arc<Field> {
-        LineitemSet::table().get_field("cake_id").unwrap()
-    }
-
-    pub fn quantity() -> Arc<Field> {
-        LineitemSet::table().get_field("quantity").unwrap()
-    }
-
-    pub fn price() -> Arc<Field> {
-        LineitemSet::table().get_field("price").unwrap()
+    pub fn table() -> Table<Postgres, LineItem> {
+        LineItem::static_table().clone()
     }
 }
+
+pub trait LineItemTable: AnyTable {
+    fn as_table(&self) -> &Table<Postgres, LineItem> {
+        self.as_any_ref().downcast_ref().unwrap()
+    }
+    fn price(&self) -> Arc<Field> {
+        self.get_field("price").unwrap()
+    }
+    fn quantity(&self) -> Arc<Field> {
+        self.get_field("quantity").unwrap()
+    }
+    fn order_id(&self) -> Arc<Field> {
+        self.get_field("order_id").unwrap()
+    }
+    fn product_id(&self) -> Arc<Field> {
+        self.get_field("product_id").unwrap()
+    }
+    fn total(&self) -> Box<dyn Column> {
+        self.as_table().search_for_field("total").unwrap()
+    }
+}
+impl LineItemTable for Table<Postgres, LineItem> {}

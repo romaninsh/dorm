@@ -1,6 +1,7 @@
 use anyhow::Result;
-use bakery_model::*;
 use dorm::prelude::*;
+
+use bakery_model::*;
 
 /// This is a helper function to create the database
 /// and tables for the bakery model.
@@ -13,9 +14,7 @@ async fn create_bootstrap_db() -> Result<()> {
     let client = dorm_client.client();
 
     // Read the schema from the file and execute it
-    let schema = tokio::fs::read_to_string("bakery_model/schema-pg.sql")
-        .await
-        .unwrap();
+    let schema = tokio::fs::read_to_string("bakery_model/schema-pg.sql").await?;
     client.batch_execute(&schema).await?;
 
     Ok(())
@@ -25,9 +24,29 @@ async fn create_bootstrap_db() -> Result<()> {
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
 
+    // non-entity usage
+    let t = Table::new("bakery", postgres());
+    let mut t = t
+        .with_id_field("id")
+        .with_title_field("name")
+        .with_field("profit_margin");
+    t.add_condition(t.get_field("profit_margin").unwrap().gt(10));
+    let q = t.get_select_query();
+
+    let q = q
+        .with_column_field("name")
+        // .with_condition(expr!("profit_margin").gt(10))
+        .with_condition(expr!("id").eq(&1));
+    // println!("Q: {}", q.preview());
+
+    //
+    //
+    //
+    //
+
     // Example 1: load a single record from table
     let my_bakery = Bakery::table().with_id(1.into());
-    let Some(bakery) = my_bakery.get_some().await.unwrap() else {
+    let Some(bakery) = my_bakery.get_some().await? else {
         panic!("No bakery found");
     };
 
@@ -40,7 +59,7 @@ async fn main() -> Result<()> {
 
     println!(
         "There are {} clients in this bakery.",
-        clients.count().get_one_untyped().await.unwrap()
+        clients.count().get_one_untyped().await?
     );
 
     // Example 3: referencing products, but augmenting it with a join
@@ -52,26 +71,39 @@ async fn main() -> Result<()> {
         products_with_inventory
             .sum(products_with_inventory.stock().clone())
             .get_one_untyped()
-            .await
-            .unwrap()
+            .await?
     );
-
-    /*
-    // How many products are there with the name
 
     // Now for every product, lets calculate how many orders it has
 
-    let product_set = bakery_model::bakery::BakerySet::ref_products();
+    let clients = my_bakery.ref_clients();
+    let orders = clients.ref_orders();
 
-    println!(
-        "Sum of product IDs is {}",
-        product_set
-            .sum(bakery_model::product::Products::id())
-            .get_one()
-            .await
-            .unwrap()
-    );
+    println!();
+    println!("Orders:");
+    println!("-------------------------------------------");
+    if false {
+        for row in orders.get().await.unwrap().into_iter() {
+            println!(
+                "id: {}, client: {} (id: {})  total(calculated): {}",
+                row.id, row.client, row.client_id, row.total
+            );
+        }
+    }
 
+    // DESUGARED:
+    let q = orders.get_select_query_for_struct(Order::default());
+    println!("q: {}", q.preview());
+    let res = postgres().query_raw(&q).await?;
+    for row_untyped in res.into_iter() {
+        let row: Order = serde_json::from_value(row_untyped)?;
+        println!(
+            "id: {}, client: {} (id: {})  total(calculated): {}",
+            row.id, row.client, row.client_id, row.total
+        );
+    }
+
+    /*
     // Now lets try to calculate total inventory for all products
     let product_set = bakery_model::bakery::BakerySet::ref_products().with_inventory();
     println!(

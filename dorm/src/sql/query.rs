@@ -194,13 +194,17 @@ impl Query {
     }
 
     fn render_select(&self) -> Result<Expression> {
-        let fields = Expression::from_vec(
-            self.columns
-                .iter()
-                .map(|f| f.1.render_column(Some(f.0)).render_chunk())
-                .collect(),
-            ", ",
-        );
+        let fields = if self.columns.len() > 0 {
+            Expression::from_vec(
+                self.columns
+                    .iter()
+                    .map(|f| f.1.render_column(Some(f.0)).render_chunk())
+                    .collect(),
+                ", ",
+            )
+        } else {
+            Expression::new("*".to_string(), vec![])
+        };
 
         Ok(expr_arc!(
             format!(

@@ -19,13 +19,11 @@ pub use client::*;
 pub mod product;
 pub use product::*;
 
-// pub mod cake;
-// pub mod cakes_bakers;
-// pub mod lineitem;
-// pub mod order;
+pub mod lineitem;
+pub use lineitem::*;
 
-// pub use bakery::BakerySet;
-// pub use product::ProductSet;
+pub mod order;
+pub use order::*;
 
 static POSTGRESS: OnceLock<Postgres> = OnceLock::new();
 
