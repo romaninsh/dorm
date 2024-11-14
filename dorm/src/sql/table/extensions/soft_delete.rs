@@ -4,13 +4,13 @@ use anyhow::Result;
 use serde_json::json;
 
 use crate::{
-    prelude::{AnyTable, Entity, SqlTable, Table},
-    sql::{Field, Operations, Query},
-    traits::datasource::DataSource,
+    prelude::SqlTable,
+    sql::{query::SqlQuery, Chunk, Field, Operations, Query},
 };
 
 use super::TableExtension;
 
+#[derive(Debug)]
 pub struct SoftDelete {
     soft_delete_field: String,
 }
@@ -21,33 +21,42 @@ impl SoftDelete {
             soft_delete_field: soft_delete_field.to_string(),
         }
     }
-    fn is_deleted(&self, table: &mut dyn SqlTable) -> Arc<Field> {
+    fn is_deleted(&self, table: &dyn SqlTable) -> Arc<Field> {
         table.get_field(&self.soft_delete_field).unwrap()
     }
 }
 
 impl TableExtension for SoftDelete {
+    fn init(&self, table: &mut dyn SqlTable) {
+        table.add_field(
+            self.soft_delete_field.clone(),
+            Field::new(self.soft_delete_field.clone(), None),
+        );
+    }
+
     /// When selecting records, exclude deleted records
-    fn before_select_query(&self, table: &mut dyn SqlTable, query: &mut Query) -> Result<()> {
-        query.with_condition(self.is_deleted(table).eq(&false))
+    fn before_select_query(&self, table: &dyn SqlTable, query: &mut Query) -> Result<()> {
+        query
+            .get_where_conditions_mut()
+            .add_condition(self.is_deleted(table).eq(&false).render_chunk());
+        Ok(())
     }
     /// When deleting records, mark them as deleted instead
     fn before_delete_query(&self, _table: &mut dyn SqlTable, query: &mut Query) -> Result<()> {
-        query
-            .with_type(crate::sql::query::QueryType::Update)
-            .with_set_field(&self.soft_delete_field, json!(true))
+        query.set_type(crate::sql::query::QueryType::Update);
+        query.set_field_value(&self.soft_delete_field, json!(true));
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
 
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Chunk, Operations, SqlTable, TableWithFields},
-        sql::table::extensions::Hooks,
+        prelude::{AnyTable, Chunk, Operations, TableWithQueries},
+        sql::{table::extensions::Hooks, Table},
     };
 
     #[tokio::test]
@@ -62,21 +71,41 @@ mod tests {
 
         table.add_condition(table.get_field("name").unwrap().eq(&"John".to_string()));
 
-        let table: Box<dyn SqlTable> = Box::new(table);
+        let mut hooks = Hooks::new();
+        let ext = SoftDelete::new("is_deleted");
+        ext.init(&mut table);
+        hooks.add_hook(Box::new(ext));
 
-        let mut ext = Hooks::new();
-        ext.add_hook(Box::new(SoftDelete::new("is_deleted")));
-
-        let query = table.get_select_query();
-        let query = ext.before_select_query(Arc::new(table), query);
+        let mut query = table.get_select_query();
+        hooks.before_select_query(&mut table, &mut query).unwrap();
 
         let result = query.render_chunk().split();
 
         assert_eq!(
             result.0,
-            "SELECT name, surname FROM users WHERE (name = {}) AND (is_deleted = {})"
+            "SELECT name, surname, is_deleted FROM users WHERE (name = {}) AND (is_deleted = {})"
         );
         assert_eq!(result.1[0], json!("John"));
         assert_eq!(result.1[1], json!(false));
+    }
+
+    #[test]
+    fn test_soft_delete_integration() {
+        let data =
+            json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
+        let data_source = MockDataSource::new(&data);
+
+        let table = Table::new("users", data_source.clone())
+            .with_field("name")
+            .with_field("surname")
+            .with_extension(SoftDelete::new("is_deleted"));
+
+        let query = table.get_select_query().render_chunk().split();
+
+        assert_eq!(
+            query.0,
+            "SELECT name, surname, is_deleted FROM users WHERE (is_deleted = {})"
+        );
+        assert_eq!(query.1[0], json!(false));
     }
 }

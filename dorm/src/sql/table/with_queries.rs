@@ -36,6 +36,7 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
     fn get_select_query(&self) -> Query {
         let mut query = self.get_empty_query();
         query = self.add_fields_into_query(query, None);
+        self.hooks.before_select_query(self, &mut query).unwrap();
         query
     }
 

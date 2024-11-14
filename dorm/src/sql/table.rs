@@ -29,6 +29,7 @@ use std::sync::{Arc, Mutex};
 mod field;
 mod join;
 
+use extensions::{Hooks, TableExtension};
 pub use field::Field;
 pub use join::Join;
 
@@ -126,6 +127,8 @@ pub struct Table<T: DataSource, E: Entity> {
     lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
     refs: IndexMap<String, RelatedReference<T, E>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
+
+    hooks: Hooks,
 }
 
 mod with_fields;
@@ -139,7 +142,7 @@ mod with_updates;
 
 mod with_fetching;
 
-// mod extensions;
+mod extensions;
 
 pub trait SqlTable: TableWithFields + TableWithQueries {}
 
@@ -164,6 +167,8 @@ impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
+
+            hooks: self.hooks.clone(),
         }
     }
 }
@@ -266,6 +271,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             lazy_expressions: IndexMap::new(),
             refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
+
+            hooks: Hooks::new(),
         }
     }
 }
@@ -287,6 +294,8 @@ impl<T: DataSource> Table<T, EmptyEntity> {
             lazy_expressions: IndexMap::new(),
             refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
+
+            hooks: Hooks::new(),
         }
     }
 }
@@ -327,6 +336,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
+
+            hooks: self.hooks,
         }
     }
 
@@ -366,6 +377,13 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         expression: impl Fn(&Table<T, E>) -> Expression + 'static + Sync + Send,
     ) -> Self {
         self.add_expression(name, expression);
+        self
+    }
+
+    pub fn with_extension(mut self, extension: impl TableExtension + 'static) -> Self {
+        extension.init(&mut self);
+        self.hooks.add_hook(Box::new(extension));
+
         self
     }
 
