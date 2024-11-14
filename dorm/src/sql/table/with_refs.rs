@@ -1,11 +1,12 @@
 use anyhow::{anyhow, Result};
 
-use crate::reference::RelatedReference;
 use crate::sql::table::Table;
+use crate::sql::Operations;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
+use crate::{reference::RelatedReference, sql::Chunk};
 
-use super::RelatedTable;
+use super::{AnyTable, RelatedTable};
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn has_many(
@@ -24,7 +25,33 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         foreign_key: &str,
         cb: impl Fn() -> Box<dyn RelatedTable<T>> + 'static + Sync + Send,
     ) -> Self {
-        self.add_ref(relation, RelatedReference::new_one(foreign_key, cb));
+        // let client = cb();
+        self.add_ref(relation, RelatedReference::new_one(foreign_key.clone(), cb));
+
+        /*
+        let Some(foreign_title_field) = self.get_ref(relation).unwrap().get_title_field() else {
+            return self;
+        };
+
+        let foreign_key_str = foreign_key.to_string();
+
+        let exp = move |t: &Table<T, E>| {
+            client.add_condition(
+                client
+                    .id()
+                    .eq(&t.get_field(foreign_key_str.as_str()).unwrap()),
+            );
+            client
+                .field_query(client.get_field(foreign_title_field.as_str()).unwrap())
+                .render_chunk()
+        };
+
+        self.add_expression(
+            format!("{}_{}", &relation, &foreign_title_field).as_str(),
+            exp,
+        );
+        */
+
         self
     }
 

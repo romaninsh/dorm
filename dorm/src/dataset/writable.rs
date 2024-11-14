@@ -1,5 +1,6 @@
 use anyhow::Result;
 use serde::Serialize;
+use serde_json::Value;
 use std::future::Future;
 
 /// Represents a [`dataset`] that may can add or modify records.
@@ -21,7 +22,7 @@ pub trait WritableDataSet<E> {
     /// ```
     /// Client::table().insert(Client { name: "John".to_string() }).await?;
     /// ```
-    fn insert(&self, record: E) -> impl Future<Output = Result<()>>;
+    fn insert(&self, record: E) -> impl Future<Output = Result<Option<Value>>>;
 
     /// Update all records in the DataSet. When working with Table, it's important to set a condition
     /// if you only want to update some records.

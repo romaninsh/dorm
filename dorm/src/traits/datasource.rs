@@ -9,7 +9,7 @@ pub trait DataSource: Clone + Send + PartialEq + Sync + std::fmt::Debug + 'stati
     async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>>;
 
     // Execute a query without returning any results (e.g. DELETE, UPDATE, ALTER, etc.)
-    async fn query_exec(&self, query: &Query) -> Result<()>;
+    async fn query_exec(&self, query: &Query) -> Result<Option<Value>>;
 
     // Insert ordered list of rows into a table as described by query columns
     async fn query_insert(&self, query: &Query, rows: Vec<Vec<Value>>) -> Result<()>;

@@ -20,6 +20,12 @@ type RelatedTableFx<T, E> =
 // it requires that RelatedTable implements add_condition() and field_query()
 // functions.
 
+enum RelatedReferenceType {
+    HasOne,
+    HasMany,
+    Raw,
+}
+
 #[derive(Clone)]
 pub struct RelatedReference<T: DataSource, E: Entity> {
     get_table: Arc<Box<RelatedTableFx<T, E>>>,

@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{order::Order, postgres, Product};
+use crate::{order::Order, postgres, Product, ProductTable};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct LineItem {
@@ -11,7 +11,6 @@ pub struct LineItem {
     pub price: i64,
     pub quantity: i64,
     pub order_id: i64,
-    pub cake_id: i64,
 }
 
 impl Entity for LineItem {}
@@ -22,11 +21,17 @@ impl LineItem {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("order_line", postgres())
-                .with_field("price")
                 .with_field("quantity")
                 .with_field("order_id")
                 .with_field("product_id")
-                .with_expression("total", |t| t.price().mul(t.quantity()))
+                .with_expression("total", |t: &Table<Postgres, LineItem>| {
+                    t.price().render_chunk().mul(t.quantity())
+                })
+                .with_expression("price", |t| {
+                    let mut product = Product::table();
+                    product.add_condition(product.id().eq(&t.product_id()));
+                    product.field_query(product.price()).render_chunk()
+                })
                 .has_one("order", "order_id", || Box::new(Order::table()))
                 .has_one("product", "product_id", || Box::new(Product::table()))
         })
@@ -40,9 +45,6 @@ pub trait LineItemTable: AnyTable {
     fn as_table(&self) -> &Table<Postgres, LineItem> {
         self.as_any_ref().downcast_ref().unwrap()
     }
-    fn price(&self) -> Arc<Field> {
-        self.get_field("price").unwrap()
-    }
     fn quantity(&self) -> Arc<Field> {
         self.get_field("quantity").unwrap()
     }
@@ -55,5 +57,10 @@ pub trait LineItemTable: AnyTable {
     fn total(&self) -> Box<dyn Column> {
         self.as_table().search_for_field("total").unwrap()
     }
+    fn price(&self) -> Box<dyn Column>;
 }
-impl LineItemTable for Table<Postgres, LineItem> {}
+impl LineItemTable for Table<Postgres, LineItem> {
+    fn price(&self) -> Box<dyn Column> {
+        self.search_for_field("price").unwrap()
+    }
+}

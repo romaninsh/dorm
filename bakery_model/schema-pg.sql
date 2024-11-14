@@ -30,6 +30,7 @@ CREATE TABLE "ord" (
   id serial,
   product_id int NOT NULL,
   client_id int NOT NULL,
+  is_deleted boolean DEFAULT false,
   PRIMARY KEY (id, client_id)
 );
 
@@ -46,7 +47,8 @@ CREATE TABLE product (
   id serial PRIMARY KEY,
   name varchar(255) NOT NULL,
   calories int NOT NULL,
-  bakery_id int NOT NULL
+  bakery_id int NOT NULL,
+  price int NOT NULL
 );
 
 -- Insert data into tables
@@ -57,12 +59,12 @@ INSERT INTO client (name, contact_details, bakery_id) VALUES
 ('Doc Brown', '555-1885', 1),
 ('Biff Tannen', '555-1955', 1);
 
-INSERT INTO product (name, calories, bakery_id) VALUES
-('Flux Capacitor Cupcake', 300, 1),
-('DeLorean Doughnut', 250, 1),
-('Time Traveler Tart', 200, 1),
-('Enchantment Under the Sea Pie', 350, 1),
-('Hoverboard Cookies', 150, 1);
+INSERT INTO product (name, calories, bakery_id, price) VALUES
+('Flux Capacitor Cupcake', 300, 1, 120),
+('DeLorean Doughnut', 250, 1, 135),
+('Time Traveler Tart', 200, 1, 220),
+('Enchantment Under the Sea Pie', 350, 1, 299),
+('Hoverboard Cookies', 150, 1, 199);
 
 INSERT INTO inventory (product_id, stock) VALUES
 (1, 50),
@@ -76,9 +78,9 @@ INSERT INTO "ord" (product_id, client_id) VALUES
 (2, 2),
 (3, 2);
 
-INSERT INTO order_line (id, order_id, product_id, quantity, price) VALUES
-(1, 1, 1, 3, 10),
-(2, 1, 2, 1, 10),
-(3, 1, 5, 2, 20),
-(4, 2, 3, 1, 25),
-(5, 3, 5, 5, 20);
+INSERT INTO order_line (id, order_id, product_id, quantity) VALUES
+(1, 1, 1, 3),
+(2, 1, 2, 1),
+(3, 1, 5, 2),
+(4, 2, 3, 1),
+(5, 3, 5, 5);
