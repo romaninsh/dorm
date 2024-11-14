@@ -44,9 +44,6 @@ pub trait ClientTable: AnyTable {
     fn as_table(&self) -> &Table<Postgres, Client> {
         self.as_any_ref().downcast_ref().unwrap()
     }
-    fn id(&self) -> Arc<Field> {
-        self.get_field("id").unwrap()
-    }
     fn name(&self) -> Arc<Field> {
         self.get_field("name").unwrap()
     }

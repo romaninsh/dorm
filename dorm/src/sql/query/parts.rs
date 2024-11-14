@@ -85,8 +85,11 @@ impl QueryConditions {
             conditions: Vec::new(),
         }
     }
-    pub fn add_condition(mut self, condition: Expression) -> Self {
+    pub fn add_condition(&mut self, condition: Expression) {
         self.conditions.push(condition);
+    }
+    pub fn with_condition(mut self, condition: Expression) -> Self {
+        self.add_condition(condition);
         self
     }
 }
@@ -183,8 +186,8 @@ mod tests {
     #[test]
     fn test_conditions_render_having() {
         let conditions = QueryConditions::having()
-            .add_condition(expr!("name = {}", "John"))
-            .add_condition(expr!("age > {}", 30));
+            .with_condition(expr!("name = {}", "John"))
+            .with_condition(expr!("age > {}", 30));
         let result = conditions.render_chunk().split();
 
         assert_eq!(result.0, " HAVING name = {} AND age > {}");
@@ -198,7 +201,7 @@ mod tests {
         let name = Arc::new(Field::new("name".to_string(), None));
         let surname = Arc::new(Field::new("surname".to_string(), Some("sur".to_string())));
 
-        let conditions = QueryConditions::having().add_condition(
+        let conditions = QueryConditions::having().with_condition(
             Condition::or(name.eq(&surname), surname.eq(&Value::Null)).render_chunk(),
         );
         let result = conditions.render_chunk().split();

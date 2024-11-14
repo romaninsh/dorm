@@ -59,7 +59,7 @@ mod tests {
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Chunk, EmptyEntity, Operations},
+        prelude::{AnyTable, Chunk, EmptyEntity, Operations, TableWithFields, TableWithQueries},
     };
     // #[test]
     // fn test_add_ref() {

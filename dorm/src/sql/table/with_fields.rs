@@ -108,47 +108,32 @@ use super::AnyTable;
 /// [`id()`]: Table::id()
 /// [`with_id`]: Table::with_id()
 /// [`fields()`]: Table::fields()
-impl<T: DataSource, E: Entity> Table<T, E> {
+
+pub trait TableWithFields: AnyTable {
+    fn add_field(&mut self, field_name: String, field: Field);
+    fn fields(&self) -> &IndexMap<String, Arc<Field>>;
+    fn id(&self) -> Arc<Field>;
+    fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>>;
+}
+
+impl<T: DataSource, E: Entity> TableWithFields for Table<T, E> {
     /// **avoid using directly**.
     ///
     /// Adds a new field to the table. Note, that Field may use an alias. Additional
     /// features may be added into [`Field`] in the future, so better use [`with_field()`]
     /// to keep your code portable.
-    pub fn add_field(&mut self, field_name: String, field: Field) {
+    fn add_field(&mut self, field_name: String, field: Field) {
         self.fields.insert(field_name, Arc::new(field));
     }
 
     /// Return all fields. See also: [`Table::get_field`].
-    pub fn fields(&self) -> &IndexMap<String, Arc<Field>> {
+    fn fields(&self) -> &IndexMap<String, Arc<Field>> {
         &self.fields
-    }
-
-    /// When building a table - a way to chain field declarations.
-    pub fn with_field(mut self, field: &str) -> Self {
-        self.add_field(
-            field.to_string(),
-            Field::new(field.to_string(), self.table_alias.clone()),
-        );
-        self
-    }
-
-    /// Adds a field that is also a title field. Title field will be
-    /// used in the UI to represent the record.
-    pub fn with_title_field(mut self, field: &str) -> Self {
-        self.title_field = Some(field.to_string());
-        self.with_field(field)
-    }
-
-    /// Adds a field that is also an id field. Id field is used
-    /// by [`Table::id()`] and [`Table::with_id()`].
-    pub fn with_id_field(mut self, field: &str) -> Self {
-        self.id_field = Some(field.to_string());
-        self.with_field(field)
     }
 
     /// Returns the id field. If `with_id_field` was not called, will try to find
     /// field called `"id"`. If not found, will panic.
-    pub fn id(&self) -> Arc<Field> {
+    fn id(&self) -> Arc<Field> {
         let id_field = if self.id_field.is_some() {
             let x = self.id_field.clone().unwrap();
             x.clone()
@@ -156,13 +141,6 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             "id".to_string()
         };
         self.get_field(&id_field).unwrap()
-    }
-
-    /// Will add a condition for the `id` field. This is a syntactic sugar for
-    /// `with_condition(id().eq(&id))`.
-    pub fn with_id(self, id: Value) -> Self {
-        let f = self.id().eq(&id);
-        self.with_condition(f)
     }
 
     /// In addition to `self.fields` the fields can also be defined for a joined
@@ -173,7 +151,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
     /// a [`Field`].
     ///
     /// [`Column`]: dorm::sql::Column
-    pub fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>> {
+    fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>> {
         // perhaps we have a field like this?
         if let Some(field) = self.get_field(field_name) {
             return Some(Box::new(field));
@@ -200,15 +178,72 @@ impl<T: DataSource, E: Entity> Table<T, E> {
     }
 }
 
+impl<T: DataSource, E: Entity> Table<T, E> {
+    /// When building a table - a way to chain field declarations.
+    pub fn with_field(mut self, field: &str) -> Self {
+        self.add_field(
+            field.to_string(),
+            Field::new(field.to_string(), self.table_alias.clone()),
+        );
+        self
+    }
+
+    /// Adds a field that is also a title field. Title field will be
+    /// used in the UI to represent the record.
+    pub fn with_title_field(mut self, field: &str) -> Self {
+        self.title_field = Some(field.to_string());
+        self.with_field(field)
+    }
+
+    /// Adds a field that is also an id field. Id field is used
+    /// by [`Table::id()`] and [`Table::with_id()`].
+    pub fn with_id_field(mut self, field: &str) -> Self {
+        self.id_field = Some(field.to_string());
+        self.with_field(field)
+    }
+
+    /// Will add a condition for the `id` field. This is a syntactic sugar for
+    /// `with_condition(id().eq(&id))`.
+    pub fn with_id(self, id: Value) -> Self {
+        let f = self.id().eq(&id);
+        self.with_condition(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use crate::{
-        mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Chunk, Operations},
-        sql::table::Table,
-    };
+    use crate::{mocks::datasource::MockDataSource, prelude::*, sql::table::Table};
+
+    #[test]
+    fn test_get_field() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name");
+
+        assert!(roles.get_field("qq").is_none());
+        assert!(roles.get_field("name").is_some());
+    }
+
+    #[test]
+    fn test_search_for_field() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name")
+            .with_expression("surname", |_| expr!("foo"));
+
+        assert!(roles.search_for_field("qq").is_none());
+        assert!(roles.search_for_field("name").is_some());
+        assert!(roles.search_for_field("surname").is_some());
+        assert!(roles.get_field("surname").is_none())
+    }
 
     #[test]
     fn test_field_query() {

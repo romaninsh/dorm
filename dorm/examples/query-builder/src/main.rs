@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     let github_authors_and_teams = github_authors_and_teams.with_join(query::JoinQuery::new(
         query::JoinType::Inner,
         query::QuerySource::Table("dx_team_hierarchies".to_string(), Some("h".to_string())),
-        query::QueryConditions::on().add_condition(expr!("t.id = h.ancestor_id")),
+        query::QueryConditions::on().with_condition(expr!("t.id = h.ancestor_id")),
     ));
 
     // to a user with `user_name`
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
         .with_join(query::JoinQuery::new(
             query::JoinType::Inner,
             query::QuerySource::Table("dx_users".to_string(), Some("dxu".to_string())),
-            query::QueryConditions::on().add_condition(expr!("h.descendant_id = dxu.team_id")),
+            query::QueryConditions::on().with_condition(expr!("h.descendant_id = dxu.team_id")),
         ))
         .with_column("user_name".to_string(), expr!("dxu.name"))
         .with_column("github_username".to_string(), expr!("dxu.source_id"));
@@ -63,8 +63,8 @@ async fn main() -> Result<()> {
             query::JoinType::Inner,
             query::QuerySource::Table("identities".to_string(), Some("i".to_string())),
             query::QueryConditions::on()
-                .add_condition(expr!("dxu.id = i.dx_user_id"))
-                .add_condition(expr!("i.source = {}", "github")),
+                .with_condition(expr!("dxu.id = i.dx_user_id"))
+                .with_condition(expr!("i.source = {}", "github")),
         ))
         .with_column("user_source_id".to_string(), expr!("i.source_id"));
 
@@ -96,7 +96,7 @@ async fn main() -> Result<()> {
     // Start by querying all deployments
     let query_successful_deployments = Query::new()
         .with_table("deployments", None)
-        .is_distinct()
+        .with_distinct()
         .with_column("id".to_string(), expr!("deployments.id"))
         .with_column("deployed_at".to_string(), expr!("deployments.deployed_at"))
         .with_condition(expr!("deployments.success = {}", true))
@@ -108,10 +108,10 @@ async fn main() -> Result<()> {
             query::JoinType::Left,
             query::QuerySource::Table("service_identities".to_string(), None),
             query::QueryConditions::on()
-                .add_condition(expr!(
+                .with_condition(expr!(
                     "service_identities.source_id::numeric = deployments.deployment_service_id"
                 ))
-                .add_condition(expr!("service_identities.source = {}", "deployments")),
+                .with_condition(expr!("service_identities.source = {}", "deployments")),
         ));
 
     // Service associations with the teams
@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
             query::JoinType::Left,
             query::QuerySource::Table("services".to_string(), None),
             query::QueryConditions::on()
-                .add_condition(expr!("services.id = service_identities.service_id")),
+                .with_condition(expr!("services.id = service_identities.service_id")),
         ));
 
     // Deployment Pull contains environment details as well as pull IDs for our deployment
@@ -131,7 +131,8 @@ async fn main() -> Result<()> {
                 "github_pull_deployments".to_string(),
                 Some("gpd".to_string()),
             ),
-            query::QueryConditions::on().add_condition(expr!("gpd.deployment_id = deployments.id")),
+            query::QueryConditions::on()
+                .with_condition(expr!("gpd.deployment_id = deployments.id")),
         ));
 
     // Grabbing more information about pipeline execution
@@ -140,7 +141,7 @@ async fn main() -> Result<()> {
             query::JoinType::Left,
             query::QuerySource::Table("pipeline_runs".to_string(), Some("piper".to_string())),
             query::QueryConditions::on()
-                .add_condition(expr!("piper.commit_sha = deployments.commit_sha")),
+                .with_condition(expr!("piper.commit_sha = deployments.commit_sha")),
         ));
 
     // Fetch author information from a sub-query
@@ -151,7 +152,7 @@ async fn main() -> Result<()> {
                 Arc::new(Box::new(github_authors_and_teams)),
                 Some("authors".to_string()),
             ),
-            query::QueryConditions::on().add_condition(expr!(
+            query::QueryConditions::on().with_condition(expr!(
                 "LOWER(authors.github_username) = LOWER(piper.github_username)"
             )),
         ));
@@ -235,7 +236,7 @@ async fn main() -> Result<()> {
             query::JoinType::Left,
             query::QuerySource::Query(Arc::new(Box::new(query_successful_deployments)), Some("deploys".to_string())),
             query::QueryConditions::on()
-                .add_condition(expr!(
+                .with_condition(expr!(
                     "date_trunc({}, deploys.deployed_at) BETWEEN time_series.date AND time_series.date + INTERVAL '7 days'",
                     "day".to_string()
                 )),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde_json::Value;
+pub use with_traits::SqlQuery;
 
 use crate::{
     expr_arc,
@@ -58,18 +59,18 @@ impl Query {
         }
     }
 
-    pub fn is_distinct(mut self) -> Self {
-        self.distinct = true;
+    pub fn with_distinct(mut self) -> Self {
+        self.set_distinct(true);
         self
     }
 
     pub fn with_table(mut self, table: &str, alias: Option<String>) -> Self {
-        self.table = QuerySource::Table(table.to_string(), alias);
+        self.set_table(table, alias);
         self
     }
 
     pub fn with_with(mut self, alias: &str, subquery: Query) -> Self {
-        self.with.insert(
+        self.add_with(
             alias.to_string(),
             QuerySource::Query(Arc::new(Box::new(subquery)), None),
         );
@@ -77,12 +78,12 @@ impl Query {
     }
 
     pub fn with_source(mut self, source: QuerySource) -> Self {
-        self.table = source;
+        self.set_source(source);
         self
     }
 
     pub fn with_type(mut self, query_type: QueryType) -> Self {
-        self.query_type = query_type;
+        self.set_type(query_type);
         self
     }
 
@@ -91,31 +92,35 @@ impl Query {
         self
     }
 
-    pub fn with_column(self, name: String, field: impl Column + 'static) -> Self {
-        self.with_column_arc(name, Arc::new(Box::new(field)))
+    pub fn with_column(mut self, name: String, column: impl Column + 'static) -> Self {
+        self.add_column(name, Arc::new(Box::new(column)));
+        self
+    }
+    // Simplified ways to define a field with a string
+    pub fn with_column_field(self, name: &str) -> Self {
+        self.with_column(
+            name.to_string(),
+            Arc::new(Field::new(name.to_string(), None)),
+        )
     }
 
-    pub fn with_column_arc(mut self, name: String, field: Arc<Box<dyn Column>>) -> Self {
-        self.columns.insert(name, field);
+    pub fn with_column_arc(mut self, name: String, column: Arc<Box<dyn Column>>) -> Self {
+        self.add_column(name, column);
         self
     }
 
     pub fn with_where_condition(mut self, cond: Expression) -> Self {
-        self.where_conditions = self.where_conditions.add_condition(cond);
+        self.get_where_conditions_mut().add_condition(cond);
         self
     }
 
     pub fn with_having_condition(mut self, cond: Expression) -> Self {
-        self.having_conditions = self.having_conditions.add_condition(cond);
+        self.get_having_conditions_mut().add_condition(cond);
         self
     }
 
-    // pub fn with_condition(mut self, cond: Condition) -> Self {
-    //     self.where_conditions = self.where_conditions.add_condition(cond);
-    // }
-
     pub fn with_join(mut self, join: JoinQuery) -> Self {
-        self.joins.push(join);
+        self.add_join(join);
         self
     }
 
@@ -128,33 +133,18 @@ impl Query {
     }
 
     pub fn with_group_by(mut self, group_by: Expression) -> Self {
-        self.group_by.push(group_by);
+        self.add_group_by(group_by);
         self
     }
 
     pub fn with_order_by(mut self, order_by: Expression) -> Self {
-        self.order_by.push(order_by);
+        self.add_order_by(order_by);
         self
     }
 
-    // Simplified ways to define a field with a string
-    pub fn with_column_field(self, name: &str) -> Self {
-        self.with_column(
-            name.to_string(),
-            Arc::new(Field::new(name.to_string(), None)),
-        )
-    }
-
     pub fn with_set_field(mut self, field: &str, value: Value) -> Self {
-        match self.query_type {
-            QueryType::Insert | QueryType::Update | QueryType::Replace => {
-                self.set_fields.insert(field.to_string(), value);
-                self
-            }
-            _ => {
-                panic!("Call set_set_field() for insert query");
-            }
-        }
+        self.set_field_value(field, value);
+        self
     }
 
     fn render_with(&self) -> Expression {
@@ -319,6 +309,56 @@ impl Chunk for Query {
     }
 }
 
+mod with_traits;
+impl SqlQuery for Query {
+    fn set_distinct(&mut self, distinct: bool) {
+        self.distinct = distinct;
+    }
+    fn set_table(&mut self, table: &str, alias: Option<String>) {
+        self.table = QuerySource::Table(table.to_string(), alias);
+    }
+    fn add_with(&mut self, alias: String, subquery: QuerySource) {
+        self.with.insert(alias, subquery);
+    }
+    fn set_source(&mut self, source: QuerySource) {
+        self.table = source;
+    }
+    fn set_type(&mut self, query_type: QueryType) {
+        self.query_type = query_type;
+    }
+    fn add_column(&mut self, name: String, column: Arc<Box<dyn Column>>) {
+        if self.columns.insert(name, column).is_some() {
+            // panic!("Column is already defined");
+            return;
+        }
+    }
+    fn get_where_conditions_mut(&mut self) -> &mut QueryConditions {
+        &mut self.where_conditions
+    }
+    fn get_having_conditions_mut(&mut self) -> &mut QueryConditions {
+        &mut self.having_conditions
+    }
+    fn add_join(&mut self, join: JoinQuery) {
+        self.joins.push(join);
+    }
+    fn add_group_by(&mut self, group_by: Expression) {
+        self.group_by.push(group_by);
+    }
+    fn add_order_by(&mut self, order_by: Expression) {
+        self.order_by.push(order_by);
+    }
+    fn set_field_value(&mut self, field: &str, value: Value) {
+        match self.query_type {
+            QueryType::Insert | QueryType::Update | QueryType::Replace => {
+                self.set_fields.insert(field.to_string(), value);
+            }
+            _ => {
+                panic!("Query should be \"Insert\", \"Update\" or \"Replace\" to set field value. Type is set to {:?}", self.query_type);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{expr, sql::Operations};
@@ -437,7 +477,7 @@ mod tests {
         let join = JoinQuery::new(
             JoinType::Left,
             QuerySource::Table("roles".to_string(), None),
-            QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
+            QueryConditions::on().with_condition(expr!("users.role_id = roles.id")),
         );
 
         let (sql, params) = query.with_join(join).render_chunk().split();
@@ -462,7 +502,7 @@ mod tests {
             .with_join(JoinQuery::new(
                 JoinType::Inner,
                 QuerySource::Table("roles".to_string(), None),
-                QueryConditions::on().add_condition(expr!("users.role_id = roles.id")),
+                QueryConditions::on().with_condition(expr!("users.role_id = roles.id")),
             ))
             .with_column_field("user_name")
             .with_column_field("roles.role_name");

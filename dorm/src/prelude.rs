@@ -9,7 +9,7 @@ pub use crate::{
         chunk::Chunk,
         expression::{Expression, ExpressionArc},
         query::{JoinQuery, Query},
-        table::{AnyTable, RelatedTable, Table, TableDelegate},
+        table::*,
         Operations, WrapArc,
     },
     traits::entity::{EmptyEntity, Entity},

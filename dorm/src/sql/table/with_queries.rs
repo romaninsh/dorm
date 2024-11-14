@@ -3,9 +3,9 @@ use serde::Serialize;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 
-use super::Field;
+use super::{AnyTable, Field, TableWithFields};
 use crate::prelude::AssociatedQuery;
-use crate::sql::query::QueryType;
+use crate::sql::query::{QueryType, SqlQuery};
 use crate::sql::table::Table;
 use crate::sql::Query;
 use crate::traits::column::Column;
@@ -14,8 +14,15 @@ use crate::traits::entity::Entity;
 
 use super::RelatedTable;
 
-impl<T: DataSource, E: Entity> Table<T, E> {
-    pub fn get_empty_query(&self) -> Query {
+pub trait TableWithQueries: AnyTable {
+    fn get_empty_query(&self) -> Query;
+    fn get_select_query(&self) -> Query;
+    fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query;
+    fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query;
+}
+
+impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
+    fn get_empty_query(&self) -> Query {
         let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for condition in self.conditions.iter() {
             query = query.with_condition(condition.clone());
@@ -26,31 +33,36 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         query
     }
 
-    pub fn get_select_query(&self) -> Query {
+    fn get_select_query(&self) -> Query {
         let mut query = self.get_empty_query();
         query = self.add_fields_into_query(query, None);
+        self.hooks.before_select_query(self, &mut query).unwrap();
         query
     }
 
-    pub fn get_select_query_for_fields(
-        &self,
-        fields: IndexMap<String, Arc<Box<dyn Column>>>,
-    ) -> Query {
+    fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query {
         let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
-            query = query.with_column_arc(field_alias, field_val);
+            query.add_column(field_alias, field_val);
         }
         query
     }
 
-    pub fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query {
+    fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query {
         let mut index_map = IndexMap::new();
         for field_name in field_names {
             let field = self.search_for_field(field_name).unwrap();
             index_map.insert(field_name.to_string(), Arc::new(field));
         }
         self.get_select_query_for_fields(index_map)
+    }
+}
+
+impl<T: DataSource, E: Entity> Table<T, E> {
+    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
+        let query = self.get_empty_query().with_column(field.name(), field);
+        AssociatedQuery::new(query, self.data_source.clone())
     }
 
     pub fn get_select_query_for_struct<R: Serialize>(&self, default: R) -> Query {
@@ -70,10 +82,15 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
         let i = i.collect::<IndexMap<_, _>>();
 
-        self.get_select_query_for_fields(i)
+        let mut q = self.get_select_query_for_fields(i);
+        self.hooks.before_select_query(self, &mut q).unwrap();
+        q
     }
 
-    pub fn get_insert_query(&self, values: E) -> Query {
+    pub fn get_insert_query<E2>(&self, values: E2) -> Query
+    where
+        E2: Serialize,
+    {
         let mut query = Query::new()
             .with_table(&self.table_name, None)
             .with_type(QueryType::Insert);
@@ -128,11 +145,6 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         }
         query
     }
-
-    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
-        let query = self.get_empty_query().with_column(field.name(), field);
-        AssociatedQuery::new(query, self.data_source.clone())
-    }
 }
 
 #[cfg(test)]
@@ -159,7 +171,7 @@ mod tests {
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let db = MockDataSource::new(&data);
 
-        let table = Table::new_with_entity("users", db)
+        let table: Table<MockDataSource, User> = Table::new_with_entity("users", db)
             .with_field("name")
             .with_field("surname");
 

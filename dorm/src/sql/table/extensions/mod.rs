@@ -6,42 +6,57 @@
 
 use std::sync::Arc;
 
-use crate::{prelude::Entity, sql::Query, traits::datasource::DataSource};
+use anyhow::Result;
+pub use soft_delete::SoftDelete;
 
-use super::{AnyTable, Table};
+use crate::sql::Query;
 
-trait TableExtension {
-    fn init(&self, _table: Arc<Box<dyn AnyTable>>) {}
-    fn before_select_query(&self, _table: Arc<Box<dyn AnyTable>>, query: Query) -> Query {
-        query
+use super::SqlTable;
+
+pub trait TableExtension: std::fmt::Debug + Send + Sync {
+    fn init(&self, _table: &mut dyn SqlTable) {}
+    fn before_select_query(&self, _table: &dyn SqlTable, _query: &mut Query) -> Result<()> {
+        Ok(())
     }
-    fn before_delete_query(&self, _table: Arc<Box<dyn AnyTable>>, query: Query) -> Query {
-        query
+    fn before_delete_query(&self, _table: &mut dyn SqlTable, _query: &mut Query) -> Result<()> {
+        Ok(())
     }
 }
 
-struct Hooks {
-    hooks: Vec<Box<dyn TableExtension>>,
+#[derive(Default)]
+pub struct Hooks {
+    hooks: Vec<Arc<Box<dyn TableExtension>>>,
 }
 impl Hooks {
     pub fn new() -> Self {
         Hooks { hooks: vec![] }
     }
     /// Add new hook to the table
-    pub fn add_hook(&mut self, table: Arc<Box<dyn AnyTable>>, hook: Box<dyn TableExtension>) {
-        hook.init(table);
-        self.hooks.push(hook);
+    pub fn add_hook(&mut self, hook: Box<dyn TableExtension>) {
+        self.hooks.push(Arc::new(hook));
     }
 
-    pub fn before_select_query(&self, table: Arc<Box<dyn AnyTable>>, mut query: Query) -> Query {
+    pub fn before_select_query(&self, table: &dyn SqlTable, query: &mut Query) -> Result<()> {
         for hook in self.hooks.iter() {
-            query = hook.before_select_query(table.clone(), query);
+            hook.before_select_query(table, query);
         }
-        query
+        Ok(())
+    }
+}
+
+// implement Debug for Hooks
+impl std::fmt::Debug for Hooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Hooks").field("hooks", &self.hooks).finish()
+    }
+}
+
+impl Clone for Hooks {
+    fn clone(&self) -> Self {
+        Hooks {
+            hooks: self.hooks.clone(),
+        }
     }
 }
 
 mod soft_delete;
-
-use indexmap::IndexMap;
-pub use soft_delete::SoftDelete;

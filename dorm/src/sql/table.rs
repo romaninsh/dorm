@@ -29,6 +29,7 @@ use std::sync::{Arc, Mutex};
 mod field;
 mod join;
 
+pub use extensions::{Hooks, SoftDelete, TableExtension};
 pub use field::Field;
 pub use join::Join;
 
@@ -77,7 +78,7 @@ pub trait AnyTable: Any + Send + Sync {
 /// fetching the "id"s.
 ///
 ///
-pub trait RelatedTable<T: DataSource>: AnyTable {
+pub trait RelatedTable<T: DataSource>: SqlTable {
     fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T>;
     fn add_fields_into_query(&self, query: Query, alias_prefix: Option<&str>) -> Query;
     fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>>;
@@ -88,6 +89,7 @@ pub trait RelatedTable<T: DataSource>: AnyTable {
     fn set_alias(&mut self, alias: &str);
 
     fn get_fields(&self) -> &IndexMap<String, Arc<Field>>;
+    fn get_title_field(&self) -> Option<String>;
 }
 
 /// Generic implementation of SQL table.
@@ -126,9 +128,14 @@ pub struct Table<T: DataSource, E: Entity> {
     lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
     refs: IndexMap<String, RelatedReference<T, E>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
+
+    hooks: Hooks,
 }
 
 mod with_fields;
+pub use with_fields::TableWithFields;
+pub use with_queries::TableWithQueries;
+
 mod with_joins;
 mod with_queries;
 mod with_refs;
@@ -136,7 +143,11 @@ mod with_updates;
 
 mod with_fetching;
 
-// mod extensions;
+mod extensions;
+
+pub trait SqlTable: TableWithFields + TableWithQueries {}
+
+impl<T: DataSource, E: Entity> SqlTable for Table<T, E> {}
 
 impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
     fn clone(&self) -> Self {
@@ -157,6 +168,8 @@ impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
+
+            hooks: self.hooks.clone(),
         }
     }
 }
@@ -240,6 +253,9 @@ impl<T: DataSource, E: Entity> RelatedTable<T> for Table<T, E> {
     fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>> {
         self.joins.get(table_alias).map(|r| r.clone())
     }
+    fn get_title_field(&self) -> Option<String> {
+        self.title_field.clone()
+    }
 }
 
 impl<T: DataSource, E: Entity> Table<T, E> {
@@ -259,6 +275,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             lazy_expressions: IndexMap::new(),
             refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
+
+            hooks: Hooks::new(),
         }
     }
 }
@@ -280,6 +298,8 @@ impl<T: DataSource> Table<T, EmptyEntity> {
             lazy_expressions: IndexMap::new(),
             refs: IndexMap::new(),
             table_aliases: Arc::new(Mutex::new(UniqueIdVendor::new())),
+
+            hooks: Hooks::new(),
         }
     }
 }
@@ -320,6 +340,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
             // Perform a deep clone of the UniqueIdVendor
             table_aliases: Arc::new(Mutex::new((*self.table_aliases.lock().unwrap()).clone())),
+
+            hooks: self.hooks,
         }
     }
 
@@ -362,6 +384,13 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
+    pub fn with_extension(mut self, extension: impl TableExtension + 'static) -> Self {
+        extension.init(&mut self);
+        self.hooks.add_hook(Box::new(extension));
+
+        self
+    }
+
     pub async fn get_all_data(&self) -> Result<Vec<Map<String, Value>>> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
@@ -395,7 +424,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 //     }
 // }
 
-pub trait TableDelegate<T: DataSource, E: Entity> {
+pub trait TableDelegate<T: DataSource, E: Entity>: TableWithFields {
     fn table(&self) -> &Table<T, E>;
 
     fn id(&self) -> Arc<Field> {
