@@ -29,16 +29,16 @@ CREATE TABLE inventory (
 CREATE TABLE "ord" (
   id serial,
   product_id int NOT NULL,
-  qty int DEFAULT NULL,
   client_id int NOT NULL,
   PRIMARY KEY (id, client_id)
 );
 
 CREATE TABLE order_line (
   id int,
-  ord_id int DEFAULT NULL,
+  order_id int DEFAULT NULL,
   product_id int NOT NULL,
-  qty int DEFAULT NULL,
+  quantity int DEFAULT NULL,
+  price int DEFAULT NULL,
   PRIMARY KEY (id, product_id)
 );
 
@@ -76,9 +76,9 @@ INSERT INTO "ord" (product_id, client_id) VALUES
 (2, 2),
 (3, 2);
 
-INSERT INTO order_line (id, ord_id, product_id, qty) VALUES
-(1, 1, 1, 3),
-(2, 1, 2, 1),
-(3, 1, 5, 2),
-(4, 2, 3, 1),
-(5, 3, 5, 5);
+INSERT INTO order_line (id, order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 3, 10),
+(2, 1, 2, 1, 10),
+(3, 1, 5, 2, 20),
+(4, 2, 3, 1, 25),
+(5, 3, 5, 5, 20);
