@@ -234,7 +234,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         }
         let their_table_alias = their_table.table_alias.as_ref().unwrap().clone();
 
-        let mut on_condition = QueryConditions::on().add_condition(
+        let mut on_condition = QueryConditions::on();
+        on_condition.add_condition(
             self.get_field(our_foreign_id)
                 .unwrap()
                 .eq(&their_table_id)
@@ -243,7 +244,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
         // Any condition in their_table should be moved into ON condition
         for condition in their_table.conditions.iter() {
-            on_condition = on_condition.add_condition(condition.render_chunk());
+            on_condition.add_condition(condition.render_chunk());
         }
         their_table.conditions = Vec::new();
 
@@ -278,7 +279,7 @@ mod tests {
         sql::Condition,
     };
     #[test]
-    fn test_join() {
+    fn test_join_1() {
         let data = json!([]);
         let db = MockDataSource::new(&data);
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     lineitem::{LineItem, LineItemTable},
-    postgres, Bakery, Client, ClientTable, Product,
+    postgres, Client, ClientTable,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
@@ -47,9 +47,9 @@ impl Order {
 }
 
 pub trait OrderTable: AnyTable {
-    fn as_table(&self) -> &Table<Postgres, Order> {
-        self.as_any_ref().downcast_ref().unwrap()
-    }
+    // fn as_table(&self) -> &Table<Postgres, Order> {
+    //     self.as_any_ref().downcast_ref().unwrap()
+    // }
 
     fn client_id(&self) -> Arc<Field> {
         Order::table().get_field("client_id").unwrap()
@@ -58,12 +58,15 @@ pub trait OrderTable: AnyTable {
         Order::table().get_field("product_id").unwrap()
     }
 
-    fn ref_client(&self) -> Table<Postgres, Client> {
-        self.as_table().get_ref_as("client").unwrap()
-    }
+    fn ref_client(&self) -> Table<Postgres, Client>;
+    fn ref_line_items(&self) -> Table<Postgres, LineItem>;
+}
 
+impl OrderTable for Table<Postgres, Order> {
+    fn ref_client(&self) -> Table<Postgres, Client> {
+        self.get_ref_as("client").unwrap()
+    }
     fn ref_line_items(&self) -> Table<Postgres, LineItem> {
-        self.as_table().get_ref_as("line_items").unwrap()
+        self.get_ref_as("line_items").unwrap()
     }
 }
-impl OrderTable for Table<Postgres, Order> {}

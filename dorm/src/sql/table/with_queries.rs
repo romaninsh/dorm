@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use super::{AnyTable, Field, TableWithFields};
 use crate::prelude::AssociatedQuery;
-use crate::sql::query::QueryType;
+use crate::sql::query::{QueryType, SqlQuery};
 use crate::sql::table::Table;
 use crate::sql::Query;
 use crate::traits::column::Column;
@@ -43,7 +43,7 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
         let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
-            query = query.with_column_arc(field_alias, field_val);
+            query.add_column(field_alias, field_val);
         }
         query
     }

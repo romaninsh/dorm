@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use serde_json::json;
 
 use crate::{
-    prelude::{SqlTable, Table},
+    prelude::{AnyTable, Entity, SqlTable, Table},
     sql::{Field, Operations, Query},
     traits::datasource::DataSource,
 };
@@ -20,18 +21,18 @@ impl SoftDelete {
             soft_delete_field: soft_delete_field.to_string(),
         }
     }
-    fn is_deleted(&self, table: Arc<Box<dyn SqlTable>>) -> Arc<Field> {
+    fn is_deleted(&self, table: &mut dyn SqlTable) -> Arc<Field> {
         table.get_field(&self.soft_delete_field).unwrap()
     }
 }
 
 impl TableExtension for SoftDelete {
     /// When selecting records, exclude deleted records
-    fn before_select_query(&self, table: Arc<Box<dyn SqlTable>>, query: Query) -> Query {
+    fn before_select_query(&self, table: &mut dyn SqlTable, query: &mut Query) -> Result<()> {
         query.with_condition(self.is_deleted(table).eq(&false))
     }
     /// When deleting records, mark them as deleted instead
-    fn before_delete_query(&self, _table: Arc<Box<dyn SqlTable>>, query: Query) -> Query {
+    fn before_delete_query(&self, _table: &mut dyn SqlTable, query: &mut Query) -> Result<()> {
         query
             .with_type(crate::sql::query::QueryType::Update)
             .with_set_field(&self.soft_delete_field, json!(true))
@@ -64,7 +65,7 @@ mod tests {
         let table: Box<dyn SqlTable> = Box::new(table);
 
         let mut ext = Hooks::new();
-        ext.add_hook(Arc::new(table), Box::new(SoftDelete::new("is_deleted")));
+        ext.add_hook(Box::new(SoftDelete::new("is_deleted")));
 
         let query = table.get_select_query();
         let query = ext.before_select_query(Arc::new(table), query);

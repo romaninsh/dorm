@@ -180,8 +180,8 @@ impl<T: DataSource, E: Entity> TableWithFields for Table<T, E> {
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     /// When building a table - a way to chain field declarations.
-    pub fn with_field(self, field: &str) -> Self {
-        self.clone().add_field(
+    pub fn with_field(mut self, field: &str) -> Self {
+        self.add_field(
             field.to_string(),
             Field::new(field.to_string(), self.table_alias.clone()),
         );
@@ -214,11 +214,36 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 mod tests {
     use serde_json::json;
 
-    use crate::{
-        mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Chunk, Operations, TableWithFields, TableWithQueries},
-        sql::table::Table,
-    };
+    use crate::{mocks::datasource::MockDataSource, prelude::*, sql::table::Table};
+
+    #[test]
+    fn test_get_field() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name");
+
+        assert!(roles.get_field("qq").is_none());
+        assert!(roles.get_field("name").is_some());
+    }
+
+    #[test]
+    fn test_search_for_field() {
+        let data = json!([]);
+        let db = MockDataSource::new(&data);
+
+        let roles = Table::new("roles", db.clone())
+            .with_field("id")
+            .with_field("name")
+            .with_expression("surname", |_| expr!("foo"));
+
+        assert!(roles.search_for_field("qq").is_none());
+        assert!(roles.search_for_field("name").is_some());
+        assert!(roles.search_for_field("surname").is_some());
+        assert!(roles.get_field("surname").is_none())
+    }
 
     #[test]
     fn test_field_query() {
