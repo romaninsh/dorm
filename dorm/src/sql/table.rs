@@ -29,7 +29,7 @@ use std::sync::{Arc, Mutex};
 mod field;
 mod join;
 
-use extensions::{Hooks, TableExtension};
+pub use extensions::{Hooks, SoftDelete, TableExtension};
 pub use field::Field;
 pub use join::Join;
 
@@ -78,7 +78,7 @@ pub trait AnyTable: Any + Send + Sync {
 /// fetching the "id"s.
 ///
 ///
-pub trait RelatedTable<T: DataSource>: AnyTable {
+pub trait RelatedTable<T: DataSource>: SqlTable {
     fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T>;
     fn add_fields_into_query(&self, query: Query, alias_prefix: Option<&str>) -> Query;
     fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>>;
@@ -89,6 +89,7 @@ pub trait RelatedTable<T: DataSource>: AnyTable {
     fn set_alias(&mut self, alias: &str);
 
     fn get_fields(&self) -> &IndexMap<String, Arc<Field>>;
+    fn get_title_field(&self) -> Option<String>;
 }
 
 /// Generic implementation of SQL table.
@@ -251,6 +252,9 @@ impl<T: DataSource, E: Entity> RelatedTable<T> for Table<T, E> {
     }
     fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>> {
         self.joins.get(table_alias).map(|r| r.clone())
+    }
+    fn get_title_field(&self) -> Option<String> {
+        self.title_field.clone()
     }
 }
 

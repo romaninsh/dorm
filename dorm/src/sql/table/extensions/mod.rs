@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+pub use soft_delete::SoftDelete;
 
 use crate::sql::Query;
 

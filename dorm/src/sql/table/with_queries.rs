@@ -82,7 +82,9 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
         let i = i.collect::<IndexMap<_, _>>();
 
-        self.get_select_query_for_fields(i)
+        let mut q = self.get_select_query_for_fields(i);
+        self.hooks.before_select_query(self, &mut q).unwrap();
+        q
     }
 
     pub fn get_insert_query<E2>(&self, values: E2) -> Query
