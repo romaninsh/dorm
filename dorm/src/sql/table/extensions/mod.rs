@@ -38,7 +38,7 @@ impl Hooks {
 
     pub fn before_select_query(&self, table: &dyn SqlTable, query: &mut Query) -> Result<()> {
         for hook in self.hooks.iter() {
-            hook.before_select_query(table, query);
+            hook.before_select_query(table, query).unwrap();
         }
         Ok(())
     }
