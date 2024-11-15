@@ -1,9 +1,10 @@
+use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde::Serialize;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 
-use super::{AnyTable, Field, TableWithFields};
+use super::{AnyTable, Field, SqlTable, TableWithFields};
 use crate::prelude::AssociatedQuery;
 use crate::sql::query::{QueryType, SqlQuery};
 use crate::sql::table::Table;
@@ -19,6 +20,7 @@ pub trait TableWithQueries: AnyTable {
     fn get_select_query(&self) -> Query;
     fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query;
     fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query;
+    fn get_select_query_for_field(&self, field: Box<dyn Column>) -> Query;
 }
 
 impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
@@ -44,7 +46,7 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
         let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
-            query.add_column(field_alias, field_val);
+            query.add_column(Some(field_alias), field_val);
         }
         query
     }
@@ -57,10 +59,19 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
         }
         self.get_select_query_for_fields(index_map)
     }
+
+    fn get_select_query_for_field(&self, field: Box<dyn Column>) -> Query {
+        let mut q = self.get_empty_query();
+        q.add_column(None, Arc::new(field));
+        self.hooks.before_select_query(self, &mut q).unwrap();
+        q
+    }
 }
 
-impl<T: DataSource, E: Entity> Table<T, E> {
-    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<T> {
+impl<D: DataSource, E: Entity> Table<D, E> {
+    /// Obsolete: use get_select_query_for_field() instead
+    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<D> {
+        // let query = self.get_select_query_for_field(field);
         let query = self.get_empty_query().with_column(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
     }

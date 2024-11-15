@@ -47,7 +47,7 @@ impl Postgres {
 
     pub fn convert_value_tosql(&self, value: Value) -> Box<dyn ToSql + Sync> {
         match value {
-            Value::Null => Box::new(None as Option<&[u8]>),
+            Value::Null => Box::new(None as Option<bool>),
             Value::Bool(b) => Box::new(b),
             Value::Number(n) => {
                 if n.is_i64() {
@@ -216,8 +216,8 @@ impl SelectRows for Postgres {
 }
 
 impl DataSource for Postgres {
-    async fn query_fetch(&self, _query: &Query) -> Result<Vec<Map<String, Value>>> {
-        let res = self.query_raw(_query).await?;
+    async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>> {
+        let res = self.query_raw(query).await?;
         let res = res
             .into_iter()
             .map(|v| v.as_object().unwrap().clone())
@@ -226,8 +226,13 @@ impl DataSource for Postgres {
         Ok(res)
     }
 
-    async fn query_exec(&self, _query: &Query) -> Result<()> {
-        todo!()
+    async fn query_exec(&self, query: &Query) -> Result<Option<Value>> {
+        let res = self.query_raw(query).await?;
+        if res.len() == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(res[0].clone()))
+        }
     }
 
     async fn query_insert(&self, _query: &Query, _rows: Vec<Vec<Value>>) -> Result<()> {

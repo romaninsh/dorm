@@ -10,9 +10,18 @@ use serde_json::Value;
 
 // You should be able to insert and delete data in a table
 impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
-    async fn insert(&self, record: E) -> Result<()> {
+    async fn insert(&self, record: E) -> Result<Option<Value>> {
         let query = self.get_insert_query(record);
-        self.data_source.query_exec(&query).await
+        let Some(id) = self.data_source.query_exec(&query).await? else {
+            return Ok(None);
+        };
+        if self.id_field.is_none() {
+            return Ok(None);
+        }
+        let Some(id) = id.get(self.id_field.as_ref().unwrap()) else {
+            return Ok(None);
+        };
+        Ok(Some(id.clone()))
     }
 
     async fn update<F>(&self, f: F) -> Result<()> {
@@ -35,11 +44,11 @@ impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
         }
 
         let query = self.get_update_query(values);
-        self.data_source.query_exec(&query).await
+        self.data_source.query_exec(&query).await.map(|_| ())
     }
 
     async fn delete(&self) -> Result<()> {
         let query = self.get_empty_query().with_type(QueryType::Delete);
-        self.data_source.query_exec(&query).await
+        self.data_source.query_exec(&query).await.map(|_| ())
     }
 }

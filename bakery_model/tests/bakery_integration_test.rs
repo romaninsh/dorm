@@ -1,5 +1,7 @@
-use anyhow::Context;
-use bakery_model::{self, connect_postgres};
+use anyhow::Result;
+use bakery_model::*;
+
+use dorm::prelude::*;
 
 // async fn create_bootstrap_db() -> Result<()> {
 //     let client = POSTGRESS.get().unwrap().client();
@@ -48,11 +50,25 @@ use bakery_model::{self, connect_postgres};
 //     Ok(())
 // }
 
-async fn init() {
-    connect_postgres()
-        .await
-        .context("starting postgres")
-        .unwrap();
+// async fn init() {
+//     connect_postgres()
+//         .await
+//         .context("starting postgres")
+//         .unwrap();
+// }
+async fn create_bootstrap_db() -> Result<()> {
+    // Connect to postgress and store client statically
+    bakery_model::connect_postgres().await?;
+
+    // Get the postgres client for batch execution
+    let dorm_client = bakery_model::postgres();
+    let client = dorm_client.client();
+
+    // Read the schema from the file and execute it
+    let schema = tokio::fs::read_to_string("schema-pg.sql").await?;
+    client.batch_execute(&schema).await?;
+
+    Ok(())
 }
 
 // TODO: get rid of testcontainers, yukk.
@@ -75,25 +91,34 @@ async fn init() {
 //     assert_eq!(res, vec![json!({"name": "Alice"}), json!({"name": "Bob"}),]);
 // }
 
-// #[tokio::test]
-// async fn test_bakery() {
-//     init().await;
+#[tokio::test]
+async fn test_bakery() -> Result<()> {
+    create_bootstrap_db().await?;
 
-//     let product_set = bakery_model::BakerySet::new()
-//         .with_condition(bakery_model::BakerySet::profit_margin().gt(10));
+    println!("In this example, we will be interracting with the records and testing conditions");
+    let products = Product::table();
 
-//     let postgres = POSTGRESS.get().unwrap();
-//     let res = postgres
-//         .query_opt(&product_set.get_select_query())
-//         .await
-//         .unwrap()
-//         .unwrap();
+    println!(
+        "We are starting with {} products",
+        products.count().get_one_untyped().await?
+    );
 
-//     assert_eq!(
-//         res,
-//         json!({
-//             "name": "Profitable Bakery",
-//             "profit_margin": 15,
-//         })
-//     );
-// }
+    println!("");
+    println!("Adding a single new product");
+    let id = products
+        .insert(Product {
+            name: "Nuclear Sandwich".to_string(),
+            calories: 100,
+            bakery_id: 1,
+            price: 120,
+        })
+        .await?;
+
+    println!(
+        "After adding \"Nuclear Sandwich\" (id={}) we are left with {} products",
+        id.unwrap(),
+        products.count().get_one_untyped().await?
+    );
+
+    Ok(())
+}

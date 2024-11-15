@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dorm::prelude::*;
+use dorm::{dataset::WritableDataSet, prelude::*};
 
 use bakery_model::*;
 
@@ -24,7 +24,10 @@ async fn create_bootstrap_db() -> Result<()> {
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
 
-    // non-entity usage
+    println!();
+    println!("-----------------------------");
+    println!("Test1: First we will use a generic table object with \"EmptyEntity\" to manually extract and execute query");
+    println!();
     let t = Table::new("bakery", postgres());
     let mut t = t
         .with_id_field("id")
@@ -35,39 +38,57 @@ async fn main() -> Result<()> {
 
     let q = q
         .with_column_field("name")
-        // .with_condition(expr!("profit_margin").gt(10))
         .with_condition(expr!("id").eq(&1));
-    // println!("Q: {}", q.preview());
+    println!("Q: {}", q.preview());
+    println!("R: {}", postgres().query_raw(&q).await.unwrap()[0]);
 
-    //
-    //
-    //
-    //
+    println!();
+    println!("-----------------------------");
+    println!("Test2: Next we will use Bakery::table() with_id(1) to load Bakery {{}} struct. Note that 'id' is not defined in Bakery {{}}");
+    println!();
 
     // Example 1: load a single record from table
     let my_bakery = Bakery::table().with_id(1.into());
+    println!(
+        "Q: {}",
+        my_bakery
+            .get_select_query_for_struct(Bakery::default())
+            .preview()
+    );
     let Some(bakery) = my_bakery.get_some().await? else {
         panic!("No bakery found");
     };
 
+    println!("R: Working for the bakery: {}", bakery.name);
+    println!("Note: we will keep using Bakery::table.with_id(1) for referencing further queries");
+
+    println!();
     println!("-----------------------------");
-    println!("Working for the bakery: {}", bakery.name);
-    println!("");
-
-    // Example 2: referencing other tables from current record set
+    println!("Test3: We will now traverse into my_bakery.ref_clients() and count how many clients we have");
+    println!();
     let clients = my_bakery.ref_clients();
-
+    println!("Q: {}", clients.count().preview());
     println!(
-        "There are {} clients in this bakery.",
+        "R: There are {} clients in this bakery.",
         clients.count().get_one_untyped().await?
     );
 
+    println!();
+    println!("-----------------------------");
+    println!("Test4: Next we will load: my_bakery.ref_products() supplimenting it .with_inventory() and sum the stock");
+    println!();
     // Example 3: referencing products, but augmenting it with a join
     let products = my_bakery.ref_products();
     let products_with_inventory = products.with_inventory();
 
     println!(
-        "There are {} stock in the inventory.",
+        "Q: {}",
+        products_with_inventory
+            .sum(products_with_inventory.stock())
+            .preview()
+    );
+    println!(
+        "R: There are {} stock in the inventory.",
         products_with_inventory
             .sum(products_with_inventory.stock().clone())
             .get_one_untyped()
@@ -75,13 +96,14 @@ async fn main() -> Result<()> {
     );
 
     // Now for every product, lets calculate how many orders it has
+    println!();
+    println!("-----------------------------");
+    println!("Test5: Next we will double-traverle into my_bakery.ref_clients().ref_orders() and rely on Expression fields to calculate totals");
+    println!();
 
     let clients = my_bakery.ref_clients();
     let orders = clients.ref_orders();
 
-    println!();
-    println!("Orders:");
-    println!("-------------------------------------------");
     if false {
         for row in orders.get().await.unwrap().into_iter() {
             println!(
@@ -93,15 +115,32 @@ async fn main() -> Result<()> {
 
     // DESUGARED:
     let q = orders.get_select_query_for_struct(Order::default());
-    println!("q: {}", q.preview());
+    println!("Q: {}", q.preview());
+    println!();
+    println!("R: Orders:");
+    println!("-------------------------------------------");
     let res = postgres().query_raw(&q).await?;
     for row_untyped in res.into_iter() {
         let row: Order = serde_json::from_value(row_untyped)?;
         println!(
-            "id: {}, client: {} (id: {})  total(calculated): {}",
+            "id: {}, client: {:<13} (id: {}) total: {}",
             row.id, row.client, row.client_id, row.total
         );
     }
+
+    // now lets delete Doc Brown's orders (using soft delete)
+    let client = clients.with_id(2.into());
+    let orders = client.ref_orders();
+
+    println!(
+        "orders for Doc Brown before delete: {}",
+        orders.count().get_one_untyped().await?
+    );
+    orders.delete().await?;
+    println!(
+        "orders for Doc Brown after delete: {}",
+        orders.count().get_one_untyped().await?
+    );
 
     /*
     // Now lets try to calculate total inventory for all products

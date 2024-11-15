@@ -5,8 +5,10 @@ use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Product {
-    id: i64,
-    name: String,
+    pub name: String,
+    pub calories: i64,
+    pub bakery_id: i64,
+    pub price: i64,
 }
 impl Entity for Product {}
 
@@ -25,8 +27,11 @@ impl Product {
         TABLE.get_or_init(|| {
             Table::new_with_entity("product", postgres())
                 .with_id_field("id")
-                .with_field("name")
+                .with_title_field("name")
                 .with_field("bakery_id")
+                .with_field("calories")
+                .with_field("price")
+
             // .has_one("bakery", "bakery_id", || BakerySet::new())
         })
     }
@@ -38,11 +43,11 @@ impl Product {
 pub trait ProductTable: AnyTable {
     fn with_inventory(self) -> Table<Postgres, ProductInventory>;
 
-    fn id(&self) -> Arc<Field> {
-        self.get_field("id").unwrap()
-    }
     fn name(&self) -> Arc<Field> {
         self.get_field("name").unwrap()
+    }
+    fn price(&self) -> Arc<Field> {
+        self.get_field("price").unwrap()
     }
     fn bakery_id(&self) -> Arc<Field> {
         self.get_field("bakery_id").unwrap()

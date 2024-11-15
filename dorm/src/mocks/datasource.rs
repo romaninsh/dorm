@@ -34,8 +34,8 @@ impl DataSource for MockDataSource {
         Ok(self.data.deref().clone())
     }
 
-    async fn query_exec(&self, _query: &Query) -> Result<()> {
-        Ok(())
+    async fn query_exec(&self, _query: &Query) -> Result<Option<Value>> {
+        Ok(None)
     }
 
     async fn query_insert(

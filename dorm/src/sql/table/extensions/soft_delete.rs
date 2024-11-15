@@ -16,7 +16,7 @@ pub struct SoftDelete {
 }
 
 impl SoftDelete {
-    fn new(soft_delete_field: &str) -> Self {
+    pub fn new(soft_delete_field: &str) -> Self {
         SoftDelete {
             soft_delete_field: soft_delete_field.to_string(),
         }

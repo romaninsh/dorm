@@ -25,6 +25,7 @@ impl Order {
             Table::new_with_entity("ord", postgres())
                 .with_id_field("id")
                 .with_field("client_id")
+                .with_extension(SoftDelete::new("is_deleted"))
                 .with_expression("total", |t| {
                     let mut item = LineItem::table();
                     item.add_condition(item.order_id().eq(&t.id()));
