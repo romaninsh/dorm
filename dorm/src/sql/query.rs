@@ -23,7 +23,7 @@ pub struct Query {
     with: IndexMap<String, QuerySource>,
     distinct: bool,
     query_type: QueryType,
-    columns: IndexMap<String, Arc<Box<dyn Column>>>,
+    columns: IndexMap<Option<String>, Arc<Box<dyn Column>>>,
     set_fields: IndexMap<String, Value>,
 
     where_conditions: QueryConditions,
@@ -93,7 +93,7 @@ impl Query {
     }
 
     pub fn with_column(mut self, name: String, column: impl Column + 'static) -> Self {
-        self.add_column(name, Arc::new(Box::new(column)));
+        self.add_column(Some(name), Arc::new(Box::new(column)));
         self
     }
     // Simplified ways to define a field with a string
@@ -105,7 +105,7 @@ impl Query {
     }
 
     pub fn with_column_arc(mut self, name: String, column: Arc<Box<dyn Column>>) -> Self {
-        self.add_column(name, column);
+        self.add_column(Some(name), column);
         self
     }
 
@@ -188,7 +188,10 @@ impl Query {
             Expression::from_vec(
                 self.columns
                     .iter()
-                    .map(|f| f.1.render_column(Some(f.0)).render_chunk())
+                    .map(|f| {
+                        f.1.render_column(f.0.as_ref().map(|s| s.as_str()))
+                            .render_chunk()
+                    })
                     .collect(),
                 ", ",
             )
@@ -326,7 +329,7 @@ impl SqlQuery for Query {
     fn set_type(&mut self, query_type: QueryType) {
         self.query_type = query_type;
     }
-    fn add_column(&mut self, name: String, column: Arc<Box<dyn Column>>) {
+    fn add_column(&mut self, name: Option<String>, column: Arc<Box<dyn Column>>) {
         if self.columns.insert(name, column).is_some() {
             // panic!("Column is already defined");
             return;

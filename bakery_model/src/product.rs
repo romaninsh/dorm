@@ -8,6 +8,7 @@ pub struct Product {
     pub name: String,
     pub calories: i64,
     pub bakery_id: i64,
+    pub price: i64,
 }
 impl Entity for Product {}
 

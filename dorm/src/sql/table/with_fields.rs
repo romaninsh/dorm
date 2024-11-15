@@ -1,8 +1,9 @@
 use indexmap::IndexMap;
 use serde_json::Value;
+use std::ops::Deref;
 use std::sync::Arc;
 
-use super::Field;
+use super::{Field, RelatedTable};
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::Operations;
 use crate::sql::table::Table;
@@ -112,7 +113,9 @@ use super::AnyTable;
 pub trait TableWithFields: AnyTable {
     fn add_field(&mut self, field_name: String, field: Field);
     fn fields(&self) -> &IndexMap<String, Arc<Field>>;
+    fn get_field_with_table_alias(&self, name: &str) -> Option<Arc<Field>>;
     fn id(&self) -> Arc<Field>;
+    fn id_with_table_alias(&self) -> Arc<Field>;
     fn search_for_field(&self, field_name: &str) -> Option<Box<dyn Column>>;
 }
 
@@ -131,6 +134,16 @@ impl<T: DataSource, E: Entity> TableWithFields for Table<T, E> {
         &self.fields
     }
 
+    fn get_field_with_table_alias(&self, name: &str) -> Option<Arc<Field>> {
+        let mut f = self.get_field(name)?.deref().clone();
+        f.set_table_alias(
+            self.get_alias()
+                .unwrap_or_else(|| self.get_table_name().unwrap())
+                .clone(),
+        );
+        Some(Arc::new(f))
+    }
+
     /// Returns the id field. If `with_id_field` was not called, will try to find
     /// field called `"id"`. If not found, will panic.
     fn id(&self) -> Arc<Field> {
@@ -141,6 +154,16 @@ impl<T: DataSource, E: Entity> TableWithFields for Table<T, E> {
             "id".to_string()
         };
         self.get_field(&id_field).unwrap()
+    }
+
+    fn id_with_table_alias(&self) -> Arc<Field> {
+        let id_field = if self.id_field.is_some() {
+            let x = self.id_field.clone().unwrap();
+            x.clone()
+        } else {
+            "id".to_string()
+        };
+        self.get_field_with_table_alias(&id_field).unwrap()
     }
 
     /// In addition to `self.fields` the fields can also be defined for a joined

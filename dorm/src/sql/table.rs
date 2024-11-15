@@ -23,6 +23,7 @@
 //! [`sum()`]: Table::sum()
 
 use std::any::Any;
+use std::borrow::BorrowMut;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -36,7 +37,6 @@ pub use join::Join;
 use crate::expr_arc;
 use crate::lazy_expression::LazyExpression;
 use crate::prelude::{AssociatedQuery, Expression};
-use crate::reference::RelatedReference;
 use crate::sql::Condition;
 use crate::sql::ExpressionArc;
 use crate::sql::Query;
@@ -45,6 +45,7 @@ use crate::traits::entity::{EmptyEntity, Entity};
 use crate::uniqid::UniqueIdVendor;
 use anyhow::Result;
 use indexmap::IndexMap;
+use reference::RelatedSqlTable;
 use serde_json::{Map, Value};
 
 /// When defining references between tables, AnyTable represents
@@ -70,6 +71,7 @@ pub trait AnyTable: Any + Send + Sync {
     fn get_field(&self, name: &str) -> Option<Arc<Field>>;
 
     fn add_condition(&mut self, condition: Condition);
+    fn hooks(&self) -> &Hooks;
 }
 
 /// When defining references between tables, RelatedTable represents
@@ -126,7 +128,7 @@ pub struct Table<T: DataSource, E: Entity> {
     fields: IndexMap<String, Arc<Field>>,
     joins: IndexMap<String, Arc<Join<T>>>,
     lazy_expressions: IndexMap<String, LazyExpression<T, E>>,
-    refs: IndexMap<String, RelatedReference<T, E>>,
+    refs: IndexMap<String, Arc<Box<dyn RelatedSqlTable>>>,
     table_aliases: Arc<Mutex<UniqueIdVendor>>,
 
     hooks: Hooks,
@@ -138,7 +140,10 @@ pub use with_queries::TableWithQueries;
 
 mod with_joins;
 mod with_queries;
+
+mod reference;
 mod with_refs;
+
 mod with_updates;
 
 mod with_fetching;
@@ -190,6 +195,9 @@ impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
     }
     fn add_condition(&mut self, condition: Condition) {
         self.conditions.push(condition);
+    }
+    fn hooks(&self) -> &Hooks {
+        &self.hooks
     }
 }
 

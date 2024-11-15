@@ -1,21 +1,22 @@
+use std::{ops::Deref, sync::Arc};
+
 use anyhow::{anyhow, Result};
 
-use crate::sql::table::Table;
-use crate::sql::Operations;
+use super::reference::{many::ReferenceMany, one::ReferenceOne, RelatedSqlTable};
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
-use crate::{reference::RelatedReference, sql::Chunk};
+use crate::{prelude::EmptyEntity, sql::table::Table};
 
-use super::{AnyTable, RelatedTable};
+use super::SqlTable;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn has_many(
         mut self,
         relation: &str,
         foreign_key: &str,
-        cb: impl Fn() -> Box<dyn RelatedTable<T>> + 'static + Sync + Send,
+        cb: impl Fn() -> Box<dyn SqlTable> + Send + Sync + 'static,
     ) -> Self {
-        self.add_ref(relation, RelatedReference::new_many(foreign_key, cb));
+        self.add_ref(relation, Box::new(ReferenceMany::new(foreign_key, cb)));
         self
     }
 
@@ -23,47 +24,33 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         mut self,
         relation: &str,
         foreign_key: &str,
-        cb: impl Fn() -> Box<dyn RelatedTable<T>> + 'static + Sync + Send,
+        cb: impl Fn() -> Box<dyn SqlTable> + Send + Sync + 'static,
     ) -> Self {
         // let client = cb();
-        self.add_ref(relation, RelatedReference::new_one(foreign_key.clone(), cb));
-
-        /*
-        let Some(foreign_title_field) = self.get_ref(relation).unwrap().get_title_field() else {
-            return self;
-        };
-
-        let foreign_key_str = foreign_key.to_string();
-
-        let exp = move |t: &Table<T, E>| {
-            client.add_condition(
-                client
-                    .id()
-                    .eq(&t.get_field(foreign_key_str.as_str()).unwrap()),
-            );
-            client
-                .field_query(client.get_field(foreign_title_field.as_str()).unwrap())
-                .render_chunk()
-        };
-
-        self.add_expression(
-            format!("{}_{}", &relation, &foreign_title_field).as_str(),
-            exp,
-        );
-        */
+        self.add_ref(relation, Box::new(ReferenceOne::new(foreign_key, cb)));
 
         self
     }
 
-    pub fn add_ref(&mut self, relation: &str, reference: RelatedReference<T, E>) {
-        self.refs.insert(relation.to_string(), reference);
+    pub fn add_ref(&mut self, relation: &str, reference: Box<dyn RelatedSqlTable>) {
+        self.refs.insert(relation.to_string(), Arc::new(reference));
     }
 
-    pub fn get_ref(&self, field: &str) -> Result<Box<dyn RelatedTable<T>>> {
+    pub fn get_ref(&self, field: &str) -> Result<Box<dyn SqlTable>> {
         self.refs
             .get(field)
-            .map(|reference| reference.as_table(self))
+            .map(|reference| {
+                let set = reference.get_related_set(self);
+                set
+            })
             .ok_or_else(|| anyhow!("Reference not found"))
+    }
+
+    pub fn get_ref_with_empty_entity(&self, field: &str) -> Result<Table<T, EmptyEntity>> {
+        let t = self.get_ref(field)?;
+        let t = Box::new(t.as_any_ref());
+        let t = t.downcast_ref::<Table<T, EmptyEntity>>().unwrap().clone();
+        Ok(t)
     }
 
     pub fn get_ref_as<T2: DataSource, E2: Entity>(&self, field: &str) -> Result<Table<T2, E2>> {
@@ -84,10 +71,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::{
-        mocks::datasource::MockDataSource,
-        prelude::{AnyTable, Chunk, EmptyEntity, Operations, TableWithFields, TableWithQueries},
-    };
+    use crate::{mocks::datasource::MockDataSource, prelude::*};
     // #[test]
     // fn test_add_ref() {
     //     struct UserSet {}
@@ -186,7 +170,7 @@ mod tests {
         );
 
         let parent_name = john
-            .get_ref("parent")
+            .get_ref_with_empty_entity("parent")
             .unwrap()
             .field_query(john.get_field("name").unwrap());
 

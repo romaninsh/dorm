@@ -18,10 +18,16 @@ async fn create_bootstrap_db() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_abc() {
+    panic!("aoeu");
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
 
+    panic!("oho");
     println!("In this example, we will be interracting with the records and testing conditions");
     let products = Product::table();
 
@@ -37,6 +43,7 @@ async fn main() -> Result<()> {
             name: "Nuclear Sandwich".to_string(),
             calories: 100,
             bakery_id: 1,
+            price: 110,
         })
         .await?;
 
