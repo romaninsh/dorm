@@ -1,6 +1,6 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use super::reference::{many::ReferenceMany, one::ReferenceOne, RelatedSqlTable};
 use crate::sql::Chunk;
@@ -8,7 +8,7 @@ use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use crate::{prelude::EmptyEntity, sql::table::Table};
 
-use super::{AnyTable, SqlTable};
+use super::SqlTable;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
     pub fn with_many(
@@ -40,9 +40,12 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             let relation = relation.to_string();
             dbg!(&name);
             self.add_expression(&name, move |t| {
-                let tt = t.get_subquery::<EmptyEntity>(&relation).unwrap();
+                let tt = t
+                    .get_subquery(&relation)
+                    .with_context(|| format!("Failed to get subquery for '{}'", &relation))
+                    .unwrap();
 
-                tt.field_query(tt.get_field(&field_name).unwrap())
+                tt.get_select_query_for_field(Box::new(tt.get_field(&field_name).unwrap()))
                     .render_chunk()
             });
         }
@@ -71,7 +74,15 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         Ok(t)
     }
 
-    pub fn get_subquery<E2: Entity>(&self, ref_name: &str) -> Result<Table<T, E2>> {
+    pub fn get_subquery(&self, ref_name: &str) -> Result<Box<dyn SqlTable>> {
+        let Some(r) = self.refs.get(ref_name) else {
+            return Err(anyhow!("Reference not found"));
+        };
+
+        Ok(r.get_linked_set(self))
+    }
+
+    pub fn get_subquery_as<E2: Entity>(&self, ref_name: &str) -> Result<Table<T, E2>> {
         let Some(r) = self.refs.get(ref_name) else {
             return Err(anyhow!("Reference not found"));
         };
@@ -180,7 +191,7 @@ mod tests {
 
         let mut users = users.with_many("orders", "user_id", move || Box::new(orders.clone()));
         users.add_expression("orders_sum", |t| {
-            let x = t.get_subquery::<EmptyEntity>("orders").unwrap();
+            let x = t.get_subquery_as::<EmptyEntity>("orders").unwrap();
             x.sum(x.get_field("sum").unwrap()).render_chunk()
         });
 

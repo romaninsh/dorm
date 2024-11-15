@@ -23,7 +23,6 @@
 //! [`sum()`]: Table::sum()
 
 use std::any::Any;
-use std::borrow::BorrowMut;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -137,6 +136,8 @@ pub struct Table<T: DataSource, E: Entity> {
 mod with_fields;
 pub use with_fields::TableWithFields;
 pub use with_queries::TableWithQueries;
+
+use super::Chunk;
 
 mod with_joins;
 mod with_queries;
@@ -403,10 +404,14 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn sum(&self, field: Arc<Field>) -> AssociatedQuery<T> {
-        let query = self
-            .get_empty_query()
-            .with_column("sum".to_string(), expr_arc!("SUM({})", field));
+    pub fn sum<C>(&self, field: C) -> AssociatedQuery<T>
+    where
+        C: Chunk,
+    {
+        let query = self.get_empty_query().with_column(
+            "sum".to_string(),
+            expr_arc!("SUM({})", field.render_chunk()),
+        );
         AssociatedQuery::new(query, self.data_source.clone())
     }
 

@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Result;
 use dorm::{dataset::WritableDataSet, prelude::*};
 
@@ -95,6 +96,19 @@ async fn main() -> Result<()> {
             .await?
     );
 
+    dbg!("hello");
+    let x = Box::new(LineItem::table());
+    let x: Box<dyn SqlTable> = x;
+    let x = x.as_any_ref();
+    let x = x.downcast_ref::<Table<Postgres, LineItem>>();
+    let x = x.ok_or_else(|| anyhow!("Failed to downcast to specific table type"));
+    let x = x.cloned();
+    let x = x.unwrap();
+    let x = x.sum(x.total());
+    let x = x.preview();
+
+    dbg!("world", x);
+
     // Now for every product, lets calculate how many orders it has
     println!();
     println!("-----------------------------");
@@ -108,7 +122,7 @@ async fn main() -> Result<()> {
         for row in orders.get().await.unwrap().into_iter() {
             println!(
                 "id: {}, client: {} (id: {})  total(calculated): {}",
-                row.id, row.client, row.client_id, row.total
+                row.id, row.client_name, row.client_id, row.total
             );
         }
     }
@@ -124,7 +138,7 @@ async fn main() -> Result<()> {
         let row: Order = serde_json::from_value(row_untyped)?;
         println!(
             "id: {}, client: {:<13} (id: {}) total: {}",
-            row.id, row.client, row.client_id, row.total
+            row.id, row.client_name, row.client_id, row.total
         );
     }
 
