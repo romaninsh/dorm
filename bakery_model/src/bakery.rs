@@ -19,8 +19,8 @@ impl Bakery {
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("profit_margin")
-                .has_many("clients", "bakery_id", || Box::new(Client::table()))
-                .has_many("products", "bakery_id", || Box::new(Product::table()))
+                .with_many("clients", "bakery_id", || Box::new(Client::table()))
+                .with_many("products", "bakery_id", || Box::new(Product::table()))
         })
     }
     pub fn table() -> Table<Postgres, Bakery> {

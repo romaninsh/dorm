@@ -38,8 +38,8 @@ impl Order {
                     client.add_condition(client.id().eq(&t.client_id()));
                     client.field_query(client.name()).render_chunk()
                 })
-                .has_one("client", "client_id", || Box::new(Client::table()))
-                .has_many("line_items", "order_id", || Box::new(LineItem::table()))
+                .with_one("client", "client_id", || Box::new(Client::table()))
+                .with_many("line_items", "order_id", || Box::new(LineItem::table()))
         })
     }
     pub fn table() -> Table<Postgres, Order> {

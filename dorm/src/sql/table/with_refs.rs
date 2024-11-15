@@ -11,7 +11,7 @@ use crate::{prelude::EmptyEntity, sql::table::Table};
 use super::{AnyTable, SqlTable};
 
 impl<T: DataSource, E: Entity> Table<T, E> {
-    pub fn has_many(
+    pub fn with_many(
         mut self,
         relation: &str,
         foreign_key: &str,
@@ -21,7 +21,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
-    pub fn has_one(
+    pub fn with_one(
         mut self,
         relation: &str,
         foreign_key: &str,
@@ -113,8 +113,8 @@ mod tests {
                     .with_field("id")
                     .with_field("name")
                     .with_field("parent_id")
-                    .has_one("parent", "parent_id", || Box::new(PersonSet::table()))
-                    .has_many("children", "parent_id", || Box::new(PersonSet::table()));
+                    .with_one("parent", "parent_id", || Box::new(PersonSet::table()))
+                    .with_many("children", "parent_id", || Box::new(PersonSet::table()));
 
                 table
             }
@@ -178,7 +178,7 @@ mod tests {
             .with_field("sum")
             .with_title_field("ref");
 
-        let mut users = users.has_many("orders", "user_id", move || Box::new(orders.clone()));
+        let mut users = users.with_many("orders", "user_id", move || Box::new(orders.clone()));
         users.add_expression("orders_sum", |t| {
             let x = t.get_subquery::<EmptyEntity>("orders").unwrap();
             x.sum(x.get_field("sum").unwrap()).render_chunk()
@@ -205,7 +205,7 @@ mod tests {
             .with_field("permission");
 
         let users = users
-            .has_one("role", "role_id", move || Box::new(roles.clone()))
+            .with_one("role", "role_id", move || Box::new(roles.clone()))
             .with_imported_fields("role", &["name", "permission"]);
 
         assert_eq!(

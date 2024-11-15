@@ -22,8 +22,8 @@ impl Client {
                 .with_field("name")
                 .with_field("contact_details")
                 .with_field("bakery_id")
-                .has_one("bakery", "bakery_id", || Box::new(Bakery::table()))
-                .has_many("orders", "client_id", || Box::new(Order::table()))
+                .with_one("bakery", "bakery_id", || Box::new(Bakery::table()))
+                .with_many("orders", "client_id", || Box::new(Order::table()))
             // .has_many("baked_cakes", "baker_id", || {
             //     // add baker_id field into Cake through a left join
             //     CakeSet::new().with_join(
