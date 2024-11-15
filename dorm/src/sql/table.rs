@@ -22,7 +22,8 @@
 //! [`count()`]: Table::count()
 //! [`sum()`]: Table::sum()
 
-use std::any::Any;
+use std::any::{type_name, Any};
+use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -177,6 +178,12 @@ impl<T: DataSource + Clone, E: Entity> Clone for Table<T, E> {
 
             hooks: self.hooks.clone(),
         }
+    }
+}
+
+impl<T: DataSource, E: Entity> Display for Table<T, E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{}> {{ name={} }}", type_name::<E>(), self.table_name)
     }
 }
 
@@ -416,9 +423,10 @@ impl<T: DataSource, E: Entity> Table<T, E> {
     }
 
     pub fn count(&self) -> AssociatedQuery<T> {
-        let query = self
+        let mut query = self
             .get_empty_query()
             .with_column("count".to_string(), expr_arc!("COUNT(*)"));
+        self.hooks().before_select_query(self, &mut query).unwrap();
         AssociatedQuery::new(query, self.data_source.clone())
     }
 }

@@ -42,7 +42,7 @@ impl TableExtension for SoftDelete {
         Ok(())
     }
     /// When deleting records, mark them as deleted instead
-    fn before_delete_query(&self, _table: &mut dyn SqlTable, query: &mut Query) -> Result<()> {
+    fn before_delete_query(&self, _table: &dyn SqlTable, query: &mut Query) -> Result<()> {
         query.set_type(crate::sql::query::QueryType::Update);
         query.set_field_value(&self.soft_delete_field, json!(true));
         Ok(())

@@ -18,7 +18,7 @@ pub trait TableExtension: std::fmt::Debug + Send + Sync {
     fn before_select_query(&self, _table: &dyn SqlTable, _query: &mut Query) -> Result<()> {
         Ok(())
     }
-    fn before_delete_query(&self, _table: &mut dyn SqlTable, _query: &mut Query) -> Result<()> {
+    fn before_delete_query(&self, _table: &dyn SqlTable, _query: &mut Query) -> Result<()> {
         Ok(())
     }
 }
@@ -39,6 +39,12 @@ impl Hooks {
     pub fn before_select_query(&self, table: &dyn SqlTable, query: &mut Query) -> Result<()> {
         for hook in self.hooks.iter() {
             hook.before_select_query(table, query).unwrap();
+        }
+        Ok(())
+    }
+    pub fn before_delete_query(&self, table: &dyn SqlTable, query: &mut Query) -> Result<()> {
+        for hook in self.hooks.iter() {
+            hook.before_delete_query(table, query).unwrap();
         }
         Ok(())
     }

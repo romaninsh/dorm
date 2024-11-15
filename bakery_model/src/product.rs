@@ -60,8 +60,7 @@ pub trait ProductTable: AnyTable {
 
 impl ProductTable for Table<Postgres, Product> {
     fn with_inventory(self) -> Table<Postgres, ProductInventory> {
-        let t = self.into_entity::<ProductInventory>();
-        let t = t.with_join(
+        let t = self.with_join::<ProductInventory, EmptyEntity>(
             Table::new_with_entity("inventory", postgres())
                 .with_alias("i")
                 .with_id_field("product_id")
@@ -84,17 +83,3 @@ pub trait ProductInventoryTable: RelatedTable<Postgres> {
     }
 }
 impl ProductInventoryTable for Table<Postgres, ProductInventory> {}
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn test_product() {
-//         let table = Product::table();
-//         let _field = table.name();
-
-//         let table = table.with_inventory();
-//         // let _field = table.stock();
-//     }
-// }
