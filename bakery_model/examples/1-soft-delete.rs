@@ -27,7 +27,6 @@ async fn test_abc() {
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
 
-    panic!("oho");
     println!("In this example, we will be interracting with the records and testing conditions");
     let products = Product::table();
 
@@ -38,18 +37,40 @@ async fn main() -> Result<()> {
 
     println!("");
     println!("Adding a single new product");
-    let id = products
+    let nuclear_sandwich_id = products
         .insert(Product {
             name: "Nuclear Sandwich".to_string(),
             calories: 100,
             bakery_id: 1,
             price: 110,
         })
-        .await?;
+        .await?
+        .unwrap();
 
     println!(
         "After adding \"Nuclear Sandwich\" (id={}) we are left with {} products",
-        id.unwrap(),
+        &nuclear_sandwich_id,
+        products.count().get_one_untyped().await?
+    );
+
+    // So far we didn't know about the soft delete field, but lets add it now
+    let product_sd = products
+        .clone()
+        .with_extension(SoftDelete::new("is_deleted"));
+
+    // Next we are going to delete a nuclear sandwitch with "sd"
+    product_sd
+        .clone()
+        .with_id(nuclear_sandwich_id)
+        .delete()
+        .await?;
+
+    println!(
+        "After soft-deleting \"Nuclear Sandwich\" we are left with {} SD (soft delete) products",
+        product_sd.count().get_one_untyped().await?
+    );
+    println!(
+        "However as per our old set (no SD) we still have {} products",
         products.count().get_one_untyped().await?
     );
 

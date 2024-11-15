@@ -1,8 +1,9 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use super::reference::{many::ReferenceMany, one::ReferenceOne, RelatedSqlTable};
+use crate::sql::Chunk;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use crate::{prelude::EmptyEntity, sql::table::Table};
@@ -10,7 +11,7 @@ use crate::{prelude::EmptyEntity, sql::table::Table};
 use super::SqlTable;
 
 impl<T: DataSource, E: Entity> Table<T, E> {
-    pub fn has_many(
+    pub fn with_many(
         mut self,
         relation: &str,
         foreign_key: &str,
@@ -20,7 +21,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
-    pub fn has_one(
+    pub fn with_one(
         mut self,
         relation: &str,
         foreign_key: &str,
@@ -32,25 +33,65 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self
     }
 
+    pub fn add_imported_fields(&mut self, relation: &str, field_names: &[&str]) {
+        for field_name in field_names {
+            let field_name = field_name.to_string();
+            let name = format!("{}_{}", &relation, &field_name);
+            let relation = relation.to_string();
+            dbg!(&name);
+            self.add_expression(&name, move |t| {
+                let tt = t
+                    .get_subquery(&relation)
+                    .with_context(|| format!("Failed to get subquery for '{}'", &relation))
+                    .unwrap();
+
+                tt.get_select_query_for_field(Box::new(tt.get_field(&field_name).unwrap()))
+                    .render_chunk()
+            });
+        }
+    }
+
+    pub fn with_imported_fields(mut self, relation: &str, field_names: &[&str]) -> Self {
+        self.add_imported_fields(relation, field_names);
+        self
+    }
+
     pub fn add_ref(&mut self, relation: &str, reference: Box<dyn RelatedSqlTable>) {
         self.refs.insert(relation.to_string(), Arc::new(reference));
     }
 
-    pub fn get_ref(&self, field: &str) -> Result<Box<dyn SqlTable>> {
+    pub fn get_ref(&self, ref_name: &str) -> Result<Box<dyn SqlTable>> {
         self.refs
-            .get(field)
-            .map(|reference| {
-                let set = reference.get_related_set(self);
-                set
-            })
+            .get(ref_name)
+            .map(|r| r.get_related_set(self))
             .ok_or_else(|| anyhow!("Reference not found"))
     }
 
-    pub fn get_ref_with_empty_entity(&self, field: &str) -> Result<Table<T, EmptyEntity>> {
-        let t = self.get_ref(field)?;
+    pub fn get_ref_with_empty_entity(&self, ref_name: &str) -> Result<Table<T, EmptyEntity>> {
+        let t = self.get_ref(ref_name)?;
         let t = Box::new(t.as_any_ref());
         let t = t.downcast_ref::<Table<T, EmptyEntity>>().unwrap().clone();
         Ok(t)
+    }
+
+    pub fn get_subquery(&self, ref_name: &str) -> Result<Box<dyn SqlTable>> {
+        let Some(r) = self.refs.get(ref_name) else {
+            return Err(anyhow!("Reference not found"));
+        };
+
+        Ok(r.get_linked_set(self))
+    }
+
+    pub fn get_subquery_as<E2: Entity>(&self, ref_name: &str) -> Result<Table<T, E2>> {
+        let Some(r) = self.refs.get(ref_name) else {
+            return Err(anyhow!("Reference not found"));
+        };
+
+        r.get_linked_set(self)
+            .as_any_ref()
+            .downcast_ref::<Table<T, E2>>()
+            .ok_or_else(|| anyhow!("Failed to downcast to specific table type"))
+            .cloned()
     }
 
     pub fn get_ref_as<T2: DataSource, E2: Entity>(&self, field: &str) -> Result<Table<T2, E2>> {
@@ -59,8 +100,8 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             // TODO: not sure why we can't as_any().downcast() here
             .as_any_ref()
             .downcast_ref::<Table<T2, E2>>()
-            .map(|t| t.clone())
             .ok_or_else(|| anyhow!("Failed to downcast to specific table type"))
+            .cloned()
     }
 }
 
@@ -70,57 +111,7 @@ mod tests {
 
     use serde_json::json;
 
-    use super::*;
     use crate::{mocks::datasource::MockDataSource, prelude::*};
-    // #[test]
-    // fn test_add_ref() {
-    //     struct UserSet {}
-    //     impl UserSet {
-    //         fn table() -> Table<MockDataSource, EmptyEntity> {
-    //             let data = json!([]);
-    //             let db = MockDataSource::new(&data);
-    //             let mut table = Table::new("users", db)
-    //                 .with_field("id")
-    //                 .with_field("name")
-    //                 .with_field("role_id");
-
-    //             table.add_ref("role", |u| {
-    //                 let mut r = RoleSet::table();
-    //                 r.add_condition(
-    //                     r.get_field("id")
-    //                         .unwrap()
-    //                         // .eq(u.get_field("role_id").unwrap()),
-    //                         .in_expr(&u.field_query(u.get_field("role_id").unwrap())),
-    //                 );
-    //                 r
-    //             });
-    //             table
-    //         }
-    //     }
-
-    //     struct RoleSet {}
-    //     impl RoleSet {
-    //         fn table() -> Table<MockDataSource, EmptyEntity> {
-    //             let data = json!([]);
-    //             let db = MockDataSource::new(&data);
-    //             Table::new("roles", db)
-    //                 .with_field("id")
-    //                 .with_field("role_type")
-    //         }
-    //     }
-
-    //     let mut user_table = UserSet::table();
-
-    //     user_table.add_condition(user_table.get_field("id").unwrap().eq(&123));
-    //     let user_roles = user_table.get_ref("role").unwrap();
-
-    //     let query = user_roles.get_select_query().render_chunk().split();
-
-    //     assert_eq!(
-    //         query.0,
-    //         "SELECT id, role_type FROM roles WHERE (id IN (SELECT role_id FROM users WHERE (id = {})))"
-    //     );
-    // }
 
     #[test]
     fn test_father_child() {
@@ -133,8 +124,8 @@ mod tests {
                     .with_field("id")
                     .with_field("name")
                     .with_field("parent_id")
-                    .has_one("parent", "parent_id", || Box::new(PersonSet::table()))
-                    .has_many("children", "parent_id", || Box::new(PersonSet::table()));
+                    .with_one("parent", "parent_id", || Box::new(PersonSet::table()))
+                    .with_many("children", "parent_id", || Box::new(PersonSet::table()));
 
                 table
             }
@@ -179,6 +170,60 @@ mod tests {
         assert_eq!(
             query.0,
             "SELECT name FROM persons WHERE (id IN (SELECT parent_id FROM persons WHERE (name = {})))"
+        );
+    }
+
+    #[test]
+    fn test_field_importing() {
+        let data =
+            json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
+        let data_source = MockDataSource::new(&data);
+
+        let users = Table::new("users", data_source.clone())
+            .with_id_field("id")
+            .with_title_field("name");
+
+        let orders = Table::new("orders", data_source.clone())
+            .with_id_field("id")
+            .with_field("user_id")
+            .with_field("sum")
+            .with_title_field("ref");
+
+        let mut users = users.with_many("orders", "user_id", move || Box::new(orders.clone()));
+        users.add_expression("orders_sum", |t| {
+            let x = t.get_subquery_as::<EmptyEntity>("orders").unwrap();
+            x.sum(x.get_field("sum").unwrap()).render_chunk()
+        });
+
+        let q = users.get_select_query_for_field_names(&["name", "orders_sum"]);
+        assert_eq!(q.preview(), "SELECT name, (SELECT (SUM(sum)) AS sum FROM orders WHERE (orders.user_id = users.id)) AS orders_sum FROM users");
+    }
+
+    #[test]
+    fn test_import_fields() {
+        let data =
+            json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
+        let data_source = MockDataSource::new(&data);
+
+        let users = Table::new("users", data_source.clone())
+            .with_id_field("id")
+            .with_title_field("name")
+            .with_field("role_id");
+
+        let roles = Table::new("roles", data_source.clone())
+            .with_id_field("id")
+            .with_title_field("name")
+            .with_field("permission");
+
+        let users = users
+            .with_one("role", "role_id", move || Box::new(roles.clone()))
+            .with_imported_fields("role", &["name", "permission"]);
+
+        assert_eq!(
+            users
+                .get_select_query_for_field_names(&["name", "role_name", "role_permission"])
+                .preview(),
+            "SELECT name, (SELECT name FROM roles WHERE (roles.id = users.role_id)) AS role_name, (SELECT permission FROM roles WHERE (roles.id = users.role_id)) AS role_permission FROM users"
         );
     }
 }

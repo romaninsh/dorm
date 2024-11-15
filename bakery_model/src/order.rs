@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     lineitem::{LineItem, LineItemTable},
-    postgres, Client, ClientTable,
+    postgres, Client,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Order {
     pub id: i64,
     pub client_id: i64,
-    pub client: String,
+    pub client_name: String,
     pub total: i64,
 }
 impl Entity for Order {}
@@ -26,20 +26,13 @@ impl Order {
                 .with_id_field("id")
                 .with_field("client_id")
                 .with_extension(SoftDelete::new("is_deleted"))
+                .with_one("client", "client_id", || Box::new(Client::table()))
+                .with_many("line_items", "order_id", || Box::new(LineItem::table()))
                 .with_expression("total", |t| {
-                    let mut item = LineItem::table();
-                    item.add_condition(item.order_id().eq(&t.id()));
-                    item.get_empty_query()
-                        .with_column_arc("total".to_string(), Arc::new(item.total()))
-                        .render_chunk()
+                    let item = t.get_subquery_as::<LineItem>("line_items").unwrap();
+                    item.sum(item.total()).render_chunk()
                 })
-                .with_expression("client", |t| {
-                    let mut client = Client::table();
-                    client.add_condition(client.id().eq(&t.client_id()));
-                    client.field_query(client.name()).render_chunk()
-                })
-                .has_one("client", "client_id", || Box::new(Client::table()))
-                .has_many("line_items", "order_id", || Box::new(LineItem::table()))
+                .with_imported_fields("client", &["name"])
         })
     }
     pub fn table() -> Table<Postgres, Order> {
@@ -48,10 +41,6 @@ impl Order {
 }
 
 pub trait OrderTable: AnyTable {
-    // fn as_table(&self) -> &Table<Postgres, Order> {
-    //     self.as_any_ref().downcast_ref().unwrap()
-    // }
-
     fn client_id(&self) -> Arc<Field> {
         Order::table().get_field("client_id").unwrap()
     }

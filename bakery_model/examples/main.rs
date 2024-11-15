@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Result;
 use dorm::{dataset::WritableDataSet, prelude::*};
 
@@ -108,7 +109,7 @@ async fn main() -> Result<()> {
         for row in orders.get().await.unwrap().into_iter() {
             println!(
                 "id: {}, client: {} (id: {})  total(calculated): {}",
-                row.id, row.client, row.client_id, row.total
+                row.id, row.client_name, row.client_id, row.total
             );
         }
     }
@@ -124,7 +125,7 @@ async fn main() -> Result<()> {
         let row: Order = serde_json::from_value(row_untyped)?;
         println!(
             "id: {}, client: {:<13} (id: {}) total: {}",
-            row.id, row.client, row.client_id, row.total
+            row.id, row.client_name, row.client_id, row.total
         );
     }
 

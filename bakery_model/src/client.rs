@@ -22,17 +22,8 @@ impl Client {
                 .with_field("name")
                 .with_field("contact_details")
                 .with_field("bakery_id")
-                .has_one("bakery", "bakery_id", || Box::new(Bakery::table()))
-                .has_many("orders", "client_id", || Box::new(Order::table()))
-            // .has_many("baked_cakes", "baker_id", || {
-            //     // add baker_id field into Cake through a left join
-            //     CakeSet::new().with_join(
-            //         Table::new("cakes_bakers", postgres())
-            //             .with_id_field("cake_id")
-            //             .with_field("baker_id"),
-            //         "id",
-            //     )
-            // })
+                .with_one("bakery", "bakery_id", || Box::new(Bakery::table()))
+                .with_many("orders", "client_id", || Box::new(Order::table()))
         })
     }
     pub fn table() -> Table<Postgres, Client> {
@@ -41,9 +32,6 @@ impl Client {
 }
 
 pub trait ClientTable: AnyTable {
-    fn as_table(&self) -> &Table<Postgres, Client> {
-        self.as_any_ref().downcast_ref().unwrap()
-    }
     fn name(&self) -> Arc<Field> {
         self.get_field("name").unwrap()
     }
@@ -54,14 +42,14 @@ pub trait ClientTable: AnyTable {
         self.get_field("bakery_id").unwrap()
     }
 
+    fn ref_bakery(&self) -> Table<Postgres, Bakery>;
+    fn ref_orders(&self) -> Table<Postgres, Order>;
+}
+impl ClientTable for Table<Postgres, Client> {
     fn ref_bakery(&self) -> Table<Postgres, Bakery> {
-        self.as_table().get_ref_as("bakery").unwrap()
+        self.get_ref_as("bakery").unwrap()
     }
     fn ref_orders(&self) -> Table<Postgres, Order> {
-        self.as_table().get_ref_as("orders").unwrap()
+        self.get_ref_as("orders").unwrap()
     }
-    // fn ref_cakes(&self) -> Table<Postgres, Cake> {
-    //     self.as_table().get_ref_as("cakes").unwrap()
-    // }
 }
-impl ClientTable for Table<Postgres, Client> {}

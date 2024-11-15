@@ -58,8 +58,8 @@ mod tests {
     use crate::sql::Table;
     use crate::traits::entity::EmptyEntity;
 
-    #[tokio::test]
-    async fn test_related_reference() {
+    #[test]
+    fn test_related_reference() {
         let data =
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let data_source = MockDataSource::new(&data);

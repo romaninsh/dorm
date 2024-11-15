@@ -48,7 +48,8 @@ CREATE TABLE product (
   name varchar(255) NOT NULL,
   calories int NOT NULL,
   bakery_id int NOT NULL,
-  price int NOT NULL
+  price int NOT NULL,
+  is_deleted boolean DEFAULT false
 );
 
 -- Insert data into tables

@@ -60,8 +60,8 @@ mod tests {
     use crate::mocks::datasource::MockDataSource;
     use crate::sql::Table;
 
-    #[tokio::test]
-    async fn test_related_reference() {
+    #[test]
+    fn test_related_reference() {
         let data =
             json!([{ "name": "John", "surname": "Doe"}, { "name": "Jane", "surname": "Doe"}]);
         let data_source = MockDataSource::new(&data);

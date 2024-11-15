@@ -3,7 +3,7 @@ use crate::{
     traits::datasource::DataSource,
 };
 
-use super::{Table, TableWithQueries};
+use super::{AnyTable, Table, TableWithQueries};
 use anyhow::Result;
 use serde::Serialize;
 use serde_json::Value;
@@ -48,7 +48,8 @@ impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
     }
 
     async fn delete(&self) -> Result<()> {
-        let query = self.get_empty_query().with_type(QueryType::Delete);
+        let mut query = self.get_empty_query().with_type(QueryType::Delete);
+        self.hooks().before_delete_query(self, &mut query).unwrap();
         self.data_source.query_exec(&query).await.map(|_| ())
     }
 }

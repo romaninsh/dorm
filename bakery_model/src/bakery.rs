@@ -19,8 +19,8 @@ impl Bakery {
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("profit_margin")
-                .has_many("clients", "bakery_id", || Box::new(Client::table()))
-                .has_many("products", "bakery_id", || Box::new(Product::table()))
+                .with_many("clients", "bakery_id", || Box::new(Client::table()))
+                .with_many("products", "bakery_id", || Box::new(Product::table()))
         })
     }
     pub fn table() -> Table<Postgres, Bakery> {
@@ -29,10 +29,6 @@ impl Bakery {
 }
 
 pub trait BakeryTable: AnyTable {
-    fn as_table(&self) -> &Table<Postgres, Bakery> {
-        self.as_any_ref().downcast_ref().unwrap()
-    }
-
     // fields
     fn id(&self) -> Arc<Field> {
         self.get_field("id").unwrap()
@@ -44,12 +40,14 @@ pub trait BakeryTable: AnyTable {
         self.get_field("profit_margin").unwrap()
     }
 
-    // references
+    fn ref_clients(&self) -> Table<Postgres, Client>;
+    fn ref_products(&self) -> Table<Postgres, Product>;
+}
+impl BakeryTable for Table<Postgres, Bakery> {
     fn ref_clients(&self) -> Table<Postgres, Client> {
-        self.as_table().get_ref_as("clients").unwrap()
+        self.get_ref_as("clients").unwrap()
     }
     fn ref_products(&self) -> Table<Postgres, Product> {
-        self.as_table().get_ref_as("products").unwrap()
+        self.get_ref_as("products").unwrap()
     }
 }
-impl BakeryTable for Table<Postgres, Bakery> {}

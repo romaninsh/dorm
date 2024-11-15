@@ -1,10 +1,12 @@
+use anyhow::anyhow;
 use std::ptr::eq;
 use std::sync::Arc;
 
 use super::{Join, TableWithFields};
-use crate::prelude::{Chunk, Operations};
+use crate::prelude::Chunk;
 use crate::sql::query::{JoinQuery, JoinType, QueryConditions};
 use crate::sql::table::Table;
+use crate::sql::Operations;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use crate::uniqid::UniqueIdVendor;
@@ -116,7 +118,11 @@ use super::{AnyTable, RelatedTable};
 /// [`Join`]: super::Join
 /// [`Query::with_join()`]: crate::sql::query::Query::with_join
 impl<T: DataSource, E: Entity> Table<T, E> {
-    pub fn with_join(mut self, their_table: Table<T, E>, our_foreign_id: &str) -> Self {
+    pub fn with_join<E3: Entity, E2: Entity>(
+        mut self,
+        their_table: Table<T, E2>,
+        our_foreign_id: &str,
+    ) -> Table<T, E3> {
         //! Mutate self with a join to another table.
         //!
         //! See [Table::add_join] for more details.
@@ -177,10 +183,14 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         //! ```
 
         self.add_join(their_table, our_foreign_id);
-        self
+        self.into_entity::<E3>()
     }
 
-    pub fn add_join(&mut self, mut their_table: Table<T, E>, our_foreign_id: &str) -> Arc<Join<T>> {
+    pub fn add_join<E2: Entity>(
+        &mut self,
+        mut their_table: Table<T, E2>,
+        our_foreign_id: &str,
+    ) -> Arc<Join<T>> {
         //! Combine two tables with 1 to 1 relationship into a single table.
         //!
         //! Left-Joins their_table table and return self. Assuming their_table has set id field,
@@ -237,6 +247,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         let mut on_condition = QueryConditions::on();
         on_condition.add_condition(
             self.get_field(our_foreign_id)
+                .ok_or_else(|| anyhow!("Table '{}' has no field '{}'", &self, &our_foreign_id))
                 .unwrap()
                 .eq(&their_table_id)
                 .render_chunk(),
@@ -275,7 +286,7 @@ mod tests {
     use super::*;
     use crate::{
         mocks::datasource::MockDataSource,
-        prelude::{Chunk, Operations, TableWithQueries},
+        prelude::{Chunk, EmptyEntity, Operations, TableWithQueries},
         sql::Condition,
     };
     #[test]
@@ -291,7 +302,7 @@ mod tests {
             .with_field("id")
             .with_field("role_description");
 
-        let table = user_table.with_join(role_table, "role_id");
+        let table = user_table.with_join::<EmptyEntity, _>(role_table, "role_id");
 
         let query = table.get_select_query().render_chunk().split();
 
@@ -315,7 +326,10 @@ mod tests {
         let father = person.clone().with_alias("father");
         let grandfather = person.clone().with_alias("grandfather");
 
-        let person = person.with_join(father.with_join(grandfather, "parent_id"), "parent_id");
+        let person = person.with_join::<EmptyEntity, EmptyEntity>(
+            father.with_join(grandfather, "parent_id"),
+            "parent_id",
+        );
 
         let query = person.get_select_query().render_chunk().split();
 
@@ -436,6 +450,6 @@ mod tests {
         let role_table = Table::new("roles", db.clone()).with_alias("u");
 
         // will panic, both tables want "u" alias
-        user_table.with_join(role_table, "role_id");
+        user_table.with_join::<EmptyEntity, _>(role_table, "role_id");
     }
 }

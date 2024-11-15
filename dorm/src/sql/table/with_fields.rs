@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context};
 use indexmap::IndexMap;
 use serde_json::Value;
 use std::ops::Deref;
@@ -153,7 +154,9 @@ impl<T: DataSource, E: Entity> TableWithFields for Table<T, E> {
         } else {
             "id".to_string()
         };
-        self.get_field(&id_field).unwrap()
+        self.get_field(&id_field)
+            .with_context(|| anyhow!("Table '{}' has no field '{}'", &self, &id_field))
+            .unwrap()
     }
 
     fn id_with_table_alias(&self) -> Arc<Field> {

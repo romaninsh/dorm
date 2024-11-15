@@ -32,8 +32,8 @@ impl LineItem {
                     product.add_condition(product.id().eq(&t.product_id()));
                     product.field_query(product.price()).render_chunk()
                 })
-                .has_one("order", "order_id", || Box::new(Order::table()))
-                .has_one("product", "product_id", || Box::new(Product::table()))
+                .with_one("order", "order_id", || Box::new(Order::table()))
+                .with_one("product", "product_id", || Box::new(Product::table()))
         })
     }
     pub fn table() -> Table<Postgres, LineItem> {
