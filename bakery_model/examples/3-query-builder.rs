@@ -3,27 +3,56 @@ use std::sync::Arc;
 use dorm::prelude::*;
 use dorm::sql::query;
 use serde_json::json;
-use tokio_postgres::NoTls;
 
 use anyhow::Result;
 
-mod formatter;
+use sqlformat::FormatOptions;
+use sqlformat::QueryParams;
+// use syntect::easy::HighlightLines;
+// use syntect::highlighting::Style;
+// use syntect::highlighting::ThemeSet;
+// use syntect::parsing::SyntaxSet;
+// use syntect::util::as_24_bit_terminal_escaped;
+// use syntect::util::LinesWithEndings;
 
 extern crate dorm;
 
+pub fn format_query(q: &Query) -> String {
+    let qs = q.render_chunk().split();
+
+    let formatted_sql = sqlformat::format(
+        &qs.0.replace("{}", "?"),
+        &QueryParams::Indexed(qs.1.iter().map(|x| x.to_string()).collect::<Vec<String>>()),
+        FormatOptions::default(),
+    );
+
+    formatted_sql
+
+    // let ps = SyntaxSet::load_defaults_newlines();
+    // let ts = ThemeSet::load_defaults();
+
+    // // Choose a theme
+    // let theme = &ts.themes["base16-ocean.dark"];
+
+    // // Get the syntax definition for SQL
+    // let syntax = ps.find_syntax_by_extension("sql").unwrap();
+
+    // // Create a highlighter
+    // let mut h = HighlightLines::new(syntax, theme);
+
+    // // Apply highlighting
+    // let mut highlighted_sql = String::new();
+    // for line in LinesWithEndings::from(&formatted_sql) {
+    //     let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
+    //     let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
+    //     highlighted_sql.push_str(&escaped);
+    // }
+
+    // highlighted_sql
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (client, connection) =
-        tokio_postgres::connect("host=localhost dbname=postgres", NoTls).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    let postgres = Postgres::new(Arc::new(Box::new(client)));
-
     // Let start with the simpler query
     // SELECT i.source_id AS user_source_id,
     //   dxu.name AS user_name,
@@ -68,7 +97,7 @@ async fn main() -> Result<()> {
         ))
         .with_column("user_source_id".to_string(), expr!("i.source_id"));
 
-    println!("{}", formatter::format_query(&github_authors_and_teams));
+    println!("{}", format_query(&github_authors_and_teams));
 
     // SELECT DISTINCT deployments.id,
     //   deployments.deployed_at
@@ -162,7 +191,7 @@ async fn main() -> Result<()> {
         .with_condition(expr!("authors.team_source_id IN ({})", "NzM0MA"));
 
     println!("=============================================================");
-    println!("{}", formatter::format_query(&query_successful_deployments));
+    println!("{}", format_query(&query_successful_deployments));
 
     // next wrap this up into a time series
     // WITH time_series AS (
@@ -257,7 +286,7 @@ async fn main() -> Result<()> {
         .with_order_by(expr!("date"));
 
     println!("=============================================================");
-    println!("{}", formatter::format_query(&final_query));
+    println!("{}", format_query(&final_query));
 
     Ok(())
 }

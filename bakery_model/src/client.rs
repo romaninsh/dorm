@@ -1,14 +1,17 @@
 use crate::{order::Order, postgres, Bakery};
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, OnceLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, OnceLock},
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Client {
-    id: i64,
-    name: String,
-    contact_details: String,
-    bakery_id: i64,
+    pub id: i64,
+    pub name: String,
+    pub contact_details: String,
+    pub bakery_id: i64,
 }
 impl Entity for Client {}
 
@@ -21,6 +24,7 @@ impl Client {
                 .with_id_field("id")
                 .with_field("name")
                 .with_field("contact_details")
+                .with_field("is_paying_client")
                 .with_field("bakery_id")
                 .with_one("bakery", "bakery_id", || Box::new(Bakery::table()))
                 .with_many("orders", "client_id", || Box::new(Order::table()))
@@ -40,6 +44,9 @@ pub trait ClientTable: AnyTable {
     }
     fn bakery_id(&self) -> Arc<Field> {
         self.get_field("bakery_id").unwrap()
+    }
+    fn is_paying_client(&self) -> Field {
+        self.get_field("is_paying_client").unwrap().deref().clone()
     }
 
     fn ref_bakery(&self) -> Table<Postgres, Bakery>;

@@ -18,6 +18,7 @@ CREATE TABLE client (
   id serial PRIMARY KEY,
   name varchar(255) NOT NULL,
   contact_details varchar(255) NOT NULL,
+  is_paying_client BOOLEAN DEFAULT false NOT NULL,
   bakery_id int NOT NULL
 );
 
@@ -55,10 +56,10 @@ CREATE TABLE product (
 -- Insert data into tables
 INSERT INTO bakery (name, profit_margin) VALUES ('Hill Valley Bakery', 15);
 
-INSERT INTO client (name, contact_details, bakery_id) VALUES
-('Marty McFly', '555-1955', 1),
-('Doc Brown', '555-1885', 1),
-('Biff Tannen', '555-1955', 1);
+INSERT INTO client (name, contact_details, is_paying_client, bakery_id) VALUES
+('Marty McFly', '555-1955', true, 1),
+('Doc Brown', '555-1885', true, 1),
+('Biff Tannen', '555-1955', false, 1);
 
 INSERT INTO product (name, calories, bakery_id, price) VALUES
 ('Flux Capacitor Cupcake', 300, 1, 120),

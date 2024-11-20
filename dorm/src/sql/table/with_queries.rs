@@ -1,10 +1,9 @@
-use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde::Serialize;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 
-use super::{AnyTable, Field, SqlTable, TableWithFields};
+use super::{AnyTable, Field, TableWithFields};
 use crate::prelude::AssociatedQuery;
 use crate::sql::query::{QueryType, SqlQuery};
 use crate::sql::table::Table;
@@ -29,7 +28,7 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
         for condition in self.conditions.iter() {
             query = query.with_condition(condition.clone());
         }
-        for (alias, join) in &self.joins {
+        for (_alias, join) in &self.joins {
             query = query.with_join(join.join_query().clone());
         }
         query
@@ -43,7 +42,7 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
     }
 
     fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query {
-        let mut query = Query::new().with_table(&self.table_name, self.table_alias.clone());
+        let mut query = self.get_empty_query();
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
             query.add_column(Some(field_alias), field_val);
@@ -168,7 +167,7 @@ mod tests {
 
     use crate::{expr_arc, mocks::datasource::MockDataSource, prelude::Chunk};
 
-    #[derive(Serialize, Deserialize, Clone)]
+    #[derive(Serialize, Deserialize, Clone, Default)]
     struct User {
         name: String,
         surname: String,

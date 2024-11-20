@@ -24,7 +24,7 @@ impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
         Ok(Some(id.clone()))
     }
 
-    async fn update<F>(&self, f: F) -> Result<()> {
+    async fn update<F>(&self, _f: F) -> Result<()> {
         todo!()
     }
 

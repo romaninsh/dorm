@@ -5,13 +5,13 @@ use crate::{
     traits::datasource::DataSource,
 };
 
-#[derive(Clone, Debug)]
-enum JoinType {
-    Inner,
-    Left,
-    Right,
-    Full,
-}
+// #[derive(Clone, Debug)]
+// enum JoinType {
+//     Inner,
+//     Left,
+//     Right,
+//     Full,
+// }
 
 pub struct Join<T: DataSource> {
     // table: Table<T, E>,
@@ -19,14 +19,14 @@ pub struct Join<T: DataSource> {
     join_query: JoinQuery,
 }
 
-impl<T: DataSource> Join<T> {
-    fn clone(&self) -> Self {
-        Join {
-            table: self.table.clone(),
-            join_query: self.join_query.clone(),
-        }
-    }
-}
+// impl<T: DataSource> Join<T> {
+//     fn clone(&self) -> Self {
+//         Join {
+//             table: self.table.clone(),
+//             join_query: self.join_query.clone(),
+//         }
+//     }
+// }
 
 impl<T: DataSource> std::fmt::Debug for Join<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

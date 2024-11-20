@@ -28,8 +28,7 @@ impl LineItem {
                     t.price().render_chunk().mul(t.quantity())
                 })
                 .with_expression("price", |t| {
-                    let mut product = Product::table();
-                    product.add_condition(product.id().eq(&t.product_id()));
+                    let product = t.get_subquery_as::<Product>("product").unwrap();
                     product.field_query(product.price()).render_chunk()
                 })
                 .with_one("order", "order_id", || Box::new(Order::table()))

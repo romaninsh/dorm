@@ -2,7 +2,7 @@ use std::future::Future;
 
 use crate::sql::Query;
 use anyhow::Result;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{Map, Value};
 
 /// Represents a [`dataset`] that may be used to fetch data.
@@ -74,7 +74,9 @@ pub trait ReadableDataSet<E> {
     fn get_as<T: DeserializeOwned>(&self) -> impl Future<Output = Result<Vec<T>>>;
 
     /// Fetch a single record into a type `T` using [`serde_json::from_value`].
-    fn get_some_as<T: DeserializeOwned>(&self) -> impl Future<Output = Result<Option<T>>>;
+    fn get_some_as<T>(&self) -> impl Future<Output = Result<Option<T>>>
+    where
+        T: DeserializeOwned + Default + Serialize;
 
     /// TODO: must go away from here, as dataset should not be aware of query
     fn select_query(&self) -> Query;

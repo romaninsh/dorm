@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use std::sync::Arc;
 
 use crate::expr;
@@ -44,6 +43,13 @@ impl Field {
         self.field_alias.clone()
     }
 }
+
+impl Chunk for Field {
+    fn render_chunk(&self) -> Expression {
+        Arc::new(self.clone()).render_chunk()
+    }
+}
+impl Operations for Field {}
 
 impl Operations for Arc<Field> {
     fn eq(&self, other: &impl Chunk) -> Condition {

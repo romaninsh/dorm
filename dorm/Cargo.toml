@@ -25,7 +25,6 @@ anyhow = "1.0.82"
 futures = "0.3.30"
 pretty_dbg = "1.0.54"
 regex = "1.10.4"
-sqlformat = "0.2.3"
 # syntect = "5.2.0"
 lazy_static = "1.4.0"
 # cargo-nextest = { version = "0.9.72", features = [ "experimental-tokio-console", ] }
@@ -33,12 +32,3 @@ pretty_assertions = "1.4.0"
 
 [dev-dependencies]
 bakery_model = { path = "../bakery_model" }
-
-
-[[example]]
-name = "query-builder"
-path = "examples/query-builder/src/main.rs"
-
-[[example]]
-name = "very-basic-example"
-path = "examples/very-basic-example/src/main.rs"

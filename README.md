@@ -4,90 +4,223 @@
 
 # Introduction
 
-DORM is an **opinionated business entity framework** for Rust, designed to simplify and
-enhance the development of business applications by providing robust, maintainable, and
-efficient tools for handling complex business logic and database interactions. It
-leverages Rust's type safety and performance to offer a cost-effective and enjoyable
-development experience
+DORM implements a simple way for your business app developers to access data by using
+"Data Set" concept.
 
-## Purpose and Opinionated Design
+It's easier to explain with example. Your SQL table "clients" contains multiple client records. We
+do not know if there are 10 clients or 100,000 in the table. We simply refer to them as "set of
+clients".
 
-DORM was created with the purpose of transforming how business applications are developed
-in Rust. By emphasizing structure, consistency, and best practices, DORM serves as not
-just a toolkit but a comprehensive guide for building enterprise-level applications.
+Record set is a Rust type (I included inferred types here):
 
-As an opinionated business entity framework, DORM prescribes specific methods and patterns
-for handling data and business logic. This approach is chosen to ensure that applications
-are not only performant and safe but also straightforward to maintain and scale.
+```rust
+let set_of_clients = Client::table();   // Table<Postgres, Client>
+```
 
-Unlike more generic libraries or crates (like Actix or Diesel) DORM focuses on guiding
-developers to consistency and best practices in application architecture. DORM provides
-an overarching structure that encapsulates more than just individual components, ensuring
-that business logic and data management are integrated into a cohesive framework designed
-for enterprise applications.
+As you would expect, you can iterate over any set easily:
 
-## Architectural Separation of Concern
+```rust
+for client in set_of_clients.get().await? {   // client: Client
+    println!("id: {}, client: {}", client.id, client.name);
+}
+```
 
-One of the fundamental principles of DORM is the separation of the data persistence layer
-from the business logic. This separation is crucial for several reasons:
+In a production applications you wouldn't be able to iterate over all the records like this,
+simply because of the large number of records. Which is why we need to narrow down our
+set_of_clients:
 
-- **Flexibility in Data Management** - DORM abstracts the data layer through its robust DataSet
-  and Query interfaces, allowing business logic to remain agnostic of the underlying database
-  technologies. This abstraction makes it possible to switch underlying databases or adapt to
-  different data storage solutions without rewriting business logic.
+```rust
+let condition = set_of_clients.is_paying_client().eq(&true);  // condition: Condition
+let paying_clients = set_of_clients.with_condition(condition);  // paying_clients: Table<Postgres, Client>
+```
 
-- **Remote Data Handling** - Acknowledging the trend towards distributed systems, DORM is designed
-  to manage data that is often stored remotely and accessed over networks (SQL, NoSQL, GraphQL or
-  RestAPI). This design consideration ensures that applications built with DORM can efficiently handle
-  data operations across varied environments and scale gracefully as demand increases.
+We can avoid fetching all records - if we just need to know count of paying clients - we can use count():
 
-- **Efficiency in Data Operations** - Unlike traditional ORMs, which manage data by frequently
-  fetching and storing individual records, DORM optimizes efficiency by maintaining data remotely and
-  using complex queries to handle or aggregate data directly in the database. This approach reduces
-  the number of database interactions, minimizes data transfer overhead, and enhances overall
-  performance by leveraging the database's capabilities to execute operations more effectively.
+```rust
+println!(
+    "Count of paying clients: {}",
+    paying_clients.count().get_one_untyped().await?
+);
+```
 
-- **Type Safety and Productivity** - DORM capitalizes on the strengths of Rust’s robust type system,
-  enhancing code safety and developer productivity by enforcing type safety across business entities,
-  relationships, conditions, and expressions. This integration ensures higher code reliability and
-  facilitates faster development through precise type checks.
+Now that you have some idea of what a DataSet is, lets look at how we can reference
+related sets. Traditionally we could say "one client has many orders". In DORM we say
+"set of orders that reference set of clients". In this paradigm we only operate with
+"many-to-many" relationships.
 
-- **Do not disturb the Business code** - DORM excels in abstracting away the complexities of
-  the underlying data structures, ensuring that business logic remains stable and unaffected by
-  changes in the database schema. For instance, if the structure of a database is refactored (split
-  up table, or endpoint, introduction of cache or switch between database engines)—DORM's
-  abstraction layers ensure that these changes do not disrupt the existing business logic. This
-  approach not only minimizes disruptions caused by backend modifications but also introduces new
-  ways to perform business logic tests through unit-testing.
+```rust
+let orders = paying_clients.ref_orders();   // orders: Table<Postgres, Order>
+```
 
-## Improving the Learning Curve with DORM
+Type is automatically inferred, I do not need to specify it. This allows me to define
+a custom method on Table<Postgres, Order> and use it like this:
 
-DORM solves the challenge of developer learning curve by introducing a structured pattern for
-defining business entities using powerful Rust generics. This is a perfect way how your project
-structure can appear simple and familiar to developers from OOP backgrounds like Java or C#:
+```rust
+let report = orders.generate_report().await?;
+println!("Report:\n{}", report);
+```
 
-- **Business Entity Object** - Rust has no Objects, but DORM gives a very similar experience
-  by leveraging traits and generics. This allows business entities to have the single interface
-  to persistence functions (deleting or updating records), typical logic extensions (soft-delete
-  and data normalization) and custom developer-defined abstractions (such as order fullfilment)
+Implementation for `generate_report` method is in bakery_model/src/order.rs and can be
+used anywhere. Importantly - this file also includes a unit-test for `generate_report`.
 
-- **Avoiding borrowing and lifetimes** - Business entities are owned, clonable and can be
-  easily shared across your code. They can be further mutated (such as adding more conditions)
-  or yield related entities (such as a product having many orders). Rust syntax for manipulating
-  entities is simple and easy to understand.
+Tests in DORM mock data source and is super fast. Quick CI/CD process would allow you to
+implement more tests.
 
-- **Hydrating** - DORM allows you to easily hydrate (or fetch) the data. Business entities are
-  defined as sets of remotely stored records. It is easy to iterate, filter or map remote records.
-  DORM also allows use of expressions if persistence layer allows subqueries.
+One thing that sets DORM apart from other ORMs is that we are super-clever at building
+queries. DataSets have a default entity type (in this case - Order) but we can supply
+our own type:
+
+```rust
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+struct MiniOrder {
+    id: i64,
+    client_id: i64,
+}
+impl Entity for MiniOrder {}
+```
+
+`impl Entity` is needed to load and store "MiniOrder" in any DORM Data Set.
+Next I'll use `get_some_as` which gets just a single record. The subsequent
+scary-looking `get_select_query_for_struct` is just to grab and display the query
+to you:
+
+```rust
+let Some(mini_order) = orders.get_some_as::<MiniOrder>().await? else {
+    panic!("No order found");
+};
+println!("data = {:?}", &mini_order);
+println!(
+    "MiniOrder query: {}",
+    orders
+        .get_select_query_for_struct(MiniOrder::default())
+        .preview()
+);
+```
+
+In this next example, I'll only change a few fields of my struct: Remove `client_id` and
+add `order_total` and `client_name`:
+
+```rust
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+struct MegaOrder {
+    id: i64,
+    client_name: String,
+    total: i64,
+}
+impl Entity for MegaOrder {}
+
+let Some(mini_order) = orders.get_some_as::<MegaOrder>().await? else {
+    panic!("No order found");
+};
+println!("data = {:?}", &mini_order);
+println!(
+    "MegaOrder query: {}",
+    orders
+        .get_select_query_for_struct(MegaOrder::default())
+        .preview()
+);
+```
+
+It is now a good time to run this code. Clone this repository and run:
+
+```bash
+$ cargo run --example 0-intro
+```
+
+You might be surprised about the queries that were generated for you. They look scary!!!!
+
+```sql
+SELECT id, client_id
+FROM ord
+WHERE client_id IN (SELECT id FROM client WHERE is_paying_client = true)
+  AND is_deleted = false;
+```
+
+Our struct only needed two fields, so only two fields were queried. That's great.
+
+You can also probably understand why "is_paying_client" is set to true. Our Order Set was derived
+from `paying_clients` Set which was created through adding a condition. Why is `is_deleted` here?
+
+As it turns out - our table definition is using extension `SoftDelete`. In the `src/order.rs`:
+
+```rust
+table.with_extension(SoftDelete::new("is_deleted"));
+```
+
+The second query is even more interesting:
+
+```sql
+SELECT id,
+    (SELECT name FROM client WHERE client.id = ord.client_id) AS client_name,
+    (SELECT SUM((SELECT price FROM product WHERE id = product_id) * quantity)
+    FROM order_line WHERE order_line.order_id = ord.id) AS total
+FROM ord
+WHERE client_id IN (SELECT id FROM client WHERE is_paying_client = true)
+  AND is_deleted = false;
+```
+
+There is no physical fied for `client_name` and instead DORM sub-queries
+`client` table to get the name. Why?
+
+The implementation is, once again, inside `src/order.rs` file:
+
+```rust
+table
+  .with_one("client", "client_id", || Box::new(Client::table()))
+  .with_imported_fields("client", &["name"])
+```
+
+The final field - `total` is even more interesting - it gathers information from
+`order_line` that holds quantities and `product` that holds prices.
+
+Was there a chunk of SQL hidden somewhere? NO, It's all DORM's query building magic.
+
+Look inside `src/order.rs` to see how it is implemented:
+
+```rust
+table
+  .with_many("line_items", "order_id", || Box::new(LineItem::table()))
+  .with_expression("total", |t| {
+    let item = t.sub_line_items();
+    item.sum(item.total()).render_chunk()
+  })
+```
+
+Something is missing. Where is multiplication? Apparently item.total() is
+responsible for that, we can see that in `src/lineitem.rs`.
+
+```rust
+table
+  .with_one("product", "product_id", || Box::new(Product::table()))
+  .with_expression("total", |t: &Table<Postgres, LineItem>| {
+    t.price().render_chunk().mul(t.quantity())
+  })
+  .with_expression("price", |t| {
+    let product = t.get_subquery_as::<Product>("product").unwrap();
+    product.field_query(product.price()).render_chunk()
+  })
+```
+
+We have discovered that behind a developer-friendly and very Rust-intuitive Data Set
+interface, DORM offers some really powerful features to abstract away complexity.
+
+What does that mean to your developer team?
+
+You might need one or two developers to craft those entities, but the rest of your
+team can focus on the business logic - like improving that `generate_report` method!
+
+This highlights the purpose of DORM - separation of concerns and abstraction of complexity.
+
+Use DORM. No tradeoffs. Productive team! Happy days!
 
 ## Concepts of DORM
 
-DORM framework relies on concepts that work together and build upon eachother:
+To understand DORM in-depth, you would need to dissect and dig into its individual components:
 
 1. DataSet - like a Map, but Rows are stored remotely and only fetched when needed.
 2. Expressions - recursive template engine for building SQL.
-3. Query - a dynamic object representing SQL query.
-4. DataSources - an implementation trait for persistence layer.
+3. Query - a dynamic object representing a single SQL query.
+4. DataSources - an implementation trait for persistence layer. Can be Postgres, a mock (more implementations coming soon).
 5. Table - DataSet with consistent columns, condition, joins and other features of SQL table.
 6. Field - representing columns or arbitrary expressions in a Table.
 7. Busines Entity - a record for a specific DataSet (or Table), such as Product, Order or Client.
@@ -104,39 +237,32 @@ book will focus on one concept at a time and will discuss it in depth.
 
 The base use pattern of DORM, however would be primarily around Business Entities, Tables and Fields only.
 
-## Simple Example
+## Using DORM in your app
+
+To start a new app using DORM, you can use this code:
 
 ```rust
 use dorm::prelude::*;
 
-let clients = Table::new("client", postgres.clone())
-    .add_field("name")
-    .add_id_field("id")
-    .add_field("active")
+let postgres = Postgres::new(Arc::new(Box::new(tokio_postgres_client)));
 
-let active_clients = clients.add_condition(clients.get_field("active")?.eq(true));
+let mut clients = Table::new("client", postgres.clone())
+    .with_field("name")
+    .with_id_field("id")
+    .with_field("active")
 
-for client in active_clients.get().await? {
+let active_clients = clients.add_condition(clients.get_field("active")?.eq(&true));
+
+for client in active_clients.get_all_untyped().await? {
     println!("{}", client["name"]?);
 }
 ```
 
-This example relies on concepts of "Table", "Field" to create `clients` DataSet.
-In order to target only `active_clients`, we make use of Conditions (which is a type
-of Expression) and Field. Finally when fetching data we hydrate into serde_json::Map.
-
-## Same example with Business Entities
-
-Your application is likely to use consistent set of tables and columns. Those can
-be defined once and reused through a concept of Business Entities. Lets look how
-your code would change with introduction of Business Entity:
+Typically you would want to abstract away initialization of `Table`, like we
+did in the `bakery_example`. Once you do that, your code should look like this:
 
 ```rust
-use dorm::prelude::*;
-use crate::business_entities::Client;
-
-let clients = Client::table();
-
+let clients = Client::table(); // clients: Table<Postgres, Client>
 let active_clients = clients.only_active();
 
 for client in active_clients.get().await? {
@@ -144,49 +270,9 @@ for client in active_clients.get().await? {
 }
 ```
 
-Defining `clients` now is much simpler. The full set of fields is not needed for our
-operation of fetching active clients. We can also define a method `only_active()`
-in a business entity crate, so that it would be easy to reuse it across your code.
+# Learning DORM
 
-Finally business entities hydrate into a struct, giving you more type safety.
-
-## Real-life Example
-
-In this book, we will be using a fictional database for your typical Bakery business.
-Primarily we will be using `product`, `inventory`, `order` and `client` tables. The
-examples will rely on those business entities and focus on demonstrating other
-capabilities of DORM:
-
-```rust
-fn notify_clients_of_low_stock() -> Result<()> {
-    let products = Product::table_with_inventory();
-    let products = products.with_condition(products.stock().eq(0));
-
-    let clients = products
-        .ref_order()
-        .only_active()
-        .ref_client();
-
-    for client_comm in clients.get_email_comm().await? {
-        client_comm.type = ClientCommType::LowStock;
-
-        client_comm.save_into(ClientComm::queue()).await?;
-    }
-    Ok(())
-}
-```
-
-This is more "real-world" example implementing a scalable
-implementation for a simple business process of sending emails to
-clients that have active orders that cannot be fulfilled due to a low
-stock.
-
-The code is simple, safe and maintainable.
-
-## DORM features
-
-I continue to describe DORM features in the documentation. Here is a quick
-overview:
+I have wrote a detailed Book for DORM, to introduce each concept in great detail:
 
 1. [DataSet abstraction](https://romaninsh.github.io/dorm/1-table-and-fields.html) - like a Map, but Rows are stored remotely and only fetched when needed.
 2. [Expressions](https://romaninsh.github.io/dorm/2-expressions-and-queries.html) - use a power of SQL without writing SQL.
@@ -200,13 +286,16 @@ overview:
 10. WIP: Reference traversal - convert a set of records into a set of related records.
 11. WIP: Subqueries - augment a table with expressions based on related tables.
 
+Additionally, DORM has a full documentation. Just run: `cargo doc --open` and you will see
+all the details.
+
 ## Current status
 
 DORM currently is in development. See [TODO](TODO.md) for the current status.
 
-## Inspiration
+## Author
 
-DORM is inspired by Agile Data (from Agile Toolkit):
+DORM is implemented by **Romans Malinovskis**. To get in touch:
 
-- `https://www.agiletoolkit.org/data`
-- `https://agile-data.readthedocs.io/en/develop/quickstart.html#core-concepts`
+- <https://www.linkedin.com/in/romansmalinovskis>
+- <https://bsky.app/profile/nearly.guru>
