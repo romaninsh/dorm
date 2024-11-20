@@ -38,7 +38,6 @@ impl<T: DataSource, E: Entity> Table<T, E> {
             let field_name = field_name.to_string();
             let name = format!("{}_{}", &relation, &field_name);
             let relation = relation.to_string();
-            dbg!(&name);
             self.add_expression(&name, move |t| {
                 let tt = t
                     .get_subquery(&relation)

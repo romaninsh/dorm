@@ -4,7 +4,7 @@ use crate::sql::Query;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 use anyhow::Result;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{Map, Value};
 
 use super::TableWithQueries;
@@ -39,7 +39,8 @@ impl<T: DataSource, E: Entity> ReadableDataSet<E> for Table<T, E> {
     }
 
     async fn get(&self) -> Result<Vec<E>> {
-        let data = self.get_all_untyped().await?;
+        let query = self.get_select_query_for_struct(E::default());
+        let data = self.data_source.query_fetch(&query).await?;
         Ok(data
             .into_iter()
             .map(|row| serde_json::from_value(Value::Object(row)).unwrap())
@@ -66,8 +67,11 @@ impl<T: DataSource, E: Entity> ReadableDataSet<E> for Table<T, E> {
         }
     }
 
-    async fn get_some_as<T2: DeserializeOwned>(&self) -> Result<Option<T2>> {
-        let query = self.select_query();
+    async fn get_some_as<T2>(&self) -> Result<Option<T2>>
+    where
+        T2: DeserializeOwned + Default + Serialize,
+    {
+        let query = self.get_select_query_for_struct(T2::default());
         let data = self.data_source.query_fetch(&query).await?;
         if data.len() > 0 {
             let row = data[0].clone();

@@ -45,13 +45,13 @@ MVP:
 - [x] Add "Entity" concept into Table
 - [x] Add example on how to use traits for augmenting Table of specific Entity
 - [x] Implement rendering of QueryType::Update so that we could update records
-- [ ] Refine "AnyTable" concept, so that we can use table as dyn without (if we want)
-- [ ] Check on "Join", they should allow for Entity mutation (joined table associated with a different entity)
+- [x] Refine "AnyTable" concept, so that we can use table as dyn without (if we want)
+- [x] Check on "Join", they should allow for Entity mutation (joined table associated with a different entity)
 - [x] Implement has_one and has_many in a correct way, moving functionality to Related Reference
-- [ ] Implement Unrelated Reference (when ref leads to a table with different Data Source)
-- [ ] Implement a better data fetching mechanism, using default entity
-- [ ] Restore functionality of bakery example
-- [ ] Implement ability to include sub-queries based on related tables
+- [x] Implement Unrelated Reference (when ref leads to a table with different Data Source)
+- [x] Implement a better data fetching mechanism, using default entity
+- [x] Restore functionality of bakery example
+- [x] Implement ability to include sub-queries based on related tables
 
   0.0.5: Refactor internal crates
 
@@ -64,7 +64,7 @@ Create integration test-suite for SQL testing
 
 - [x] Quality of life improvements - nextest and improved assert_eq
 - [x] Implement testcontainers postgres connectivity
-- [ ] Get rid of testcontainers (they don't work anyway), use regular Postgres
+- [x] Get rid of testcontainers (they don't work anyway), use regular Postgres
 - [ ] Create separate test-suite, connect DB etc
 - [x] Populate Bakery tables for tests
 - [x] Seed some data into Bakery tests
@@ -74,10 +74,10 @@ Create integration test-suite for SQL testing
 Control field queries
 
 - [x] Convert Field and &Field into Arc<Field> everywhere
-- [ ] Implement a way to create a query with custom field references
-- [ ] Implement a way to query with a serialized structure
-- [ ] Separate fields from active fields structure
-- [ ] Implement ability to specify which fields to query for
+- [x] Implement a way to create a query with custom field references
+- [x] Implement a way to query with a serialized structure
+- [x] Separate fields from active fields structure
+- [x] Implement ability to specify which fields to query for
 
 - [ ] add tests for all CRUD operations (ID-less table)
 - [ ] implemented `each` functionality for DataSet
@@ -87,9 +87,9 @@ Control field queries
 - [ ] implement sub-library for datasource, supporting serde
 - [ ] add second data-source (csv) as an example
 - [x] datasource should convert query into result (traited)
-- [ ] select where a field is a sub-query
-- [ ] insert where a field value is an expression
-- [ ] insert where a field is a sub-query
+- [x] select where a field is a sub-query
+- [x] insert where a field value is an expression
+- [x] insert where a field is imported from related table
 - [x] select from a subquery
 - [ ] add sql table as a dataset at a query level (+ clean up method naming)
 - [ ] postgres expressions should add type annotation into query ("$1::text")

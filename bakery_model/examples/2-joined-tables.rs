@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dorm::{dataset::WritableDataSet, prelude::*};
+use dorm::prelude::*;
 
 use bakery_model::*;
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     }
 
     // Inventory does not have a table, so we will just create one
-    #[derive(Clone, Serialize, Deserialize, Debug)]
+    #[derive(Clone, Serialize, Deserialize, Debug, Default)]
     struct Inventory {
         stock: i64,
     }
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
         "Records are separate now and do not make any sense! But lets create a new joined table"
     );
 
-    #[derive(Clone, Serialize, Deserialize, Debug)]
+    #[derive(Clone, Serialize, Deserialize, Debug, Default)]
     struct ProductInventory {
         name: String,
         calories: i64,

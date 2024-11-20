@@ -15,7 +15,8 @@ testcontainers-modules = { version = "0.8.0", features = [
 ] }
 tokio = "1.38.1"
 tokio-postgres = "0.7.10"
+sqlformat = "0.2.3"
 
 [[example]]
-name = "main"
-path = "examples/main.rs"
+name = "0-intro"
+path = "examples/0-intro.rs"
