@@ -11,7 +11,7 @@ It's easier to explain with example. Your SQL table "clients" contains multiple 
 do not know if there are 10 clients or 100,000 in the table. We simply refer to them as "set of
 clients".
 
-Record set is a Rust type (I included inferred types here):
+"Set of Clients" is a Rust type:
 
 ```rust
 let set_of_clients = Client::table();   // Table<Postgres, Client>
