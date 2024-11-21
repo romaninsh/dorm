@@ -1,180 +1,118 @@
 # Introduction
 
-DORM is an **opinionated business entity framework** for Rust, designed to simplify and
-enhance the development of business applications by providing robust, maintainable, and
-efficient tools for handling complex business logic and database interactions. It
-leverages Rust's type safety and performance to offer a cost-effective and enjoyable
-development experience
+Welcome to this Book on DORM. Before we dive in, few assumptions:
 
-## Purpose and Opinionated Design
+- You have read the Introduction (README): <https://github.com/romaninsh/dorm>
+- You have cloned this repository, installed postgres and ran `0-intro` example.
+- You have a bit of patience to get to the bottom of various components of DORM as they are explained.
+- You might need some Rust experience, but I'll try to provide pointers and keep things simple.
 
-DORM was created with the purpose of transforming how business applications are developed
-in Rust. By emphasizing structure, consistency, and best practices, DORM serves as not
-just a toolkit but a comprehensive guide for building enterprise-level applications.
+## The Purpose of separation of concerns and complexity abstraction
 
-As an opinionated business entity framework, DORM prescribes specific methods and patterns
-for handling data and business logic. This approach is chosen to ensure that applications
-are not only performant and safe but also straightforward to maintain and scale.
+Terms `concern separation` and `complexity abstraction` may be new to you, so I'm going to
+look at the enterprise software more generally and also explain why languages such as Java,
+C# and TypeScript are considered suitable, while Rust so far had no traction.
 
-Unlike more generic libraries or crates (like Actix or Diesel) DORM focuses on guiding
-developers to consistency and best practices in application architecture. DORM provides
-an overarching structure that encapsulates more than just individual components, ensuring
-that business logic and data management are integrated into a cohesive framework designed
-for enterprise applications.
+Majority of code for the enterprise is designed to "codify" business logic. As company
+grows, business rules become more complex. When you open a bank account, you can choose
+from few account types, but under the hood banks have hundreds of legacy account types.
+A lot of hidden use-cases are needed for regulations or to support legacy systems.
 
-## Architectural Separation of Concern
+In order to keep the code maintainable, old code must be pruned without affecting stability
+of remaining code. Refactoring will always face resistance from product leads, who prefer
+rolling out new features.
 
-One of the fundamental principles of DORM is the separation of the data persistence layer
-from the business logic. This separation is crucial for several reasons:
+Companies prefer systems and frameworks which are more modular and easier to maintain.
+In many cases, developers who originally wrote the code would no longer be with the company
+and a lot of code is written by junior developers too.
 
-- **Flexibility in Data Management** - DORM abstracts the data layer through its robust DataSet
-  and Query interfaces, allowing business logic to remain agnostic of the underlying database
-  technologies. This abstraction makes it possible to switch underlying databases or adapt to
-  different data storage solutions without rewriting business logic.
+### Separation of Concerns
 
-- **Remote Data Handling** - Acknowledging the trend towards distributed systems, DORM is designed
-  to manage data that is often stored remotely and accessed over networks (SQL, NoSQL, GraphQL or
-  RestAPI). This design consideration ensures that applications built with DORM can efficiently handle
-  data operations across varied environments and scale gracefully as demand increases.
+Within your average product team (say - 20 developers) engineers who share the code, engineers
+would find preference towards a certain sub-sections of your app. Some developers may prefer
+working on the "order processing" while others will dive into "onboarding" flow. Those are
+called areas of concern. The practice of separating those areas is called SoC - Separation of Concerns.
 
-- **Efficiency in Data Operations** - Unlike traditional ORMs, which manage data by frequently
-  fetching and storing individual records, DORM optimizes efficiency by maintaining data remotely and
-  using complex queries to handle or aggregate data directly in the database. This approach reduces
-  the number of database interactions, minimizes data transfer overhead, and enhances overall
-  performance by leveraging the database's capabilities to execute operations more effectively.
+Rust generally relies on sub-crates to separate concerns, but there is one area, where
+those areas intersect - and that is the "persistence layer".
 
-- **Type Safety and Productivity** - DORM capitalizes on the strengths of Rust’s robust type system,
-  enhancing code safety and developer productivity by enforcing type safety across business entities,
-  relationships, conditions, and expressions. This integration ensures higher code reliability and
-  facilitates faster development through precise type checks.
+### Persistence layer
 
-- **Do not disturb the Business code** - DORM excels in abstracting away the complexities of
-  the underlying data structures, ensuring that business logic remains stable and unaffected by
-  changes in the database schema. For instance, if the structure of a database is refactored (split
-  up table, or endpoint, introduction of cache or switch between database engines)—DORM's
-  abstraction layers ensure that these changes do not disrupt the existing business logic. This
-  approach not only minimizes disruptions caused by backend modifications but also introduces new
-  ways to perform business logic tests through unit-testing.
+As a business software is dealing with events - it needs to store it's state. Data needs
+to persist between execution as well as propogate between containers. Business software
+is state-less - when request comes in, the data is loaded, processed and stored back.
 
-## Improving the Learning Curve with DORM
+Request can come in from an API interface or event queue. Similarly data can be loaded/stored
+from Database, APIs or Caches.
 
-DORM solves the challenge of developer learning curve by introducing a structured pattern for
-defining business entities using powerful Rust generics. This is a perfect way how your project
-structure can appear simple and familiar to developers from OOP backgrounds like Java or C#:
+It is quite common that in order to process a single request the data would need to be loaded
+and stored several times. Quite often external API would rely on intermediate APIs (middleware)
+to achieve the task.
 
-- **Business Entity Object** - Rust has no Objects, but DORM gives a very similar experience
-  by leveraging traits and generics. This allows business entities to have the single interface
-  to persistence functions (deleting or updating records), typical logic extensions (soft-delete
-  and data normalization) and custom developer-defined abstractions (such as order fullfilment)
+### Idempotence
 
-- **Avoiding borrowing and lifetimes** - Business entities are owned, clonable and can be
-  easily shared across your code. They can be further mutated (such as adding more conditions)
-  or yield related entities (such as a product having many orders). Rust syntax for manipulating
-  entities is simple and easy to understand.
+Any request can fail. It can fail before any data is loaded or it can fail after the data
+is processed and stored. Idempotence is a design pattern that ensures that any requset can
+be retried by the caller. If the original request was successful, retry will also be successful,
+but it will not cause any duplicates. This is called Retry safety.
 
-- **Hydrating** - DORM allows you to easily hydrate (or fetch) the data. Business entities are
-  defined as sets of remotely stored records. It is easy to iterate, filter or map remote records.
-  DORM also allows use of expressions if persistence layer allows subqueries.
+To give you an example, request to send payment of $10 should not send a total of $20 if
+it is "retried" due to communication issue inside a middleware.
 
-## Concepts of DORM
+### Complexity Abstraction
 
-DORM framework relies on concepts that work together and build upon eachother:
+I have just went through some of the essential design principles of enterprise software systems.
+If this is new to you, it may sound excessively complex.
 
-1. DataSet - like a Map, but Rows are stored remotely and only fetched when needed.
-2. Expressions - recursive template engine for building SQL.
-3. Query - a dynamic object representing SQL query.
-4. DataSources - an implementation trait for persistence layer.
-5. Table - DataSet with consistent columns, condition, joins and other features of SQL table.
-6. Field - representing columns or arbitrary expressions in a Table.
-7. Busines Entity - a record for a specific DataSet (or Table), such as Product, Order or Client.
-8. CRUD operations - insert, update and delete records in DataSet through hydration.
-9. Reference - ability for DataSet to return related DataSet (get client emails with active orders for unavailable stock items)
-10. Joins - combining two Tables into a single Table without hydration.
-11. Associated expression - Expression for specific DataSource created by operation on DataSet (sum of all unpaid invoices)
-12. Subqueries - Field for a Table represented through Associated expression on a Referenced DataSet.
-13. Aggregation - Creating new table from subqueries over some other DataSet.
-14. Associated record - Business Entity for a specific DataSet, that can be modified and saved back.
+Well, there is another trick we use in enterprise system and it is complexity abstraction.
+An application can be built in layers, where each layer hides complexity.
 
-Depending on your use pattern, you would be using several of the above concepts. The rest of this
-book will focus on one concept at a time and will discuss it in depth.
+In fact - when you were going through the `introduction` code, you have experienced
+complexity abstraction first hand. You saw a simple and readable code, that was hiding
+complexity through abstraction.
 
-The base use pattern of DORM, however would be primarily around Business Entities, Tables and Fields only.
+Rust is a complex language. Rust also does not provide any obvious way to implement
+complexity abstraction.
 
-## Simple Example
+DORM has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
+could provide `retry safety` for your delete operation.
 
-```rust
-use dorm::prelude::*;
+### Safety and Performance
 
-let clients = Table::new("client", postgres.clone())
-    .add_field("name")
-    .add_id_field("id")
-    .add_field("active")
+In my opinion, the most important aspect of enterprise software is safety. As humans
+we all make mistakes. Quite often in a pursuit of performance, we sacrifice safety.
 
-let active_clients = clients.add_condition(clients.get_field("active")?.eq(true));
+A seasoned developer may write a chunk of SQL code that quickly and efficiently
+performs a complex aggregation. When junior developer comes in, they may introduce
+a serious safety bug just by trying to tweak or replicate this complex SQL code.
 
-for client in active_clients.get().await? {
-    println!("{}", client["name"]?);
-}
-```
+DORM offers a way to generate performant SQL code without sacrificing safety.
 
-This example relies on concepts of "Table", "Field" to create `clients` DataSet.
-In order to target only `active_clients`, we make use of Conditions (which is a type
-of Expression) and Field. Finally when fetching data we hydrate into serde_json::Map.
+### Impact of Change
 
-## Same example with Business Entities
+I've seen many projects which were stuck with a "legacy" data structure because
+the codebase was riddled with hardcoded SQL queries. As business logic evolves,
+it will require changes in the data structure.
 
-Your application is likely to use consistent set of tables and columns. Those can
-be defined once and reused through a concept of Business Entities. Lets look how
-your code would change with introduction of Business Entity:
+Persistence abstraction of DORM creates a layer for backward-compatibility. Operations
+like splitting a table into two tables, moving columns between tables can be
+handled without affecting change in business logic.
 
-```rust
-use dorm::prelude::*;
-use crate::business_entities::Client;
+### Testability
 
-let clients = Client::table();
+It is crucial that business logic is testable. However - quite often the logic only
+works when it has access to the data. The `integration tests` usually provides
+test-data to a test-suite. Generally those are slow, they can't track code
+coverage and they are hard to debug.
 
-let active_clients = clients.only_active();
+DORM provides a way to test business logic through `unit tests`. By mocking your
+data source, you can focus on the business logic. More importantly you can adopt
+`test-driven development` and create standards for your code with test coverage.
+Use of faster `unit-tests` also reduces your release cycle time - a metric that
+companies are actively looking at.
 
-for client in active_clients.get().await? {
-    println!("{}", client.name);
-}
-```
+## Business Appps with DORM
 
-Defining `clients` now is much simpler. The full set of fields is not needed for our
-operation of fetching active clients. We can also define a method `only_active()`
-in a business entity crate, so that it would be easy to reuse it across your code.
+DORM addresses many of the challenges of enterprise software development.
 
-Finally business entities hydrate into a struct, giving you more type safety.
-
-## Real-life Example
-
-In this book, we will be using a fictional database for your typical Bakery business.
-Primarily we will be using `product`, `inventory`, `order` and `client` tables. The
-examples will rely on those business entities and focus on demonstrating other
-capabilities of DORM:
-
-```rust
-fn notify_clients_of_low_stock() -> Result<()> {
-    let products = Product::table_with_inventory();
-    let products = products.with_condition(products.stock().eq(0));
-
-    let clients = products
-        .ref_order()
-        .only_active()
-        .ref_client();
-
-    for client_comm in clients.get_email_comm().await? {
-        client_comm.type = ClientCommType::LowStock;
-
-        client_comm.save_into(ClientComm::queue()).await?;
-    }
-    Ok(())
-}
-```
-
-This is more "real-world" example implementing a scalable
-implementation for a simple business process of sending emails to
-clients that have active orders that cannot be fulfilled due to a low
-stock.
-
-The code is simple, safe and maintainable.
+Ready to learn how? The answers are coming.
