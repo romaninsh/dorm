@@ -4,19 +4,19 @@
 
 DORM is a type-safe, ergonomic database toolkit for Rust that focuses on developer productivity
 without compromising performance. It allows you to work with your database using Rust's strong type
-system while abstracting away the complexity of SQL querie. (Support for NoSQL databases is coming soon)
+system while abstracting away the complexity of SQL queries. (Support for NoSQL databases is coming soon)
 
 ## Quick Start
 
 Your application would typically require a model definition. Here is example:
-[bakery_example](bakery_example/src/). You would also need a Postgres database populated with sample data
-from [schema-pg.sql](bakery_example/schema-pg.sql) and create role `postgres`.
+[bakery_model](bakery_model/src/). You would also need a Postgres database populated with sample data
+from [schema-pg.sql](bakery_model/schema-pg.sql) and create role `postgres`.
 
 Once this is in place, you can use DORM to interract with your data like this:
 
 ```rust
 use dorm::prelude::*;
-use bakery_example::*;
+use bakery_model::*;
 
 let set_of_clients = Client::table();   // Table<Postgres, Client>
 
@@ -57,7 +57,7 @@ WHERE client_id IN (SELECT id FROM client WHERE is_paying_client = true)
 ```
 
 This illustrates how DORM combined specific rules of your code such as "only paying clients" with
-the rules defined in the bakery_model, like "soft-delete enabled for Orders" and "prices are
+the rules defined in the [bakery_model](bakery_model/src/), like "soft-delete enabled for Orders" and "prices are
 actually stored in product table" and "order has multiple line items" to generate a single
 and efficient SQL query.
 
@@ -67,7 +67,7 @@ and efficient SQL query.
 - 🥰 **Complexity Abstraction** - Hide complexity away from your business logic
 - 🚀 **High Performance** - Generates optimal SQL queries
 - 🔧 **Zero Boilerplate** - No code generation or macro magic required
-- 🧪 **Testing Ready** - First-class support for mocking and testing
+- 🧪 **Testing Ready** - First-class support for mocking and unit-testing
 - 🔄 **Relationship Handling** - Elegant handling of table relationships and joins
 - 📦 **Extensible** - Easy to add custom functionality and non-SQL support
 
@@ -76,9 +76,11 @@ and efficient SQL query.
 DORM is still in development. It is not in crates.io yet, so to install it you will need to clone
 this repository and link it to your project manually.
 
+If you like what you see so far - reach out to me on BlueSky: [nearly.guru](https://bsky.app/profile/nearly.guru)
+
 ## Introduction
 
-(You ran run this [example](bakery_example/examples/0-intro.rs) with `cargo run --example 0-intro`)
+(You can run this [example](bakery_model/examples/0-intro.rs) with `cargo run --example 0-intro`)
 
 DORM interract with your data through a unique concept called "Data Sets". Your application will
 work with different sets suc has "Set of Clients", "Set of Orders" and "Set of Products" etc.
