@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - DORM - The Dry ORM</title>
+        <title>Data Sets - DORM - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -152,97 +152,79 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
-<p>Welcome to this Book on DORM. Before we dive in, few assumptions:</p>
+                        <h1 id="data-sets"><a class="header" href="#data-sets">Data Sets</a></h1>
+<p>Most of Rust apps operate with data which is readily available in memory. Business apps
+are stateless, loading too much data is an anti-pattern.</p>
+<p>Depending of the capabilities of the underlying data storage layer, you should look to
+create as many requests and retrieve as little data as possible.</p>
+<p><code>DataSet</code> is is a representation of collection of records - stored remotely.</p>
+<h2 id="readabledataset-and-writabledataset"><a class="header" href="#readabledataset-and-writabledataset">ReadableDataSet and WritableDataSet</a></h2>
+<p>DORM provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. DORM also provides
+several implementations of these traits:</p>
 <ul>
-<li>You have read the Introduction (README): <a href="https://github.com/romaninsh/dorm">https://github.com/romaninsh/dorm</a></li>
-<li>You have cloned this repository, installed postgres and ran <code>0-intro</code> example.</li>
-<li>You have a bit of patience to get to the bottom of various components of DORM as they are explained.</li>
-<li>You might need some Rust experience, but I'll try to provide pointers and keep things simple.</li>
+<li><code>sql::Table</code> - implements both <code>ReadableDataSet</code> and <code>WritableDataSet</code>.</li>
+<li><code>sql::Query</code> - implements <code>ReadableDataSet</code> only.</li>
 </ul>
-<h2 id="the-purpose-of-separation-of-concerns-and-complexity-abstraction"><a class="header" href="#the-purpose-of-separation-of-concerns-and-complexity-abstraction">The Purpose of separation of concerns and complexity abstraction</a></h2>
-<p>Terms <code>concern separation</code> and <code>complexity abstraction</code> may be new to you, so I'm going to
-look at the enterprise software more generally and also explain why languages such as Java,
-C# and TypeScript are considered suitable, while Rust so far had no traction.</p>
-<p>Majority of code for the enterprise is designed to "codify" business logic. As company
-grows, business rules become more complex. When you open a bank account, you can choose
-from few account types, but under the hood banks have hundreds of legacy account types.
-A lot of hidden use-cases are needed for regulations or to support legacy systems.</p>
-<p>In order to keep the code maintainable, old code must be pruned without affecting stability
-of remaining code. Refactoring will always face resistance from product leads, who prefer
-rolling out new features.</p>
-<p>Companies prefer systems and frameworks which are more modular and easier to maintain.
-In many cases, developers who originally wrote the code would no longer be with the company
-and a lot of code is written by junior developers too.</p>
-<h3 id="separation-of-concerns"><a class="header" href="#separation-of-concerns">Separation of Concerns</a></h3>
-<p>Within your average product team (say - 20 developers) engineers who share the code, engineers
-would find preference towards a certain sub-sections of your app. Some developers may prefer
-working on the "order processing" while others will dive into "onboarding" flow. Those are
-called areas of concern. The practice of separating those areas is called SoC - Separation of Concerns.</p>
-<p>Rust generally relies on sub-crates to separate concerns, but there is one area, where
-those areas intersect - and that is the "persistence layer".</p>
-<h3 id="persistence-layer"><a class="header" href="#persistence-layer">Persistence layer</a></h3>
-<p>As a business software is dealing with events - it needs to store it's state. Data needs
-to persist between execution as well as propogate between containers. Business software
-is state-less - when request comes in, the data is loaded, processed and stored back.</p>
-<p>Request can come in from an API interface or event queue. Similarly data can be loaded/stored
-from Database, APIs or Caches.</p>
-<p>It is quite common that in order to process a single request the data would need to be loaded
-and stored several times. Quite often external API would rely on intermediate APIs (middleware)
-to achieve the task.</p>
-<h3 id="idempotence"><a class="header" href="#idempotence">Idempotence</a></h3>
-<p>Any request can fail. It can fail before any data is loaded or it can fail after the data
-is processed and stored. Idempotence is a design pattern that ensures that any requset can
-be retried by the caller. If the original request was successful, retry will also be successful,
-but it will not cause any duplicates. This is called Retry safety.</p>
-<p>To give you an example, request to send payment of $10 should not send a total of $20 if
-it is "retried" due to communication issue inside a middleware.</p>
-<h3 id="complexity-abstraction"><a class="header" href="#complexity-abstraction">Complexity Abstraction</a></h3>
-<p>I have just went through some of the essential design principles of enterprise software systems.
-If this is new to you, it may sound excessively complex.</p>
-<p>Well, there is another trick we use in enterprise system and it is complexity abstraction.
-An application can be built in layers, where each layer hides complexity.</p>
-<p>In fact - when you were going through the <code>introduction</code> code, you have experienced
-complexity abstraction first hand. You saw a simple and readable code, that was hiding
-complexity through abstraction.</p>
-<p>Rust is a complex language. Rust also does not provide any obvious way to implement
-complexity abstraction.</p>
-<p>DORM has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
-could provide <code>retry safety</code> for your delete operation.</p>
-<h3 id="safety-and-performance"><a class="header" href="#safety-and-performance">Safety and Performance</a></h3>
-<p>In my opinion, the most important aspect of enterprise software is safety. As humans
-we all make mistakes. Quite often in a pursuit of performance, we sacrifice safety.</p>
-<p>A seasoned developer may write a chunk of SQL code that quickly and efficiently
-performs a complex aggregation. When junior developer comes in, they may introduce
-a serious safety bug just by trying to tweak or replicate this complex SQL code.</p>
-<p>DORM offers a way to generate performant SQL code without sacrificing safety.</p>
-<h3 id="impact-of-change"><a class="header" href="#impact-of-change">Impact of Change</a></h3>
-<p>I've seen many projects which were stuck with a "legacy" data structure because
-the codebase was riddled with hardcoded SQL queries. As business logic evolves,
-it will require changes in the data structure.</p>
-<p>Persistence abstraction of DORM creates a layer for backward-compatibility. Operations
-like splitting a table into two tables, moving columns between tables can be
-handled without affecting change in business logic.</p>
-<h3 id="testability"><a class="header" href="#testability">Testability</a></h3>
-<p>It is crucial that business logic is testable. However - quite often the logic only
-works when it has access to the data. The <code>integration tests</code> usually provides
-test-data to a test-suite. Generally those are slow, they can't track code
-coverage and they are hard to debug.</p>
-<p>DORM provides a way to test business logic through <code>unit tests</code>. By mocking your
-data source, you can focus on the business logic. More importantly you can adopt
-<code>test-driven development</code> and create standards for your code with test coverage.
-Use of faster <code>unit-tests</code> also reduces your release cycle time - a metric that
-companies are actively looking at.</p>
-<h2 id="business-appps-with-dorm"><a class="header" href="#business-appps-with-dorm">Business Appps with DORM</a></h2>
-<p>DORM addresses many of the challenges of enterprise software development.</p>
-<p>Ready to learn how? The answers are coming.</p>
+<p>Design of DORM allow you to extend those into NoSQL (like MongoDB or GraphQL sources)
+as well as custom RestAPI sources. Those extensions do not need to be part of DORM,
+they can be implemented as separate crates.</p>
+<h2 id="operating-with-data-sets"><a class="header" href="#operating-with-data-sets">Operating with Data sets</a></h2>
+<p>At the very basic level - you can iterate through a readable data set.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let set_of_clients = Client::table();
+
+for client in set_of_clients.get().await? {
+    println!("{}", client.name);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>But quite often the advanced persistence layer could allow us to do much more. DORM approach is
+to provide ways how one Data Set can yield a different Data Set. Here are some examples:</p>
+<ul>
+<li>Get a set containing subset of records - by filtering.</li>
+<li>Converting <code>sql::table</code> into <code>sql::query</code> for further manipulation.</li>
+<li>Execute operation over set, such as calculate sum of a field from all records, or create comma-separated list of values.</li>
+<li>Modify or delete multiple records.</li>
+</ul>
+<p>DORM prefers to off-load operation execution to the persistence layer, but because this may increase
+complexity, DORM also provides a way to abstract this complexity away.</p>
+<h3 id="example---lazy-expression-fields"><a class="header" href="#example---lazy-expression-fields">Example - Lazy expression fields</a></h3>
+<p>In our introduction example, we came across an aggregate field: <code>total</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>table
+  .has_many("line_items", "order_id", || Box::new(LineItem::table()))
+  .with_expression("total", |t| {
+    let item = t.sub_line_items();
+    item.sum(item.total()).render_chunk()
+  })
+<span class="boring">}</span></code></pre></pre>
+<p>Lets examine more generally what is happening here. Use of <code>has_many</code> creates</p>
+<p>This is a very simple example of a lazy expression field. It is a field that is calculated
+by a closure. The closure is passed a reference to the table. The closure can then use
+the table to create a new field.</p>
+<p>The above example is equivalent to this SQL:</p>
+<pre><code class="language-sql">SELECT id,
+    (SELECT SUM((SELECT price FROM product WHERE id = product_id) * quantity)
+    FROM order_line WHERE order_line.order_id = ord.id) AS total
+FROM ord
+</code></pre>
+<p>In this example, we are using a sub-query to calculate the total. The sub-query is
+created by calling <code>sub_line_items()</code> on the table. This method returns a new table
+that is a subset of the original table. The sub-query is then used to create a new
+field called <code>total</code> that is a sum of the price and quantity.</p>
+<p>The implementation
+of <code>sql::Table</code> however provides ability to create new Data Sets from existing ones.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
 
-                            <a rel="next prefetch" href="1-dataset.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="1-table-and-fields.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -252,8 +234,11 @@ companies are actively looking at.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
 
-                    <a rel="next prefetch" href="1-dataset.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="1-table-and-fields.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
