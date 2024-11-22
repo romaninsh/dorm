@@ -1,8 +1,7 @@
 # Summary
 
 - [Introduction](./introduction.md)
-  - [Data Sets](./1-dataset.md)
-  - [Table and Fields](./1-table-and-fields.md)
+  - [Data Sets and Tables](./1-dataset-and-table.md)
   - [Expressions and Queries](./2-expressions-and-queries.md)
   - [Fields and Operations](./3-fields-and-operations.md)
   - [Conditions](./4-conditions.md)
