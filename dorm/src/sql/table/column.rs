@@ -6,21 +6,21 @@ use crate::sql::Condition;
 use crate::sql::Expression;
 use crate::sql::Operations;
 use crate::sql::WrapArc;
-use crate::traits::column::Column;
+use crate::traits::column::SqlField;
 
 #[derive(Debug, Clone)]
-pub struct Field {
+pub struct Column {
     name: String,
     table_alias: Option<String>,
-    field_alias: Option<String>,
+    column_alias: Option<String>,
 }
 
-impl Field {
-    pub fn new(name: String, table_alias: Option<String>) -> Field {
-        Field {
+impl Column {
+    pub fn new(name: String, table_alias: Option<String>) -> Column {
+        Column {
             name,
             table_alias,
-            field_alias: None,
+            column_alias: None,
         }
     }
     pub fn name(&self) -> String {
@@ -35,23 +35,23 @@ impl Field {
     pub fn set_table_alias(&mut self, alias: String) {
         self.table_alias = Some(alias);
     }
-    pub fn set_field_alias(&mut self, alias: String) {
-        self.field_alias = Some(alias);
+    pub fn set_column_alias(&mut self, alias: String) {
+        self.column_alias = Some(alias);
     }
 
-    pub fn get_field_alias(&self) -> Option<String> {
-        self.field_alias.clone()
+    pub fn get_column_alias(&self) -> Option<String> {
+        self.column_alias.clone()
     }
 }
 
-impl Chunk for Field {
+impl Chunk for Column {
     fn render_chunk(&self) -> Expression {
         Arc::new(self.clone()).render_chunk()
     }
 }
-impl Operations for Field {}
+impl Operations for Column {}
 
-impl Operations for Arc<Field> {
+impl Operations for Arc<Column> {
     fn eq(&self, other: &impl Chunk) -> Condition {
         Condition::from_field(self.clone(), "=", WrapArc::wrap_arc(other.render_chunk()))
     }
@@ -62,20 +62,20 @@ impl Operations for Arc<Field> {
     // }
 }
 
-impl Chunk for Arc<Field> {
+impl Chunk for Arc<Column> {
     fn render_chunk(&self) -> Expression {
         Expression::new(format!("{}", self.name_with_table()), vec![])
     }
 }
 
-impl Column for Arc<Field> {
+impl SqlField for Arc<Column> {
     fn render_column(&self, mut alias: Option<&str>) -> Expression {
         // If the alias is the same as the field name, we don't need to render it
         if alias.is_some() && alias.unwrap() == self.name {
             alias = None;
         }
 
-        let alias = alias.or(self.field_alias.as_deref());
+        let alias = alias.or(self.column_alias.as_deref());
 
         if let Some(alias) = alias {
             expr!(format!("{} AS {}", self.name_with_table(), alias))
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_field() {
-        let field = Arc::new(Field::new("id".to_string(), None));
+        let field = Arc::new(Column::new("id".to_string(), None));
         let (sql, params) = field.render_chunk().split();
 
         assert_eq!(sql, "id");
@@ -112,14 +112,14 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let field = Arc::new(Field::new("id".to_string(), None));
+        let field = Arc::new(Column::new("id".to_string(), None));
         let (sql, params) = field.eq(&1).render_chunk().split();
 
         assert_eq!(sql, "(id = {})");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], 1);
 
-        let f_age = Arc::new(Field::new("age".to_string(), Some("u".to_string())));
+        let f_age = Arc::new(Column::new("age".to_string(), Some("u".to_string())));
         let (sql, params) = f_age.add(5).eq(&18).render_chunk().split();
 
         assert_eq!(sql, "((u.age) + ({}) = {})");

@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{sql::chunk::Chunk, sql::Operations, traits::column::Column};
+use crate::{sql::chunk::Chunk, sql::Operations, traits::column::SqlField};
 
 /// Constructs [`Expression`] from a format scring and several parameters by passing those
 /// into [`json!`]
@@ -135,7 +135,7 @@ impl Expression {
     }
 }
 
-impl Column for Expression {
+impl SqlField for Expression {
     fn render_column(&self, alias: Option<&str>) -> Expression {
         let expression = if let Some(alias) = alias {
             format!("({}) AS {}", self.expression, alias)

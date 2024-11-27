@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_upper() {
-        let a = Arc::new(Field::new("name".to_string(), None));
+        let a = Arc::new(Column::new("name".to_string(), None));
         let b = a.upper();
 
         assert_eq!(b.render_chunk().sql(), "UPPER(name)");
@@ -135,8 +135,8 @@ mod tests {
     fn test_upper_in_table() {
         let data = json!([]);
         let t = Table::new("product", MockDataSource::new(&data))
-            .with_field("name")
-            .with_expression("name_caps", |t| t.get_field("name").unwrap().upper());
+            .with_column("name")
+            .with_expression("name_caps", |t| t.get_column("name").unwrap().upper());
 
         let query = t
             .get_select_query_for_field_names(&["name", "name_caps"])

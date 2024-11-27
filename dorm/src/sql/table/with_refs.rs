@@ -44,7 +44,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
                     .with_context(|| format!("Failed to get subquery for '{}'", &relation))
                     .unwrap();
 
-                tt.get_select_query_for_field(Box::new(tt.get_field(&field_name).unwrap()))
+                tt.get_select_query_for_field(Box::new(tt.get_column(&field_name).unwrap()))
                     .render_chunk()
             });
         }
@@ -120,9 +120,9 @@ mod tests {
                 let data = json!([]);
                 let db = MockDataSource::new(&data);
                 let table = Table::new("persons", db)
-                    .with_field("id")
-                    .with_field("name")
-                    .with_field("parent_id")
+                    .with_column("id")
+                    .with_column("name")
+                    .with_column("parent_id")
                     .with_one("parent", "parent_id", || Box::new(PersonSet::table()))
                     .with_many("children", "parent_id", || Box::new(PersonSet::table()));
 
@@ -131,7 +131,7 @@ mod tests {
         }
 
         let mut john = PersonSet::table();
-        john.add_condition(john.get_field("name").unwrap().eq(&"John".to_string()));
+        john.add_condition(john.get_column("name").unwrap().eq(&"John".to_string()));
 
         let children: Table<MockDataSource, EmptyEntity> = john.get_ref_as("children").unwrap();
 
@@ -162,7 +162,7 @@ mod tests {
         let parent_name = john
             .get_ref_with_empty_entity("parent")
             .unwrap()
-            .field_query(john.get_field("name").unwrap());
+            .field_query(john.get_column("name").unwrap());
 
         let query = parent_name.render_chunk().split();
 
@@ -179,19 +179,19 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let users = Table::new("users", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name");
+            .with_id_column("id")
+            .with_title_column("name");
 
         let orders = Table::new("orders", data_source.clone())
-            .with_id_field("id")
-            .with_field("user_id")
-            .with_field("sum")
-            .with_title_field("ref");
+            .with_id_column("id")
+            .with_column("user_id")
+            .with_column("sum")
+            .with_title_column("ref");
 
         let mut users = users.with_many("orders", "user_id", move || Box::new(orders.clone()));
         users.add_expression("orders_sum", |t| {
             let x = t.get_subquery_as::<EmptyEntity>("orders").unwrap();
-            x.sum(x.get_field("sum").unwrap()).render_chunk()
+            x.sum(x.get_column("sum").unwrap()).render_chunk()
         });
 
         let q = users.get_select_query_for_field_names(&["name", "orders_sum"]);
@@ -205,14 +205,14 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let users = Table::new("users", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name")
-            .with_field("role_id");
+            .with_id_column("id")
+            .with_title_column("name")
+            .with_column("role_id");
 
         let roles = Table::new("roles", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name")
-            .with_field("permission");
+            .with_id_column("id")
+            .with_title_column("name")
+            .with_column("permission");
 
         let users = users
             .with_one("role", "role_id", move || Box::new(roles.clone()))

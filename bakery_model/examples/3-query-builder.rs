@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     // Associate Github Authors (github_username, user_name) with theirTeam IDs (user_source_id, team_source_id)
     let github_authors_and_teams = Query::new()
         .with_table("dx_teams", Some("t".to_string()))
-        .with_column("team_source_id".to_string(), expr!("t.source_id"));
+        .with_field("team_source_id".to_string(), expr!("t.source_id"));
 
     // Team is an anchestor
     let github_authors_and_teams = github_authors_and_teams.with_join(query::JoinQuery::new(
@@ -83,8 +83,8 @@ async fn main() -> Result<()> {
             query::QuerySource::Table("dx_users".to_string(), Some("dxu".to_string())),
             query::QueryConditions::on().with_condition(expr!("h.descendant_id = dxu.team_id")),
         ))
-        .with_column("user_name".to_string(), expr!("dxu.name"))
-        .with_column("github_username".to_string(), expr!("dxu.source_id"));
+        .with_field("user_name".to_string(), expr!("dxu.name"))
+        .with_field("github_username".to_string(), expr!("dxu.source_id"));
 
     // pin identity of a user
     let github_authors_and_teams = github_authors_and_teams
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
                 .with_condition(expr!("dxu.id = i.dx_user_id"))
                 .with_condition(expr!("i.source = {}", "github")),
         ))
-        .with_column("user_source_id".to_string(), expr!("i.source_id"));
+        .with_field("user_source_id".to_string(), expr!("i.source_id"));
 
     println!("{}", format_query(&github_authors_and_teams));
 
@@ -126,8 +126,8 @@ async fn main() -> Result<()> {
     let query_successful_deployments = Query::new()
         .with_table("deployments", None)
         .with_distinct()
-        .with_column("id".to_string(), expr!("deployments.id"))
-        .with_column("deployed_at".to_string(), expr!("deployments.deployed_at"))
+        .with_field("id".to_string(), expr!("deployments.id"))
+        .with_field("deployed_at".to_string(), expr!("deployments.deployed_at"))
         .with_condition(expr!("deployments.success = {}", true))
         .with_condition(expr!("deployments.environment ~* {}", "prod"));
 
@@ -254,7 +254,7 @@ async fn main() -> Result<()> {
             .render_chunk(),
             Some("dates".to_string()),
         ))
-        .with_column(
+        .with_field(
             "date".to_string(),
             expr!("date_trunc({}, dates)", "week".to_string()),
         );
@@ -269,16 +269,16 @@ async fn main() -> Result<()> {
                     "date_trunc({}, deploys.deployed_at) BETWEEN time_series.date AND time_series.date + INTERVAL '7 days'",
                     "day".to_string()
                 )),
-        )).with_column("date".to_string(), expr!("time_series.date"))
-        .with_column("deploys_count".to_string(), expr!("COUNT(DISTINCT deploys.id)"))
+        )).with_field("date".to_string(), expr!("time_series.date"))
+        .with_field("deploys_count".to_string(), expr!("COUNT(DISTINCT deploys.id)"))
         .with_group_by(expr!("time_series.date")).with_order_by(expr!("time_series.date"));
 
     let final_query = Query::new()
         .with_with("time_series", query_time_series)
         .with_with("daily_deploys", deploys_deploys)
         .with_table("daily_deploys", None)
-        .with_column("date".to_string(), expr!("date"))
-        .with_column(
+        .with_field("date".to_string(), expr!("date"))
+        .with_field(
             "value".to_string(),
             expr!("(SUM(daily_deploys.deploys_count) / 7)"),
         )

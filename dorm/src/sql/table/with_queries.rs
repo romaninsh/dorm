@@ -3,12 +3,12 @@ use serde::Serialize;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 
-use super::{AnyTable, Field, TableWithFields};
+use super::{AnyTable, Column, TableWithColumns};
 use crate::prelude::AssociatedQuery;
 use crate::sql::query::{QueryType, SqlQuery};
 use crate::sql::table::Table;
 use crate::sql::Query;
-use crate::traits::column::Column;
+use crate::traits::column::SqlField;
 use crate::traits::datasource::DataSource;
 use crate::traits::entity::Entity;
 
@@ -17,9 +17,12 @@ use super::RelatedTable;
 pub trait TableWithQueries: AnyTable {
     fn get_empty_query(&self) -> Query;
     fn get_select_query(&self) -> Query;
-    fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query;
+    fn get_select_query_for_fields(
+        &self,
+        fields: IndexMap<String, Arc<Box<dyn SqlField>>>,
+    ) -> Query;
     fn get_select_query_for_field_names(&self, field_names: &[&str]) -> Query;
-    fn get_select_query_for_field(&self, field: Box<dyn Column>) -> Query;
+    fn get_select_query_for_field(&self, field: Box<dyn SqlField>) -> Query;
 }
 
 impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
@@ -36,16 +39,19 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
 
     fn get_select_query(&self) -> Query {
         let mut query = self.get_empty_query();
-        query = self.add_fields_into_query(query, None);
+        query = self.add_columns_into_query(query, None);
         self.hooks.before_select_query(self, &mut query).unwrap();
         query
     }
 
-    fn get_select_query_for_fields(&self, fields: IndexMap<String, Arc<Box<dyn Column>>>) -> Query {
+    fn get_select_query_for_fields(
+        &self,
+        fields: IndexMap<String, Arc<Box<dyn SqlField>>>,
+    ) -> Query {
         let mut query = self.get_empty_query();
         for (field_alias, field_val) in fields {
             let field_val = field_val.clone();
-            query.add_column(Some(field_alias), field_val);
+            query.add_field(Some(field_alias), field_val);
         }
         query
     }
@@ -59,9 +65,9 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
         self.get_select_query_for_fields(index_map)
     }
 
-    fn get_select_query_for_field(&self, field: Box<dyn Column>) -> Query {
+    fn get_select_query_for_field(&self, field: Box<dyn SqlField>) -> Query {
         let mut q = self.get_empty_query();
-        q.add_column(None, Arc::new(field));
+        q.add_field(None, Arc::new(field));
         self.hooks.before_select_query(self, &mut q).unwrap();
         q
     }
@@ -69,9 +75,9 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
 
 impl<D: DataSource, E: Entity> Table<D, E> {
     /// Obsolete: use get_select_query_for_field() instead
-    pub fn field_query(&self, field: Arc<Field>) -> AssociatedQuery<D> {
+    pub fn field_query(&self, field: Arc<Column>) -> AssociatedQuery<D> {
         // let query = self.get_select_query_for_field(field);
-        let query = self.get_empty_query().with_column(field.name(), field);
+        let query = self.get_empty_query().with_field(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
     }
 
@@ -109,8 +115,8 @@ impl<D: DataSource, E: Entity> Table<D, E> {
             panic!("Values must be a struct");
         };
 
-        for (field, _) in &self.fields {
-            let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
+        for (field, _) in &self.columns {
+            let field_object = Arc::new(Column::new(field.clone(), self.table_alias.clone()));
 
             if field_object.calculated() {
                 continue;
@@ -137,8 +143,8 @@ impl<D: DataSource, E: Entity> Table<D, E> {
             panic!("Values must be a struct");
         };
 
-        for (field, _) in &self.fields {
-            let field_object = Arc::new(Field::new(field.clone(), self.table_alias.clone()));
+        for (field, _) in &self.columns {
+            let field_object = Arc::new(Column::new(field.clone(), self.table_alias.clone()));
 
             if field_object.calculated() {
                 continue;
@@ -182,8 +188,8 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let table: Table<MockDataSource, User> = Table::new_with_entity("users", db)
-            .with_field("name")
-            .with_field("surname");
+            .with_column("name")
+            .with_column("surname");
 
         let query = table
             .get_insert_query(User {
@@ -213,10 +219,10 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let table = Table::new("users", db)
-            .with_id_field("id")
+            .with_id_column("id")
             .with_id(1.into())
-            .with_field("name")
-            .with_field("surname");
+            .with_column("name")
+            .with_column("surname");
 
         let query = table
             .get_update_query(UserName {
@@ -236,14 +242,14 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let mut orders = Table::new("orders", db.clone())
-            .with_field("price")
-            .with_field("qty");
+            .with_column("price")
+            .with_column("qty");
 
         orders.add_expression("total", |t| {
             expr_arc!(
                 "{}*{}",
-                t.get_field("price").unwrap().clone(),
-                t.get_field("qty").unwrap().clone()
+                t.get_column("price").unwrap().clone(),
+                t.get_column("qty").unwrap().clone()
             )
             .render_chunk()
         });

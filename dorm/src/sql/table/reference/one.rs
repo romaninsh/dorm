@@ -34,7 +34,7 @@ impl RelatedSqlTable for ReferenceOne {
         let mut target = (self.get_table)();
         let target_field = target.id();
         let id_set = table.get_select_query_for_field(Box::new(
-            table.get_field(self.our_foreign_key.as_str()).unwrap(),
+            table.get_column(self.our_foreign_key.as_str()).unwrap(),
         ));
         target.add_condition(target_field.in_expr(&id_set));
         target
@@ -45,7 +45,7 @@ impl RelatedSqlTable for ReferenceOne {
         let target_field = target.id_with_table_alias();
         target.add_condition(
             target_field.eq(&table
-                .get_field_with_table_alias(self.our_foreign_key.as_str())
+                .get_column_with_table_alias(self.our_foreign_key.as_str())
                 .unwrap()),
         );
         target
@@ -67,13 +67,13 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let users = Table::new("users", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name")
-            .with_field("role_id");
+            .with_id_column("id")
+            .with_title_column("name")
+            .with_column("role_id");
 
         let roles = Table::new("roles", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name");
+            .with_id_column("id")
+            .with_title_column("name");
 
         let reference = ReferenceOne::new("role_id", move || Box::new(roles.clone()));
 

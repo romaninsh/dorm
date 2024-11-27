@@ -15,7 +15,7 @@ pub trait SqlQuery {
     fn add_with(&mut self, alias: String, subquery: QuerySource);
     fn set_source(&mut self, source: QuerySource);
     fn set_type(&mut self, query_type: QueryType);
-    fn add_column(&mut self, name: Option<String>, column: Arc<Box<dyn Column>>);
+    fn add_field(&mut self, name: Option<String>, column: Arc<Box<dyn SqlField>>);
     fn get_where_conditions_mut(&mut self) -> &mut QueryConditions;
     fn get_having_conditions_mut(&mut self) -> &mut QueryConditions;
     fn add_join(&mut self, join: JoinQuery);

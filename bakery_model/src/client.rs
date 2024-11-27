@@ -21,11 +21,11 @@ impl Client {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("client", postgres())
-                .with_id_field("id")
-                .with_field("name")
-                .with_field("contact_details")
-                .with_field("is_paying_client")
-                .with_field("bakery_id")
+                .with_id_column("id")
+                .with_column("name")
+                .with_column("contact_details")
+                .with_column("is_paying_client")
+                .with_column("bakery_id")
                 .with_one("bakery", "bakery_id", || Box::new(Bakery::table()))
                 .with_many("orders", "client_id", || Box::new(Order::table()))
         })
@@ -36,17 +36,17 @@ impl Client {
 }
 
 pub trait ClientTable: AnyTable {
-    fn name(&self) -> Arc<Field> {
-        self.get_field("name").unwrap()
+    fn name(&self) -> Arc<Column> {
+        self.get_column("name").unwrap()
     }
-    fn contact_details(&self) -> Arc<Field> {
-        self.get_field("contact_details").unwrap()
+    fn contact_details(&self) -> Arc<Column> {
+        self.get_column("contact_details").unwrap()
     }
-    fn bakery_id(&self) -> Arc<Field> {
-        self.get_field("bakery_id").unwrap()
+    fn bakery_id(&self) -> Arc<Column> {
+        self.get_column("bakery_id").unwrap()
     }
-    fn is_paying_client(&self) -> Field {
-        self.get_field("is_paying_client").unwrap().deref().clone()
+    fn is_paying_client(&self) -> Column {
+        self.get_column("is_paying_client").unwrap().deref().clone()
     }
 
     fn ref_bakery(&self) -> Table<Postgres, Bakery>;

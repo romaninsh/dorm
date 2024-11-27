@@ -32,7 +32,7 @@ impl std::fmt::Debug for ReferenceMany {
 impl RelatedSqlTable for ReferenceMany {
     fn get_related_set(&self, table: &dyn SqlTable) -> Box<dyn SqlTable> {
         let mut target = (self.get_table)();
-        let target_field = target.get_field(&self.target_foreign_key).unwrap();
+        let target_field = target.get_column(&self.target_foreign_key).unwrap();
         let id_set = table.get_select_query_for_field(Box::new(table.id()));
         target.add_condition(target_field.in_expr(&id_set));
         target
@@ -41,7 +41,7 @@ impl RelatedSqlTable for ReferenceMany {
     fn get_linked_set(&self, table: &dyn SqlTable) -> Box<dyn SqlTable> {
         let mut target = (self.get_table)();
         let target_field = target
-            .get_field_with_table_alias(&self.target_foreign_key)
+            .get_column_with_table_alias(&self.target_foreign_key)
             .unwrap();
         target.add_condition(target_field.eq(&table.id_with_table_alias()));
         target
@@ -54,7 +54,7 @@ mod tests {
 
     use super::*;
     use crate::mocks::datasource::MockDataSource;
-    use crate::prelude::TableWithFields;
+    use crate::prelude::TableWithColumns;
     use crate::sql::Table;
     use crate::traits::entity::EmptyEntity;
 
@@ -65,13 +65,13 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let users = Table::new("users", data_source.clone())
-            .with_id_field("id")
-            .with_title_field("name");
+            .with_id_column("id")
+            .with_title_column("name");
 
         let orders = Table::new("orders", data_source.clone())
-            .with_id_field("id")
-            .with_field("user_id")
-            .with_title_field("order_ref");
+            .with_id_column("id")
+            .with_column("user_id")
+            .with_title_column("order_ref");
 
         let reference = ReferenceMany::new("user_id", move || Box::new(orders.clone()));
 

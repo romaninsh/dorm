@@ -32,7 +32,7 @@ impl<T: DataSource> std::fmt::Debug for Join<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Join")
             .field("table", &self.table.get_table_name())
-            .field("fields", &self.table.get_fields())
+            .field("fields", &self.table.get_columns())
             .field("join_query", &self.join_query)
             .finish()
     }

@@ -26,11 +26,11 @@ impl Product {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("product", postgres())
-                .with_id_field("id")
-                .with_title_field("name")
-                .with_field("bakery_id")
-                .with_field("calories")
-                .with_field("price")
+                .with_id_column("id")
+                .with_title_column("name")
+                .with_column("bakery_id")
+                .with_column("calories")
+                .with_column("price")
 
             // .has_one("bakery", "bakery_id", || BakerySet::new())
         })
@@ -43,14 +43,14 @@ impl Product {
 pub trait ProductTable: AnyTable {
     fn with_inventory(self) -> Table<Postgres, ProductInventory>;
 
-    fn name(&self) -> Arc<Field> {
-        self.get_field("name").unwrap()
+    fn name(&self) -> Arc<Column> {
+        self.get_column("name").unwrap()
     }
-    fn price(&self) -> Arc<Field> {
-        self.get_field("price").unwrap()
+    fn price(&self) -> Arc<Column> {
+        self.get_column("price").unwrap()
     }
-    fn bakery_id(&self) -> Arc<Field> {
-        self.get_field("bakery_id").unwrap()
+    fn bakery_id(&self) -> Arc<Column> {
+        self.get_column("bakery_id").unwrap()
     }
 
     // pub fn stock(&self) -> Arc<Field> {
@@ -63,8 +63,8 @@ impl ProductTable for Table<Postgres, Product> {
         let t = self.with_join::<ProductInventory, EmptyEntity>(
             Table::new_with_entity("inventory", postgres())
                 .with_alias("i")
-                .with_id_field("product_id")
-                .with_field("stock"),
+                .with_id_column("product_id")
+                .with_column("stock"),
             "id",
         );
         t
@@ -77,9 +77,9 @@ pub trait ProductInventoryTable: RelatedTable<Postgres> {
         j.table().clone()
     }
 
-    fn stock(&self) -> Arc<Field> {
+    fn stock(&self) -> Arc<Column> {
         let j = self.j_stock();
-        j.get_field("stock").unwrap()
+        j.get_column("stock").unwrap()
     }
 }
 impl ProductInventoryTable for Table<Postgres, ProductInventory> {}

@@ -4,8 +4,16 @@ Welcome to this Book on DORM. Before we dive in, few assumptions:
 
 - You have read the Introduction (README): <https://github.com/romaninsh/dorm>
 - You have cloned this repository, installed postgres and ran `0-intro` example.
+- You have interest in software development efficiency, safety and maintainability.
 - You have a bit of patience to get to the bottom of various components of DORM as they are explained.
 - You might need some Rust experience, but I'll try to provide pointers and keep things simple.
+
+To get us on the same page, I'll need to go over a basic principles of enterprise software
+requirements. Those won't apply to majority of Rust projects, but they are crucial
+in commercial software development.
+
+If you are familiar with the concepts (such as from work by Martin Fowler or Eric Evans),
+you can skip this section.
 
 ## The Purpose of separation of concerns and complexity abstraction
 

@@ -21,9 +21,9 @@ impl LineItem {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("order_line", postgres())
-                .with_field("quantity")
-                .with_field("order_id")
-                .with_field("product_id")
+                .with_column("quantity")
+                .with_column("order_id")
+                .with_column("product_id")
                 .with_expression("total", |t: &Table<Postgres, LineItem>| {
                     t.price().render_chunk().mul(t.quantity())
                 })
@@ -44,22 +44,22 @@ pub trait LineItemTable: AnyTable {
     fn as_table(&self) -> &Table<Postgres, LineItem> {
         self.as_any_ref().downcast_ref().unwrap()
     }
-    fn quantity(&self) -> Arc<Field> {
-        self.get_field("quantity").unwrap()
+    fn quantity(&self) -> Arc<Column> {
+        self.get_column("quantity").unwrap()
     }
-    fn order_id(&self) -> Arc<Field> {
-        self.get_field("order_id").unwrap()
+    fn order_id(&self) -> Arc<Column> {
+        self.get_column("order_id").unwrap()
     }
-    fn product_id(&self) -> Arc<Field> {
-        self.get_field("product_id").unwrap()
+    fn product_id(&self) -> Arc<Column> {
+        self.get_column("product_id").unwrap()
     }
-    fn total(&self) -> Box<dyn Column> {
+    fn total(&self) -> Box<dyn SqlField> {
         self.as_table().search_for_field("total").unwrap()
     }
-    fn price(&self) -> Box<dyn Column>;
+    fn price(&self) -> Box<dyn SqlField>;
 }
 impl LineItemTable for Table<Postgres, LineItem> {
-    fn price(&self) -> Box<dyn Column> {
+    fn price(&self) -> Box<dyn SqlField> {
         self.search_for_field("price").unwrap()
     }
 }

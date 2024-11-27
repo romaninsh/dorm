@@ -42,8 +42,8 @@ async fn main() -> Result<()> {
     }
     impl Entity for Inventory {}
     let inventory: Table<Postgres, Inventory> = Table::new_with_entity("inventory", postgres())
-        .with_id_field("product_id")
-        .with_field("stock");
+        .with_id_column("product_id")
+        .with_column("stock");
 
     for rec in inventory.get().await? {
         println!("{:?}", rec);

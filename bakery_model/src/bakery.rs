@@ -16,9 +16,9 @@ impl Bakery {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("bakery", postgres())
-                .with_id_field("id")
-                .with_field("name")
-                .with_field("profit_margin")
+                .with_id_column("id")
+                .with_column("name")
+                .with_column("profit_margin")
                 .with_many("clients", "bakery_id", || Box::new(Client::table()))
                 .with_many("products", "bakery_id", || Box::new(Product::table()))
         })
@@ -30,14 +30,14 @@ impl Bakery {
 
 pub trait BakeryTable: AnyTable {
     // fields
-    fn id(&self) -> Arc<Field> {
-        self.get_field("id").unwrap()
+    fn id(&self) -> Arc<Column> {
+        self.get_column("id").unwrap()
     }
-    fn name(&self) -> Arc<Field> {
-        self.get_field("name").unwrap()
+    fn name(&self) -> Arc<Column> {
+        self.get_column("name").unwrap()
     }
-    fn profit_margin(&self) -> Arc<Field> {
-        self.get_field("profit_margin").unwrap()
+    fn profit_margin(&self) -> Arc<Column> {
+        self.get_column("profit_margin").unwrap()
     }
 
     fn ref_clients(&self) -> Table<Postgres, Client>;

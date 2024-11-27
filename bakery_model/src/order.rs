@@ -28,8 +28,8 @@ impl Order {
 
         TABLE.get_or_init(|| {
             Table::new_with_entity("ord", postgres())
-                .with_id_field("id")
-                .with_field("client_id")
+                .with_id_column("id")
+                .with_column("client_id")
                 .with_extension(SoftDelete::new("is_deleted"))
                 .with_one("client", "client_id", || Box::new(Client::table()))
                 .with_many("line_items", "order_id", || Box::new(LineItem::table()))
@@ -47,19 +47,19 @@ impl Order {
     fn mock_table(data: &Value) -> Table<MockDataSource, Order> {
         let data_source = MockDataSource::new(&data);
         Table::new_with_entity("ord", data_source)
-            .with_field("id")
-            .with_field("client_id")
-            .with_field("client_name")
-            .with_field("total")
+            .with_column("id")
+            .with_column("client_id")
+            .with_column("client_name")
+            .with_column("total")
     }
 }
 
 pub trait OrderTable: AnyTable {
-    fn client_id(&self) -> Arc<Field> {
-        Order::table().get_field("client_id").unwrap()
+    fn client_id(&self) -> Arc<Column> {
+        Order::table().get_column("client_id").unwrap()
     }
-    fn product_id(&self) -> Arc<Field> {
-        Order::table().get_field("product_id").unwrap()
+    fn product_id(&self) -> Arc<Column> {
+        Order::table().get_column("product_id").unwrap()
     }
 
     fn ref_client(&self) -> Table<Postgres, Client>;

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use std::ptr::eq;
 use std::sync::Arc;
 
-use super::{Join, TableWithFields};
+use super::{Join, TableWithColumns};
 use crate::prelude::Chunk;
 use crate::sql::query::{JoinQuery, JoinType, QueryConditions};
 use crate::sql::table::Table;
@@ -246,7 +246,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
 
         let mut on_condition = QueryConditions::on();
         on_condition.add_condition(
-            self.get_field(our_foreign_id)
+            self.get_column(our_foreign_id)
                 .ok_or_else(|| anyhow!("Table '{}' has no field '{}'", &self, &our_foreign_id))
                 .unwrap()
                 .eq(&their_table_id)
@@ -296,11 +296,11 @@ mod tests {
 
         let user_table = Table::new("users", db.clone())
             .with_alias("u")
-            .with_field("name")
-            .with_field("role_id");
+            .with_column("name")
+            .with_column("role_id");
         let role_table = Table::new("roles", db.clone())
-            .with_field("id")
-            .with_field("role_description");
+            .with_column("id")
+            .with_column("role_description");
 
         let table = user_table.with_join::<EmptyEntity, _>(role_table, "role_id");
 
@@ -319,9 +319,9 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let person = Table::new("person", db.clone())
-            .with_field("id")
-            .with_field("name")
-            .with_field("parent_id");
+            .with_column("id")
+            .with_column("name")
+            .with_column("parent_id");
 
         let father = person.clone().with_alias("father");
         let grandfather = person.clone().with_alias("grandfather");
@@ -350,15 +350,15 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let mut user_table = Table::new("users", db.clone())
-            .with_field("name")
-            .with_field("role_id");
+            .with_column("name")
+            .with_column("role_id");
         let role_table = Table::new("roles", db.clone())
-            .with_field("id")
-            .with_field("role_type");
+            .with_column("id")
+            .with_column("role_type");
 
         let join = user_table.add_join(role_table, "role_id");
 
-        user_table.add_condition(join.get_field("role_type").unwrap().eq(&json!("admin")));
+        user_table.add_condition(join.get_column("role_type").unwrap().eq(&json!("admin")));
 
         let query = user_table.get_select_query().render_chunk().split();
 
@@ -375,15 +375,15 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let mut user_table = Table::new("users", db.clone())
-            .with_field("name")
-            .with_field("role_id");
+            .with_column("name")
+            .with_column("role_id");
         let mut role_table = Table::new("roles", db.clone())
-            .with_field("id")
-            .with_field("role_type");
+            .with_column("id")
+            .with_column("role_type");
 
         role_table.add_condition(
             role_table
-                .get_field("role_type")
+                .get_column("role_type")
                 .unwrap()
                 .eq(&json!("admin")),
         );
@@ -405,19 +405,19 @@ mod tests {
         let db = MockDataSource::new(&data);
 
         let mut user_table = Table::new("users", db.clone())
-            .with_field("name")
-            .with_field("role_id");
+            .with_column("name")
+            .with_column("role_id");
         let mut role_table = Table::new("roles", db.clone())
-            .with_field("id")
-            .with_field("role_type");
+            .with_column("id")
+            .with_column("role_type");
 
         role_table.add_condition(Condition::or(
             role_table
-                .get_field("role_type")
+                .get_column("role_type")
                 .unwrap()
                 .eq(&json!("admin")),
             role_table
-                .get_field("role_type")
+                .get_column("role_type")
                 .unwrap()
                 .eq(&json!("writer")),
         ));
