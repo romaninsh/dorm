@@ -35,7 +35,7 @@ impl Client {
     }
 }
 
-pub trait ClientTable: AnyTable {
+pub trait ClientTable: SqlTable {
     fn name(&self) -> Arc<Column> {
         self.get_column("name").unwrap()
     }
@@ -45,8 +45,8 @@ pub trait ClientTable: AnyTable {
     fn bakery_id(&self) -> Arc<Column> {
         self.get_column("bakery_id").unwrap()
     }
-    fn is_paying_client(&self) -> Column {
-        self.get_column("is_paying_client").unwrap().deref().clone()
+    fn is_paying_client(&self) -> Arc<Column> {
+        self.get_column("is_paying_client").unwrap()
     }
 
     fn ref_bakery(&self) -> Table<Postgres, Bakery>;

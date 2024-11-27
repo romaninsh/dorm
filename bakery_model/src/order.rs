@@ -54,7 +54,7 @@ impl Order {
     }
 }
 
-pub trait OrderTable: AnyTable {
+pub trait OrderTable: SqlTable {
     fn client_id(&self) -> Arc<Column> {
         Order::table().get_column("client_id").unwrap()
     }
