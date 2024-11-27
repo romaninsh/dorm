@@ -5,7 +5,7 @@ use serde_json::json;
 
 use crate::{
     prelude::SqlTable,
-    sql::{query::SqlQuery, Chunk, Field, Operations, Query},
+    sql::{query::SqlQuery, Chunk, Column, Operations, Query},
 };
 
 use super::TableExtension;
@@ -21,16 +21,16 @@ impl SoftDelete {
             soft_delete_field: soft_delete_field.to_string(),
         }
     }
-    fn is_deleted(&self, table: &dyn SqlTable) -> Arc<Field> {
-        table.get_field(&self.soft_delete_field).unwrap()
+    fn is_deleted(&self, table: &dyn SqlTable) -> Arc<Column> {
+        table.get_column(&self.soft_delete_field).unwrap()
     }
 }
 
 impl TableExtension for SoftDelete {
     fn init(&self, table: &mut dyn SqlTable) {
-        table.add_field(
+        table.add_column(
             self.soft_delete_field.clone(),
-            Field::new(self.soft_delete_field.clone(), None),
+            Column::new(self.soft_delete_field.clone(), None),
         );
     }
 
@@ -66,10 +66,10 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let mut table = Table::new("users", data_source.clone())
-            .with_field("name")
-            .with_field("surname");
+            .with_column("name")
+            .with_column("surname");
 
-        table.add_condition(table.get_field("name").unwrap().eq(&"John".to_string()));
+        table.add_condition(table.get_column("name").unwrap().eq(&"John".to_string()));
 
         let mut hooks = Hooks::new();
         let ext = SoftDelete::new("is_deleted");
@@ -96,8 +96,8 @@ mod tests {
         let data_source = MockDataSource::new(&data);
 
         let table = Table::new("users", data_source.clone())
-            .with_field("name")
-            .with_field("surname")
+            .with_column("name")
+            .with_column("surname")
             .with_extension(SoftDelete::new("is_deleted"));
 
         let query = table.get_select_query().render_chunk().split();

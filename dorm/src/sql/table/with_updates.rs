@@ -15,10 +15,10 @@ impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
         let Some(id) = self.data_source.query_exec(&query).await? else {
             return Ok(None);
         };
-        if self.id_field.is_none() {
+        if self.id_column.is_none() {
             return Ok(None);
         }
-        let Some(id) = id.get(self.id_field.as_ref().unwrap()) else {
+        let Some(id) = id.get(self.id_column.as_ref().unwrap()) else {
             return Ok(None);
         };
         Ok(Some(id.clone()))
@@ -37,7 +37,7 @@ impl<T: DataSource, E: Entity> WritableDataSet<E> for Table<T, E> {
             return Err(anyhow::anyhow!("T2 must be a struct"));
         };
 
-        if let Some(ref id_field) = self.id_field {
+        if let Some(ref id_field) = self.id_column {
             if values_map.get(id_field).is_some() {
                 return Err(anyhow::anyhow!("T2 must not specify ID field"));
             }

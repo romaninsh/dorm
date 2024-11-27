@@ -101,6 +101,14 @@ impl Postgres {
         self.client.as_ref()
     }
 
+    pub async fn query_into_statement(&self, query: &Query) -> Result<tokio_postgres::Statement> {
+        let query_rendered = query.render_chunk();
+        self.client
+            .prepare(&query_rendered.sql_final())
+            .await
+            .with_context(|| format!("Attempting to execute query {}", query_rendered.preview()))
+    }
+
     pub async fn query_raw(&self, query: &Query) -> Result<Vec<Value>> {
         let query_rendered = query.render_chunk();
         let params_tosql = query_rendered

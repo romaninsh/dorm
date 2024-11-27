@@ -154,7 +154,7 @@ mod tests {
     use serde_json::Value;
 
     use crate::{
-        prelude::{Field, Operations},
+        prelude::{Column, Operations},
         sql::Condition,
     };
 
@@ -198,8 +198,8 @@ mod tests {
 
     #[test]
     fn test_conditions_expressions() {
-        let name = Arc::new(Field::new("name".to_string(), None));
-        let surname = Arc::new(Field::new("surname".to_string(), Some("sur".to_string())));
+        let name = Arc::new(Column::new("name".to_string(), None));
+        let surname = Arc::new(Column::new("surname".to_string(), Some("sur".to_string())));
 
         let conditions = QueryConditions::having().with_condition(
             Condition::or(name.eq(&surname), surname.eq(&Value::Null)).render_chunk(),

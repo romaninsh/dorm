@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::{
     sql::chunk::Chunk,
     // operations::Operations,
-    traits::column::Column,
+    traits::column::SqlField,
 };
 
 pub trait WrapArc {
@@ -87,7 +87,7 @@ impl Chunk for ExpressionArc {
     }
 }
 
-impl Column for ExpressionArc {
+impl SqlField for ExpressionArc {
     fn render_column(&self, alias: Option<&str>) -> Expression {
         let expression = if let Some(alias) = alias {
             format!("({}) AS {}", self.expression, alias)

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::expr;
-use crate::prelude::Field;
+use crate::prelude::Column;
 use crate::sql::expression::{Expression, ExpressionArc};
 use crate::sql::Chunk;
 
 #[derive(Debug, Clone)]
 enum ConditionOperand {
-    Field(Arc<Field>),
+    Field(Arc<Column>),
     Expression(Box<Expression>),
     Condition(Box<Condition>),
     Value(Value),
@@ -24,7 +24,11 @@ pub struct Condition {
 
 #[allow(dead_code)]
 impl Condition {
-    pub fn from_field(field: Arc<Field>, operation: &str, value: Arc<Box<dyn Chunk>>) -> Condition {
+    pub fn from_field(
+        field: Arc<Column>,
+        operation: &str,
+        value: Arc<Box<dyn Chunk>>,
+    ) -> Condition {
         Condition {
             field: ConditionOperand::Field(field),
             operation: operation.to_string(),
@@ -111,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_condition() {
-        let field = Arc::new(Field::new("id".to_string(), None));
+        let field = Arc::new(Column::new("id".to_string(), None));
 
         let condition = Condition::from_field(field, "=", Arc::new(Box::new("1".to_string())));
         let (sql, params) = condition.render_chunk().split();
@@ -136,8 +140,8 @@ mod tests {
 
     #[test]
     fn test_and() {
-        let f_married = Arc::new(Field::new("married".to_string(), None));
-        let f_divorced = Arc::new(Field::new("divorced".to_string(), None));
+        let f_married = Arc::new(Column::new("married".to_string(), None));
+        let f_divorced = Arc::new(Column::new("divorced".to_string(), None));
 
         let condition =
             Condition::from_field(f_married, "=", Arc::new(Box::new("yes".to_string()))).and(

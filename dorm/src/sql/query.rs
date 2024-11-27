@@ -9,8 +9,8 @@ use crate::{
     expr_arc,
     sql::chunk::Chunk,
     sql::expression::{Expression, ExpressionArc},
-    sql::table::Field,
-    traits::column::Column,
+    sql::table::Column,
+    traits::column::SqlField,
 };
 
 mod parts;
@@ -23,7 +23,7 @@ pub struct Query {
     with: IndexMap<String, QuerySource>,
     distinct: bool,
     query_type: QueryType,
-    columns: IndexMap<Option<String>, Arc<Box<dyn Column>>>,
+    fields: IndexMap<Option<String>, Arc<Box<dyn SqlField>>>,
     set_fields: IndexMap<String, Value>,
 
     where_conditions: QueryConditions,
@@ -47,7 +47,7 @@ impl Query {
             with: IndexMap::new(),
             distinct: false,
             query_type: QueryType::Select,
-            columns: IndexMap::new(),
+            fields: IndexMap::new(),
 
             set_fields: IndexMap::new(),
 
@@ -87,25 +87,25 @@ impl Query {
         self
     }
 
-    pub fn without_columns(mut self) -> Self {
-        self.columns = IndexMap::new();
+    pub fn without_fields(mut self) -> Self {
+        self.fields = IndexMap::new();
         self
     }
 
-    pub fn with_column(mut self, name: String, column: impl Column + 'static) -> Self {
-        self.add_column(Some(name), Arc::new(Box::new(column)));
+    pub fn with_field(mut self, name: String, field: impl SqlField + 'static) -> Self {
+        self.add_field(Some(name), Arc::new(Box::new(field)));
         self
     }
     // Simplified ways to define a field with a string
     pub fn with_column_field(self, name: &str) -> Self {
-        self.with_column(
+        self.with_field(
             name.to_string(),
-            Arc::new(Field::new(name.to_string(), None)),
+            Arc::new(Column::new(name.to_string(), None)),
         )
     }
 
-    pub fn with_column_arc(mut self, name: String, column: Arc<Box<dyn Column>>) -> Self {
-        self.add_column(Some(name), column);
+    pub fn with_field_arc(mut self, name: String, field: Arc<Box<dyn SqlField>>) -> Self {
+        self.add_field(Some(name), field);
         self
     }
 
@@ -184,9 +184,9 @@ impl Query {
     }
 
     fn render_select(&self) -> Result<Expression> {
-        let fields = if self.columns.len() > 0 {
+        let fields = if self.fields.len() > 0 {
             Expression::from_vec(
-                self.columns
+                self.fields
                     .iter()
                     .map(|f| {
                         f.1.render_column(f.0.as_ref().map(|s| s.as_str()))
@@ -329,9 +329,9 @@ impl SqlQuery for Query {
     fn set_type(&mut self, query_type: QueryType) {
         self.query_type = query_type;
     }
-    fn add_column(&mut self, name: Option<String>, column: Arc<Box<dyn Column>>) {
-        if self.columns.insert(name, column).is_some() {
-            // panic!("Column is already defined");
+    fn add_field(&mut self, name: Option<String>, field: Arc<Box<dyn SqlField>>) {
+        if self.fields.insert(name, field).is_some() {
+            // panic!("Field is already defined");
             return;
         }
     }
@@ -395,7 +395,7 @@ mod tests {
             .with_table("users", None)
             .with_column_field("id")
             .with_column_field("name")
-            .with_column("calc".to_string(), expr_arc!("1 + 1"))
+            .with_field("calc".to_string(), expr_arc!("1 + 1"))
             .render_chunk()
             .split();
 
@@ -462,7 +462,7 @@ mod tests {
     fn test_expression_field() {
         let (sql, params) = Query::new()
             .with_table("product", None)
-            .with_column("name_caps".to_string(), expr!("UPPER(name)"))
+            .with_field("name_caps".to_string(), expr!("UPPER(name)"))
             .render_chunk()
             .split();
 
