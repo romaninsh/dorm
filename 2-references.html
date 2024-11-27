@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Fields and Operations - DORM - The Dry ORM</title>
+        <title>References - DORM - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -152,103 +152,119 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="fields-and-operations"><a class="header" href="#fields-and-operations">Fields and Operations</a></h1>
-<p>Well, Query stores columns as a Map&lt;Arc&lt;Box<dyn Column>&gt;&gt;
-and there are several types that implement <code>Column</code> trait,
-but the simplest would be a <code>Field</code> type:</p>
-<p>To add a <code>Field</code> to your <code>Query</code> you can call <code>with_column_field</code>
-method:</p>
+                        <h2 id="table-references"><a class="header" href="#table-references">Table references</a></h2>
+<p>DORM allows you to connect tables together:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let query = Query::new()
-    .with_table("product")
-    .with_column_field("name")
+</span>let users = ClientSet::new(postgres.clone())
+    .with_many("orders", OrderSet::new(postgres.clone()), "user_id", "id")
 <span class="boring">}</span></code></pre></pre>
-<p>Another type that implements <code>Column</code> trait is <code>Expression</code>. Lets
-modify our query by adding an expression by invoking <code>with_column</code> method.
-This method is more generic than "with_column_field" and will accept
-two arguments - a name of the column and a static <code>Column</code> object.</p>
+<p>Your "users" table is now connected to orders through a relationship. Remember that since
+you are operating with Sets, when you traverse, you get a resulting Set, not a single record.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let person = person
-    .with_column("name_caps".to_string(), expr!("UPPER(name)"));
+</span>let vip_users = users.with_condition(users.field("is_vip").eq(true));
+let vip_orders = vip_users.get_ref("orders").unwrap();
+
+let total_order_amount = vip_orders.sum(vip_orders.field("amount")).get_one().await.unwrap();
 <span class="boring">}</span></code></pre></pre>
-<p>If you call <code>preview()</code> on your query now, you should see this:</p>
-<pre><code class="language-sql">SELECT name, UPPER(name) AS name_caps FROM product
+<p>It makes sense to create a bi-directional relationship. Here is how we could define static data sets:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ClientSet {}
+impl ClientSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        ClientSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("client", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .with_field("contact_details")
+                .with_field("bakery_id")
+                .has_many("orders", "client_id", || OrderSet::new())
+        })
+    }
+}
+pub struct OrderSet {}
+impl OrderSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        OrderSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("ord", postgres())
+                .with_field("product_id")
+                .with_field("client_id")
+                //.has_one("product", "product_id", || Products::new().table())
+                .has_one("client", "client_id", || ClientSet::new())
+        })
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Since we are opearting with Sets, traversing one-to-many or many-to-one relationship is identical:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let my_order = OrderSet::new().with_id(123);
+let client_data = my_order.get_ref("client").get_row().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>On an SQL level, the following happens:</p>
+<ol>
+<li>A query is generated for the OrderSet</li>
+<li>order query is used as a condition for a client query</li>
+<li>client query is executed</li>
+</ol>
+<pre><code class="language-sql">SELECT client_id, name, contact_details FROM client WHERE (order_id IN (SELECT id FROM ord WHERE (product_id = 123)));
 </code></pre>
-<p>Query is not very long-lived. Once created, it can be executed,
-but that's it. More interesting for us - Table objects can
-convert themselves into a Query object.</p>
-<p>This is our <code>Table</code> object from earlier:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span>
-<span class="boring">fn main() {
-</span>let product = Table::new("product", postgres.clone())
-    .with_field("id")
-    .with_field("name");
-<span class="boring">}</span></code></pre></pre>
-<p>You already know that <code>Table</code> can produce a <code>Query</code>:</p>
+<p>If your OrderSet contains multiple orders, then "get_ref" set would also contain multiple clients.
+This can be useful, for example, lets see how many different clients currently have placed orders:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let query = product.get_select_query();
-writeln!(query.preview());
+</span>let total_clients = OrderSet::new().get_ref("client").count().get_one().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="subqueries"><a class="header" href="#subqueries">Subqueries</a></h2>
+<p>Knowing relationships between tables can also be useful for creating subqureies. Since those are expensive,
+those would be defined as "lazy expressions". Lets look at a simple example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        bakery_model::order::OrderSet::new()
+            .with_condition(bakery_model::order::OrderSet::client_id().eq(&amp;t.id()))
+            .count()
+            .render_chunk()
+    });
 
-// renders into: SELECT id, name FROM product
+for row in client_set.get_fields(&amp;["name", "orders_count"]).await.unwrap() {
+    println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
+}
 <span class="boring">}</span></code></pre></pre>
-<p>There should be a way to add a "expression" to our query by
-defining it in our table, right?</p>
-<p>As it turns out, tables are quite lazy when it comes to expressions.
-They do not recognize them as fields, and instead will pop them
-into your "select_query" just at the last moment and only when
-you explicitly need that expresison field. This allows you to
-have wide range of expressions in your table and optimize select
-query automatically.</p>
+<p>You might notice that the call-back code here is using &amp;t.id(), however is not using t.get_ref("client") in any way.</p>
+<p>This is because - get_ref here would have returned a set of orders for ALL clients, using "client_id IN (SELECT id FROM client)".
+Instead, our condition should be "client_id = client.id()" and to achieve that we should use "get_ref_related("client")". We can
+simplify our code:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let product = product
-    .with_expression(
-        "name_caps",
-        |t| expr_arc!("UPPER({})", t.get_field("name").unwrap())
-    );
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        t.get_ref_related("client").count().render_chunk()
+    });
 <span class="boring">}</span></code></pre></pre>
-<p>You have probably noticed, that rather then hard-coding name in
-the expression, we are using <code>get_field</code> method. This method
-will return a &amp;Field object, which we can include in our
-ExpressionArc. Field implements <code>SqlChunk</code>, right?</p>
-<p>Executing <code>get_select_query()</code> will will not include <code>name_caps</code>
-by default. You can explicitly ask which fields you'd like to see
-by usign <code>with_select_query_for_field_names</code> method:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let query = product.get_select_query_for_field_names(&amp;["name", "name_caps"]);
-writeln!(query.preview());
-
-// renders into: SELECT name, UPPER(name) AS name_caps FROM product
-<span class="boring">}</span></code></pre></pre>
-<h2 id="operations"><a class="header" href="#operations">Operations</a></h2>
-<p>Relying ot an arbitrary expression macro sometimes is not very
-convenient. DORM offers an <code>Operations</code> trait, that can be used
-to generate some commonly used expressions:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let product = product
-    .with_expression(
-        "name_caps",
-        |t| t.get_field("name").unwrap().upper()
-    );
-<span class="boring">}</span></code></pre></pre>
-<p>Operations can also be used for generating conditions, lets
-look into that next.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="2-references.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="2a-expressions-in-table.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="4-conditions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="3-fields-and-operations.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -258,11 +274,11 @@ look into that next.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="2-references.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="2a-expressions-in-table.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="4-conditions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="3-fields-and-operations.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

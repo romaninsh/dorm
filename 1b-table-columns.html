@@ -178,7 +178,8 @@ let john = user.with_condition(condition);
 <span class="boring">}</span></code></pre></pre>
 <p>When you use <code>user.get()</code>, with <code>User { name, surname, full_name }</code>, <code>Table</code> needs to
 ensure query would include both columns and expression too. More broadly, lets talk about
-what can be deserialised into a <code>User</code> entity:</p>
+what can be deserialised into a <code>User</code> entity fields:</p>
+<h2 id="field-could-be"><a class="header" href="#field-could-be">Field could be:</a></h2>
 <ol>
 <li><strong>Column</strong> - There is a physical SQL column <code>name</code> and <code>surname</code>.</li>
 <li><strong>Expression</strong> - No physical column, but <code>full_name</code> is defined through a SQL expression.</li>
@@ -202,10 +203,8 @@ what can be deserialised into a <code>User</code> entity:</p>
 <li><code>users</code> can deserialise into <code>User</code> struct with 7 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>,
 <code>user_address_city</code> and <code>post_code</code></li>
 </ul>
-<p>Going forward you'll notice <code>column</code> and <code>field</code> terms used interchangeably. Term <code>column</code> referring to a physical column
-in the main table, and term <code>field</code> referring to a logical field.</p>
-<h3 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h3>
-<p>Column operations are implemented in <code>TableWithColumns</code> trait.</p>
+<h2 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h2>
+<p>Column operations are implemented in <code>TableWithColumns</code> trait:</p>
 <ul>
 <li><code>add_column</code> - adds a column to the table</li>
 <li><code>columns</code> - returns all physical columns</li>
@@ -217,7 +216,8 @@ in the main table, and term <code>field</code> referring to a logical field.</p>
 <li><code>get_column_with_table_alias</code> - return a column by name with table alias</li>
 <li><code>search_for_field</code> - similar to <code>get_column</code> but will look for lazy expressions and columns from joined tables.</li>
 </ul>
-<h3 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h3>
+<h2 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h2>
+<p><code>Table&lt;D, E&gt;</code> implements some additional methods for convenience:</p>
 <ul>
 <li><code>with_column</code> - adds a column to the table and returns it</li>
 <li><code>with_title_column</code> - adds a title column to the table and returns it</li>
@@ -230,49 +230,41 @@ in the main table, and term <code>field</code> referring to a logical field.</p>
     .with_title_column("name")
     .with_column("role_name");
 <span class="boring">}</span></code></pre></pre>
-<p>Using <code>with_</code> is more readable and does not require you to define
-<code>users</code> as mutable.</p>
-<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
+<h2 id="extending-entity-with-column-getters"><a class="header" href="#extending-entity-with-column-getters">Extending Entity with column getters</a></h2>
+<p>it is common practice to define field getters like this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let users = Table::new("users", postgres())
-    .with(|t| {
-        t.add_column("id");
-        t.add_id_column("name");
-        t.add_title_column("role_name");
-        t.add_condition(t.get_column("name").unwrap().eq("John"));
-    });
+</span>pub trait ClientTable: SqlTable {
+    fn name(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("name").unwrap()
+    }
+    fn contact_details(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("contact_details").unwrap()
+    }
+    fn bakery_id(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("bakery_id").unwrap()
+    }
+}
 <span class="boring">}</span></code></pre></pre>
-<p>In the later chapters I'll explain to you how to use this properly.</p>
-<h3 id="expressions"><a class="header" href="#expressions">Expressions</a></h3>
-<p>Expressions in a table are lazy. They will not be evaluated unless field
-is explicitly requested.</p>
-<p>To define expression use:</p>
-<ul>
-<li><code>add_expression</code> - define a callback returning Expression for non-physical field</li>
-<li><code>with_expression</code> - just like <code>add_expression</code> but returns modifield Self</li>
-</ul>
-<p>Lets define a field that returns current time:</p>
+<p>This makes it easier to reference columns:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>table.with_expression("current_time", || expr!("now()"));
+</span>expr!(
+    "concat_ws({}, {}, {})",
+    " ",
+    //t.get_column("name").unwrap(),
+    //t.get_column("surname").unwrap()
+    t.name(),
+    t.surname()
+)
 <span class="boring">}</span></code></pre></pre>
-<p>In our introduction example, we came across a field: <code>total</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// lineitem.rs
-table.with_expression("total", |t: &amp;Table&lt;Postgres, LineItem&gt;| {
-    t.price().render_chunk().mul(t.quantity())
-})
-<span class="boring">}</span></code></pre></pre>
-<p><code>fn price()</code> is defined for Table&lt;Postgres, LineItem&gt;, same as <code>fn quantity()</code>.</p>
 <h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
 <p>Ability to specify columns not by name but through a dedicated method makes
 use of Rust type system and avoids typos at compile time. Fields in a query
-can be defined through different means. <code>Table</code> will look into the fields
-present in your Entity and only going to fetch those.</p>
-<p>You might have been puzzled by <code>render_chunk</code> and <code>mul</code> methods, lets talk
-about them next.</p>
+can be defined through different means.</p>
+<p>Swapping Column into Expression allow you to restructure your field names
+without changing the code, also you can bring columns from across the
+entities, but for that we will need to learn more about Expressions</p>
 
                     </main>
 

@@ -608,7 +608,8 @@ let john = user.with_condition(condition);
 <span class="boring">}</span></code></pre></pre>
 <p>When you use <code>user.get()</code>, with <code>User { name, surname, full_name }</code>, <code>Table</code> needs to
 ensure query would include both columns and expression too. More broadly, lets talk about
-what can be deserialised into a <code>User</code> entity:</p>
+what can be deserialised into a <code>User</code> entity fields:</p>
+<h2 id="field-could-be"><a class="header" href="#field-could-be">Field could be:</a></h2>
 <ol>
 <li><strong>Column</strong> - There is a physical SQL column <code>name</code> and <code>surname</code>.</li>
 <li><strong>Expression</strong> - No physical column, but <code>full_name</code> is defined through a SQL expression.</li>
@@ -632,10 +633,8 @@ what can be deserialised into a <code>User</code> entity:</p>
 <li><code>users</code> can deserialise into <code>User</code> struct with 7 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>,
 <code>user_address_city</code> and <code>post_code</code></li>
 </ul>
-<p>Going forward you'll notice <code>column</code> and <code>field</code> terms used interchangeably. Term <code>column</code> referring to a physical column
-in the main table, and term <code>field</code> referring to a logical field.</p>
-<h3 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h3>
-<p>Column operations are implemented in <code>TableWithColumns</code> trait.</p>
+<h2 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h2>
+<p>Column operations are implemented in <code>TableWithColumns</code> trait:</p>
 <ul>
 <li><code>add_column</code> - adds a column to the table</li>
 <li><code>columns</code> - returns all physical columns</li>
@@ -647,7 +646,8 @@ in the main table, and term <code>field</code> referring to a logical field.</p>
 <li><code>get_column_with_table_alias</code> - return a column by name with table alias</li>
 <li><code>search_for_field</code> - similar to <code>get_column</code> but will look for lazy expressions and columns from joined tables.</li>
 </ul>
-<h3 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h3>
+<h2 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h2>
+<p><code>Table&lt;D, E&gt;</code> implements some additional methods for convenience:</p>
 <ul>
 <li><code>with_column</code> - adds a column to the table and returns it</li>
 <li><code>with_title_column</code> - adds a title column to the table and returns it</li>
@@ -660,56 +660,57 @@ in the main table, and term <code>field</code> referring to a logical field.</p>
     .with_title_column("name")
     .with_column("role_name");
 <span class="boring">}</span></code></pre></pre>
-<p>Using <code>with_</code> is more readable and does not require you to define
-<code>users</code> as mutable.</p>
-<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
+<h2 id="extending-entity-with-column-getters"><a class="header" href="#extending-entity-with-column-getters">Extending Entity with column getters</a></h2>
+<p>it is common practice to define field getters like this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let users = Table::new("users", postgres())
-    .with(|t| {
-        t.add_column("id");
-        t.add_id_column("name");
-        t.add_title_column("role_name");
-        t.add_condition(t.get_column("name").unwrap().eq("John"));
-    });
+</span>pub trait ClientTable: SqlTable {
+    fn name(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("name").unwrap()
+    }
+    fn contact_details(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("contact_details").unwrap()
+    }
+    fn bakery_id(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("bakery_id").unwrap()
+    }
+}
 <span class="boring">}</span></code></pre></pre>
-<p>In the later chapters I'll explain to you how to use this properly.</p>
-<h3 id="expressions"><a class="header" href="#expressions">Expressions</a></h3>
-<p>Expressions in a table are lazy. They will not be evaluated unless field
-is explicitly requested.</p>
-<p>To define expression use:</p>
-<ul>
-<li><code>add_expression</code> - define a callback returning Expression for non-physical field</li>
-<li><code>with_expression</code> - just like <code>add_expression</code> but returns modifield Self</li>
-</ul>
-<p>Lets define a field that returns current time:</p>
+<p>This makes it easier to reference columns:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>table.with_expression("current_time", || expr!("now()"));
+</span>expr!(
+    "concat_ws({}, {}, {})",
+    " ",
+    //t.get_column("name").unwrap(),
+    //t.get_column("surname").unwrap()
+    t.name(),
+    t.surname()
+)
 <span class="boring">}</span></code></pre></pre>
-<p>In our introduction example, we came across a field: <code>total</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// lineitem.rs
-table.with_expression("total", |t: &amp;Table&lt;Postgres, LineItem&gt;| {
-    t.price().render_chunk().mul(t.quantity())
-})
-<span class="boring">}</span></code></pre></pre>
-<p><code>fn price()</code> is defined for Table&lt;Postgres, LineItem&gt;, same as <code>fn quantity()</code>.</p>
 <h2 id="conclusion-2"><a class="header" href="#conclusion-2">Conclusion</a></h2>
 <p>Ability to specify columns not by name but through a dedicated method makes
 use of Rust type system and avoids typos at compile time. Fields in a query
-can be defined through different means. <code>Table</code> will look into the fields
-present in your Entity and only going to fetch those.</p>
-<p>You might have been puzzled by <code>render_chunk</code> and <code>mul</code> methods, lets talk
-about them next.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="queries"><a class="header" href="#queries">Queries</a></h1>
-<p>In DORM, query is a dynamic representation of a SQL query. You already
-saw how to create a query in the previous chapter, but now we will
-learn how to create query from scratch.</p>
-<h2 id="expressions-1"><a class="header" href="#expressions-1">Expressions</a></h2>
-<p>Expression is a building block of a query as well as a template engine
-for your query parameters. Lets start with a simple example:</p>
+can be defined through different means.</p>
+<p>Swapping Column into Expression allow you to restructure your field names
+without changing the code, also you can bring columns from across the
+entities, but for that we will need to learn more about Expressions</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="expressions-and-queries"><a class="header" href="#expressions-and-queries">Expressions and Queries</a></h1>
+<p>In DORM, query is a dynamic representation of a SQL query. You already saw how <code>sql::Table</code> is
+creating <code>sql::Query</code>, now it's time to learn how <code>sql::Query</code> works.</p>
+<p>Query owes it's flexibility to <code>Expressions</code> or more specifically to a <code>Chunk</code> trait. Any type
+implementing <code>Chunk</code> can be part of a Query. <code>Expression</code> is just a simplest implementation of
+<code>Chunk</code> trait.</p>
+<p>The main reason for using <code>Expression</code> is separation of SQL statements and its parameters. Treating
+SQL as a string introduces a possibility for SQL injections:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let query = format!(
+  "SELECT * FROM product WHERE name = \"{}\"",
+  user_name
+);
+<span class="boring">}</span></code></pre></pre>
+<p>What if <code>user_name</code> contains <code>"</code> character? Expression is able to handle this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let expression = Expression::new(
@@ -718,81 +719,90 @@ for your query parameters. Lets start with a simple example:</p>
 
 writeln!(expression.preview());
 <span class="boring">}</span></code></pre></pre>
-<p>The above expression will be rendered as:</p>
-<pre><code class="language-sql">SELECT * FROM product WHERE name = 'DeLorian Doughnut'
-</code></pre>
-<p>Expressions do not know anything about the underlying database and
-they cannot execute themselves. Parameters you are passing, must be
-of type <code>serde_json::Value</code>.</p>
-<p>To simplify the process DORM offers you a <code>expr!</code> macro:</p>
+<p>Expression holds <code>statement</code> and <code>parameters</code> separatelly. Here are some methods of <code>Expression</code>:</p>
+<ul>
+<li><code>expr!()</code> - macro for creating new expression</li>
+<li><code>new()</code> - constructor, used by the macro</li>
+<li><code>Expression::empty()</code> - an empty expression</li>
+<li><code>sql()</code> - return SQL statement (without parameters)</li>
+<li><code>sql_final()</code> - returns SQL but will replace {} placeholders with $1, $2 as requested by an underlying SQL access library</li>
+<li><code>params()</code> - return array of parameters</li>
+<li><code>preview()</code> - will insert parameters into the statement and show it for preview purposes. Do not use for executing queries!</li>
+<li><code>split()</code> - returns statement and parameters as a tuple</li>
+<li><code>from_vec()</code> - combines multiple expressions into one using delimeter (like concat_ws)</li>
+</ul>
+<h2 id="expr-macro"><a class="header" href="#expr-macro"><code>expr!()</code> macro</a></h2>
+<p>Parameters in expressions can have of several types, like i64 or String or &amp;str:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let expression = expr!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
+</span>let expression = expr!("INSERT INTO user (name, age) VALUES ({}, {})", "John", 30);
 <span class="boring">}</span></code></pre></pre>
-<p>The parameters to <code>expr!</code> macro can be any owned scalar types, as long
-as they can be converted to <code>serde_json::Value</code> using <code>serde_json::json!</code>.
-macro.</p>
-<p>While convenient, there is a significant limitation to Expressions -
-they cannot be nested. This is because Expression cannot render itself
-into a json::Value.</p>
-<p>To overcome this limitation, DORM offers a ExpressionArc type.</p>
-<h2 id="expression-arc"><a class="header" href="#expression-arc">Expression Arc</a></h2>
-<p>As the name implies, ExpressionAarc keeps its parameters inside an Arc
-and therefore parameters can be dynamic objects. Anything that implements
-<code>SqlChunk</code> trait can be used as a parameter.</p>
-<p>Naturally both <code>Expression</code> and <code>ExpressionArc</code> implement <code>SqlChunk</code>, but
-there are more types that implement <code>SqlChunk</code> trait and we will look
-at them later.</p>
-<p>ExpressionArc can be created through a <code>expr_arc!</code> macro:</p>
+<p>This macro relies on <code>serde_json::json!</code> macro to convert parameters to <code>serde_json::Value</code>.</p>
+<h2 id="expressionarc"><a class="header" href="#expressionarc">ExpressionArc</a></h2>
+<p><code>Expression</code> implements <code>Chunk</code> trait, however it can only hold static parameters. Sometimes
+we want our expressions to be able to hold other <code>Chunk</code> types. This is where <code>ExpressionArc</code>
+comes in:</p>
+<p><code>ExpressionArc</code> is similar to <code>Expression</code> but can contain Arc&lt;Box<dyn Chunk>&gt; as a parameter.
+It even has a similar macro:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let expression = expr_arc!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
-writeln!(expression.preview());
-
-// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+</span>let expression = expr_arc!("INSERT INTO user (name, age) VALUES ({}, {})", "John", 30);
 <span class="boring">}</span></code></pre></pre>
-<p>You can now pass expresisons recursively:</p>
+<p>Now, we can also pass nested expressions to <code>expr_arc!</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let condition = expr_arc!("name = {}", "DeLorian Doughnut");
-let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
-writeln!(expression.preview());
-
-// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+</span>let expression = expr_arc!("INSERT INTO {} (name, age) VALUES ({}, {})", expr!("user"), expr!("John"), 30);
 <span class="boring">}</span></code></pre></pre>
-<p>You might have noticed, that nested expressions are not escaped, but
-rest assured, parameters are never inserted into the SQL query.
-Both Expression and ExpressionArc can cloned and passed around freely.</p>
-<h2 id="flattening-expressions"><a class="header" href="#flattening-expressions">Flattening Expressions</a></h2>
-<p>As you can see in the example above, <code>SqlChunk</code> can have many sub-objects.
-When we need to send off expression to the database, we need to flattern it.</p>
-<p><code>SqlChunk</code> trait has a <code>render_chunk()</code> method that will convert itself
-into a static <code>Expression</code> type:</p>
+<h2 id="overview-of-expressionarc-methods"><a class="header" href="#overview-of-expressionarc-methods">Overview of ExpressionArc methods:</a></h2>
+<ul>
+<li><code>from_vec()</code> - combines multiple <code>Chunk</code>s into single expression using a delimiter (like concat_ws)</li>
+<li><code>fx()</code> - handy way to create a function call: <code>fx!("UPPER", vec!["Hello"])</code></li>
+</ul>
+<p>Just like <code>Expression</code>, <code>ExpressionArc</code> implements <code>Chunk</code>, so can be nested. This feature is crucial
+for building queries.</p>
+<h2 id="query-type"><a class="header" href="#query-type">Query type</a></h2>
+<p>A <code>Query</code> will consists of many parts, each being a <code>Chunk</code>. When query needs to be rendered, it will
+render all of its parts recursively:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let condition = expr_arc!("name = {}", "DeLorian Doughnut");
-let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
-let flattened = expression.render_chunk();
-
-dbg!(flattened.sql());
-dbg!(flattened.params());
-
-// renders into: SELECT * FROM product WHERE name = {}
-// params: [json!("DeLorian Doughnut")]
+</span>// example from Query::render_delete()
+Ok(expr_arc!(
+    format!("DELETE FROM {}{{}}", table),
+        self.where_conditions.render_chunk()
+    ).render_chunk())
 <span class="boring">}</span></code></pre></pre>
-<p>In the example above, we used <code>render_chunk()</code> method on <code>ExpressionArc</code>
-to convert it into a static <code>Expression</code> type. Then sql() and params()
-methods can be called to get the final template and parameters. Template
-has correctly combined nested condition, while leaving parameter value
-separated.</p>
+<p>Obviously you can extend this easily or even have your own version of <code>Query</code>. Generally it's not needed,
+as <code>Query</code> is very flexible and diverse. It can also hold other queries recursively.</p>
+<p>Locate <code>bakery_model/examples/3-query-builder.rs</code> for an example of a super-complex query syntax.</p>
+<h3 id="query-overview"><a class="header" href="#query-overview">Query Overview:</a></h3>
+<p>Let me establish a pattern first:</p>
+<ul>
+<li><code>set_table()</code> - sets table for a query</li>
+<li><code>set_source()</code> - similar to <code>set_table()</code> but QuerySource can be a table, another query or an expression</li>
+<li><code>with_table()</code> - similar to <code>set_table()</code> but returns a modified Self</li>
+</ul>
+<p>As with <code>Table</code> type earlier - <code>set_table()</code> adn <code>set_source()</code> are implemented as part of dyn-safe <code>SqlQuery</code> trait.
+On other hand <code>with_table()</code> is only implemented by <code>Query</code> struct.</p>
+<p>Here are some other methods:</p>
+<ul>
+<li><code>new()</code> - returns a blank query</li>
+<li><code>set_distinct()</code>, <code>with_distinct()</code> - includes <code>DISTINCT</code> keyword into a query</li>
+<li><code>set_type()</code>, <code>with_type()</code> - sets query type (INSERT, UPDATE, DELETE, SELECT)</li>
+<li><code>add_with()</code>, <code>with_with()</code> - adds a WITH subquery to a query</li>
+<li><code>add_field()</code>, <code>with_field()</code> - adds a field to a query</li>
+<li><code>with_field_arc()</code> - accepts <code>Arc&lt;Box&lt;dyn Chunk&gt;&gt;</code> as a field</li>
+<li><code>with_column_field()</code> - simplified way to add a table columns to a query</li>
+<li><code>without_fields()</code> - removes all fields from a query</li>
+<li><code>with_where_condition()</code>, <code>with_having_condition()</code> - adds a condition to a query.</li>
+<li><code>with_condition()</code>, <code>with_condition_arc()</code> - accepts <code>impl Chunk</code> and <code>Arc&lt;Box&lt;dyn Chunk&gt;&gt;</code> as a condition</li>
+<li><code>with_join()</code> - adds a join to a query</li>
+<li><code>with_group_by()</code>, <code>add_group_by()</code> - adds a group by to a query</li>
+<li><code>with_order_by()</code>, <code>add_order_by()</code> - adds an order by to a query</li>
+<li><code>with_set_field()</code>, <code>set_field_value()</code> - sets a field value for INSERT, UPDATE or REPLACE queries</li>
+</ul>
+<p><code>Query</code> relies on several sub-types: <code>QuerySource</code>, <code>QueryConditions</code>, <code>JoinQuery</code> etc.</p>
 <h2 id="how-query-uses-expressions-"><a class="header" href="#how-query-uses-expressions-">How Query uses Expressions ?</a></h2>
-<p>A query object is designed as a template engine. It contains maps
-of various columns, conditions, joins etc. Query implements <code>SqlChunk</code>
-and query itself can be contained inside expression or another query.</p>
-<p>Query implements wide range of "with_*" methods that can be used to
-manipulate the query. Lets create a query that will select all
-columns from "product" table, where name is "DeLorian Doughnut"
-and age is greater than 30:</p>
+<p>Lets look at some examples, which combine Expressions and Query:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let expr1 = expr!("name = {}", "John");
@@ -809,14 +819,7 @@ writeln!(query.preview());
 
 // renders into: SELECT id, name FROM users WHERE name = 'John' AND age &gt; 30
 <span class="boring">}</span></code></pre></pre>
-<p>Query does not know anything about the underlying database and therefore
-cannot execute itself. It can only be rendered into a template and
-parameters.</p>
-<p>Query is immutable calling <code>with_*</code> methods will take the ownership,
-modify and return a new instance, making it perfect for chaining.</p>
-<p>Methods like <code>with_condition</code> can accept any argument
-that implements <code>SqlChunk</code> trait, lets create another query,
-based on the one we had above:</p>
+<p>Lets continue to build out and make <code>query</code> part of a bigger <code>query2</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// query is from example above
@@ -825,20 +828,258 @@ let query2 = Query::new()
     .with_condition(expr_arc!("user_id in {}",
         query
             .clone()
-            .without_columns()
+            .without_fields()
             .with_column_field("id")
     ));
 
 writeln!(query2.preview());
 
-// renders into: SELECT * FROM orders WHERE user_id in (SELECT id, name, age FROM users WHERE name = 'John' AND age &gt; 30)
+// renders into: SELECT * FROM orders WHERE user_id in (SELECT id FROM users WHERE name = 'John' AND age &gt; 30)
 <span class="boring">}</span></code></pre></pre>
-<p>Importantly - the two parameters which were set (and then cloned)
-for the <code>query</code> are kept separate from a final query rendering and
-will be passed into DataSource separately. This ensures that
-SQL injection is never possible.</p>
-<p>Next, lets explore some other kinds of <code>SqlChunk</code> implementation,
-that are more intuitive to use over Expressions.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>DORM's query system leverages <code>Expressions</code> and the <code>Chunk</code> trait to build dynamic, safe, and
+composable SQL queries. <code>Expressions</code> separate SQL statements from parameters, preventing injection
+risks, while <code>ExpressionArc</code> extends this flexibility by supporting nested expressions.</p>
+<p><code>Queries</code> are constructed from multiple <code>Chunk</code>s, allowing complex operations like subqueries,
+joins, and conditions to be rendered recursively.</p>
+<p><code>Query</code> methods like <code>with_table</code>, <code>with_field</code>, and <code>with_condition</code> make query building very
+simple and customizable, while macros like <code>expr!</code> and <code>expr_arc!</code> simplify additional ways to
+extend queries.</p>
+<p>Next, I'll explain how <code>Expressions</code> and <code>Query</code> can be part of <code>Table</code> field expressions.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="expressions-in-a-table"><a class="header" href="#expressions-in-a-table">Expressions in a Table</a></h1>
+<p>We now know, that Query can accept expressions pretty much anywhere, but
+what about <code>Table</code>?</p>
+<h2 id="add_expression-and-with_expression"><a class="header" href="#add_expression-and-with_expression"><code>add_expression()</code> and <code>with_expression()</code></a></h2>
+<p>Table treats expressions lazily. Unless the Entity you are using
+has a field that matches expression field name, it will not be evaluated.</p>
+<p>To define expression use:</p>
+<ul>
+<li><code>add_expression</code> - define a callback returning Expression for a field</li>
+<li><code>with_expression</code> - just like <code>add_expression</code> but returns modifield Self</li>
+</ul>
+<p>Lets define a field that returns current time:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>table.with_expression("current_time", || expr!("now()"));
+<span class="boring">}</span></code></pre></pre>
+<p>In our introduction example, we came across a field: <code>total</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// lineitem.rs
+table.with_expression("total", |t: &amp;Table&lt;Postgres, LineItem&gt;| {
+    t.price().render_chunk().mul(t.quantity())
+})
+<span class="boring">}</span></code></pre></pre>
+<h2 id="chunks-and-expressions"><a class="header" href="#chunks-and-expressions">Chunks and Expressions</a></h2>
+<p>Any <code>Chunk</code> can be converted into <code>Expression</code> but executing <code>render_chunk()</code>. If
+you call <code>render_chunk()</code> on a Query, it will flattern itself into a static <code>Expression</code> type.</p>
+<p>a callback that <code>with_expression</code> accepts, is expected to return <code>Expression</code>, but you
+can use various ways on how to build it.</p>
+<p>For instance, we can get a query from related table:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>.with_many("line_items", "order_id", || Box::new(LineItem::table()))
+.with_expression("total", |t| {
+    let item = t.sub_line_items();
+    item.sum(item.total()).render_chunk()
+})
+
+// you also need this:
+pub trait OrderTable: SqlTable {}
+impl OrderTable for Table&lt;Postgres, Order&gt; {
+    fn sub_line_items(&amp;self) -&gt; Table&lt;Postgres, LineItem&gt; {
+        self.get_subquery_as("line_items").unwrap()
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Relationship between entities is defined by <code>with_many</code> and <code>with_one</code> methods.
+Traversing this relationship can be done by <code>get_ref()</code> and <code>get_subquery()</code> methods.</p>
+<p>We have already explored <code>get_ref()</code> earlier, but how is <code>get_subquery()</code> different?</p>
+<ul>
+<li><code>get_ref()</code> - given a DataSet - return related DataSet: <code>SELECT * FROM line_items WHERE order_id IN (SELECT id FROM ord)</code></li>
+<li><code>get_subquery()</code> - Will return Table with a condition linking to the current table: <code>SELECT * FROM line_items WHERE order_id = ord.id</code></li>
+</ul>
+<p><code>get_subquery()</code> only makes sense if you make it part of the <code>Order</code> table query. It's perfect for
+us to aggregate sum of <code>total</code>s:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let item = t.sub_line_items();
+item.sum(item.total()).render_chunk()
+<span class="boring">}</span></code></pre></pre>
+<p>Here <code>item</code> is of type <code>Table&lt;Postgres, LineItem&gt;</code> which means we can use <code>Table::sum()</code> and custom
+method <code>Table&lt;Postgres, LineItem&gt;::total()</code>.</p>
+<p>Method <code>sum</code> returns <code>Query</code> (impl <code>Chunk</code>) which we can convert into <code>Expression</code> using <code>render_chunk()</code>.</p>
+<p>BTW - <code>sum</code> accepts <code>Chunk</code> as an argument, and in our case that is just fine, because <code>total()</code> returns
+a chunk and not a Column.</p>
+<h2 id="another-example"><a class="header" href="#another-example">Another Example</a></h2>
+<p>As our last example, lets look at LineItem implementation of a <code>price</code> field. This filed is implemented
+through expression again, as we don't have a physical column fro it:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>.with_one("client", "client_id", || Box::new(Client::table()))
+.with_expression("price", |t| {
+    let product = t.get_subquery_as::&lt;Product&gt;("product").unwrap();
+    product.field_query(product.price()).render_chunk()
+})
+<span class="boring">}</span></code></pre></pre>
+<p>I haven't defined method like <code>sub_line_items</code> before, so I'm using <code>get_subquery_as</code> directly.
+There is also <code>get_subquery</code> but it returns Box<dyn SqlTable>. I want to use <code>product.price()</code> so
+instead I'm using <code>get_subquery_as</code> and specifying entity type explicitly.</p>
+<p>As far as DORM is concerned, it sees <code>with_one</code> and <code>with_many</code> relationships equally. I need to
+think about this though. If subquery could return multiple rows, I'd need to have them limited,
+aggregated or wrapped into a string somehow (like using ExpressionArc::fx())</p>
+<p>In this case I don't have to worry about that. I just need to query a single field (that happens to
+be a column <code>price</code>).</p>
+<h2 id="expressions-in-conditions"><a class="header" href="#expressions-in-conditions">Expressions in Conditions</a></h2>
+<p>Previously I have used the following code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let set_of_clients = Client::table();
+
+let condition = set_of_clients.is_paying_client().eq(&amp;true);
+let paying_clients = set_of_clients.with_condition(condition);
+<span class="boring">}</span></code></pre></pre>
+<p>Condition is a struct, that implements <code>Chunk</code> trait. You can probably guess that <code>Table</code>
+will apply those <code>Condition</code>s into resulting Queries and that's it.</p>
+<p>Condition consists of <code>field</code> , <code>operation</code> and <code>value</code>:</p>
+<ul>
+<li><code>field</code>: Can be a <code>Column</code>, <code>Expression</code>, another <code>Condition</code> or a <code>serde_json::Value</code></li>
+<li><code>operation</code> is just a string</li>
+<li><code>value</code> is a <code>Chunk</code></li>
+</ul>
+<p>The reason why we don't simply throw everything into <code>Expression</code> - our <code>Column</code> might need
+to use an alias (and sometimes we change alias as we join tables)</p>
+<h2 id="operations"><a class="header" href="#operations">Operations</a></h2>
+<p><code>Operations</code> is another Trait that allows type to participate in SQL operations. Both <code>Column</code> and <code>Expression</code> and <code>Value</code>
+implement <code>Operations</code>, this allows this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let condition = column.eq(&amp;"John")
+
+// or
+
+let condition = expr!("now()").lt(&amp;yesterday)
+<span class="boring">}</span></code></pre></pre>
+<p>####################################################################</p>
+<hr />
+<p>####################################################################</p>
+<p>Using <code>with_</code> is more readable and does not require you to define
+<code>users</code> as mutable.</p>
+<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with(|t| {
+        t.add_column("id");
+        t.add_id_column("name");
+        t.add_title_column("role_name");
+        t.add_condition(t.get_column("name").unwrap().eq("John"));
+    });
+<span class="boring">}</span></code></pre></pre>
+<p>In the later chapters I'll explain to you how to use this properly.</p>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="table-references"><a class="header" href="#table-references">Table references</a></h2>
+<p>DORM allows you to connect tables together:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = ClientSet::new(postgres.clone())
+    .with_many("orders", OrderSet::new(postgres.clone()), "user_id", "id")
+<span class="boring">}</span></code></pre></pre>
+<p>Your "users" table is now connected to orders through a relationship. Remember that since
+you are operating with Sets, when you traverse, you get a resulting Set, not a single record.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let vip_users = users.with_condition(users.field("is_vip").eq(true));
+let vip_orders = vip_users.get_ref("orders").unwrap();
+
+let total_order_amount = vip_orders.sum(vip_orders.field("amount")).get_one().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>It makes sense to create a bi-directional relationship. Here is how we could define static data sets:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ClientSet {}
+impl ClientSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        ClientSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("client", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .with_field("contact_details")
+                .with_field("bakery_id")
+                .has_many("orders", "client_id", || OrderSet::new())
+        })
+    }
+}
+pub struct OrderSet {}
+impl OrderSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        OrderSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("ord", postgres())
+                .with_field("product_id")
+                .with_field("client_id")
+                //.has_one("product", "product_id", || Products::new().table())
+                .has_one("client", "client_id", || ClientSet::new())
+        })
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Since we are opearting with Sets, traversing one-to-many or many-to-one relationship is identical:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let my_order = OrderSet::new().with_id(123);
+let client_data = my_order.get_ref("client").get_row().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>On an SQL level, the following happens:</p>
+<ol>
+<li>A query is generated for the OrderSet</li>
+<li>order query is used as a condition for a client query</li>
+<li>client query is executed</li>
+</ol>
+<pre><code class="language-sql">SELECT client_id, name, contact_details FROM client WHERE (order_id IN (SELECT id FROM ord WHERE (product_id = 123)));
+</code></pre>
+<p>If your OrderSet contains multiple orders, then "get_ref" set would also contain multiple clients.
+This can be useful, for example, lets see how many different clients currently have placed orders:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let total_clients = OrderSet::new().get_ref("client").count().get_one().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="subqueries"><a class="header" href="#subqueries">Subqueries</a></h2>
+<p>Knowing relationships between tables can also be useful for creating subqureies. Since those are expensive,
+those would be defined as "lazy expressions". Lets look at a simple example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        bakery_model::order::OrderSet::new()
+            .with_condition(bakery_model::order::OrderSet::client_id().eq(&amp;t.id()))
+            .count()
+            .render_chunk()
+    });
+
+for row in client_set.get_fields(&amp;["name", "orders_count"]).await.unwrap() {
+    println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>You might notice that the call-back code here is using &amp;t.id(), however is not using t.get_ref("client") in any way.</p>
+<p>This is because - get_ref here would have returned a set of orders for ALL clients, using "client_id IN (SELECT id FROM client)".
+Instead, our condition should be "client_id = client.id()" and to achieve that we should use "get_ref_related("client")". We can
+simplify our code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        t.get_ref_related("client").count().render_chunk()
+    });
+<span class="boring">}</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="fields-and-operations"><a class="header" href="#fields-and-operations">Fields and Operations</a></h1>
 <p>Well, Query stores columns as a Map&lt;Arc&lt;Box<dyn Column>&gt;&gt;
 and there are several types that implement <code>Column</code> trait,
@@ -912,7 +1153,7 @@ writeln!(query.preview());
 
 // renders into: SELECT name, UPPER(name) AS name_caps FROM product
 <span class="boring">}</span></code></pre></pre>
-<h2 id="operations"><a class="header" href="#operations">Operations</a></h2>
+<h2 id="operations-1"><a class="header" href="#operations-1">Operations</a></h2>
 <p>Relying ot an arbitrary expression macro sometimes is not very
 convenient. DORM offers an <code>Operations</code> trait, that can be used
 to generate some commonly used expressions:</p>
