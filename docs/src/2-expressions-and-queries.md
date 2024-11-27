@@ -1,13 +1,23 @@
-# Queries
+# Expressions and Queries
 
-In DORM, query is a dynamic representation of a SQL query. You already
-saw how to create a query in the previous chapter, but now we will
-learn how to create query from scratch.
+In DORM, query is a dynamic representation of a SQL query. You already saw how `sql::Table` is
+creating `sql::Query`, now it's time to learn how `sql::Query` works.
 
-## Expressions
+Query owes it's flexibility to `Expressions` or more specifically to a `Chunk` trait. Any type
+implementing `Chunk` can be part of a Query. `Expression` is just a simplest implementation of
+`Chunk` trait.
 
-Expression is a building block of a query as well as a template engine
-for your query parameters. Lets start with a simple example:
+The main reason for using `Expression` is separation of SQL statements and its parameters. Treating
+SQL as a string introduces a possibility for SQL injections:
+
+```rust
+let query = format!(
+  "SELECT * FROM product WHERE name = \"{}\"",
+  user_name
+);
+```
+
+What if `user_name` contains `"` character? Expression is able to handle this:
 
 ```rust
 let expression = Expression::new(
@@ -17,101 +27,106 @@ let expression = Expression::new(
 writeln!(expression.preview());
 ```
 
-The above expression will be rendered as:
+Expression holds `statement` and `parameters` separatelly. Here are some methods of `Expression`:
 
-```sql
-SELECT * FROM product WHERE name = 'DeLorian Doughnut'
-```
+- `expr!()` - macro for creating new expression
+- `new()` - constructor, used by the macro
+- `Expression::empty()` - an empty expression
+- `sql()` - return SQL statement (without parameters)
+- `sql_final()` - returns SQL but will replace {} placeholders with $1, $2 as requested by an underlying SQL access library
+- `params()` - return array of parameters
+- `preview()` - will insert parameters into the statement and show it for preview purposes. Do not use for executing queries!
+- `split()` - returns statement and parameters as a tuple
+- `from_vec()` - combines multiple expressions into one using delimeter (like concat_ws)
 
-Expressions do not know anything about the underlying database and
-they cannot execute themselves. Parameters you are passing, must be
-of type `serde_json::Value`.
+## `expr!()` macro
 
-To simplify the process DORM offers you a `expr!` macro:
-
-```rust
-let expression = expr!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
-```
-
-The parameters to `expr!` macro can be any owned scalar types, as long
-as they can be converted to `serde_json::Value` using `serde_json::json!`.
-macro.
-
-While convenient, there is a significant limitation to Expressions -
-they cannot be nested. This is because Expression cannot render itself
-into a json::Value.
-
-To overcome this limitation, DORM offers a ExpressionArc type.
-
-## Expression Arc
-
-As the name implies, ExpressionAarc keeps its parameters inside an Arc
-and therefore parameters can be dynamic objects. Anything that implements
-`SqlChunk` trait can be used as a parameter.
-
-Naturally both `Expression` and `ExpressionArc` implement `SqlChunk`, but
-there are more types that implement `SqlChunk` trait and we will look
-at them later.
-
-ExpressionArc can be created through a `expr_arc!` macro:
+Parameters in expressions can have of several types, like i64 or String or &str:
 
 ```rust
-let expression = expr_arc!("SELECT * FROM product WHERE name = {}", "DeLorian Doughnut");
-writeln!(expression.preview());
-
-// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+let expression = expr!("INSERT INTO user (name, age) VALUES ({}, {})", "John", 30);
 ```
 
-You can now pass expresisons recursively:
+This macro relies on `serde_json::json!` macro to convert parameters to `serde_json::Value`.
+
+## ExpressionArc
+
+`Expression` implements `Chunk` trait, however it can only hold static parameters. Sometimes
+we want our expressions to be able to hold other `Chunk` types. This is where `ExpressionArc`
+comes in:
+
+`ExpressionArc` is similar to `Expression` but can contain Arc<Box<dyn Chunk>> as a parameter.
+It even has a similar macro:
 
 ```rust
-let condition = expr_arc!("name = {}", "DeLorian Doughnut");
-let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
-writeln!(expression.preview());
-
-// renders into: SELECT * FROM product WHERE name = 'DeLorian Doughnut'
+let expression = expr_arc!("INSERT INTO user (name, age) VALUES ({}, {})", "John", 30);
 ```
 
-You might have noticed, that nested expressions are not escaped, but
-rest assured, parameters are never inserted into the SQL query.
-Both Expression and ExpressionArc can cloned and passed around freely.
-
-## Flattening Expressions
-
-As you can see in the example above, `SqlChunk` can have many sub-objects.
-When we need to send off expression to the database, we need to flattern it.
-
-`SqlChunk` trait has a `render_chunk()` method that will convert itself
-into a static `Expression` type:
+Now, we can also pass nested expressions to `expr_arc!`:
 
 ```rust
-let condition = expr_arc!("name = {}", "DeLorian Doughnut");
-let expression = expr_arc!("SELECT * FROM product WHERE {}", condition);
-let flattened = expression.render_chunk();
-
-dbg!(flattened.sql());
-dbg!(flattened.params());
-
-// renders into: SELECT * FROM product WHERE name = {}
-// params: [json!("DeLorian Doughnut")]
+let expression = expr_arc!("INSERT INTO {} (name, age) VALUES ({}, {})", expr!("user"), expr!("John"), 30);
 ```
 
-In the example above, we used `render_chunk()` method on `ExpressionArc`
-to convert it into a static `Expression` type. Then sql() and params()
-methods can be called to get the final template and parameters. Template
-has correctly combined nested condition, while leaving parameter value
-separated.
+## Overview of ExpressionArc methods:
+
+- `from_vec()` - combines multiple `Chunk`s into single expression using a delimiter (like concat_ws)
+- `fx()` - handy way to create a function call: `fx!("UPPER", vec!["Hello"])`
+
+Just like `Expression`, `ExpressionArc` implements `Chunk`, so can be nested. This feature is crucial
+for building queries.
+
+## Query type
+
+A `Query` will consists of many parts, each being a `Chunk`. When query needs to be rendered, it will
+render all of its parts recursively:
+
+```rust
+// example from Query::render_delete()
+Ok(expr_arc!(
+    format!("DELETE FROM {}{{}}", table),
+        self.where_conditions.render_chunk()
+    ).render_chunk())
+```
+
+Obviously you can extend this easily or even have your own version of `Query`. Generally it's not needed,
+as `Query` is very flexible and diverse. It can also hold other queries recursively.
+
+Locate `bakery_model/examples/3-query-builder.rs` for an example of a super-complex query syntax.
+
+### Query Overview:
+
+Let me establish a pattern first:
+
+- `set_table()` - sets table for a query
+- `set_source()` - similar to `set_table()` but QuerySource can be a table, another query or an expression
+- `with_table()` - similar to `set_table()` but returns a modified Self
+
+As with `Table` type earlier - `set_table()` adn `set_source()` are implemented as part of dyn-safe `SqlQuery` trait.
+On other hand `with_table()` is only implemented by `Query` struct.
+
+Here are some other methods:
+
+- `new()` - returns a blank query
+- `set_distinct()`, `with_distinct()` - includes `DISTINCT` keyword into a query
+- `set_type()`, `with_type()` - sets query type (INSERT, UPDATE, DELETE, SELECT)
+- `add_with()`, `with_with()` - adds a WITH subquery to a query
+- `add_field()`, `with_field()` - adds a field to a query
+- `with_field_arc()` - accepts `Arc<Box<dyn Chunk>>` as a field
+- `with_column_field()` - simplified way to add a table columns to a query
+- `without_fields()` - removes all fields from a query
+- `with_where_condition()`, `with_having_condition()` - adds a condition to a query.
+- `with_condition()`, `with_condition_arc()` - accepts `impl Chunk` and `Arc<Box<dyn Chunk>>` as a condition
+- `with_join()` - adds a join to a query
+- `with_group_by()`, `add_group_by()` - adds a group by to a query
+- `with_order_by()`, `add_order_by()` - adds an order by to a query
+- `with_set_field()`, `set_field_value()` - sets a field value for INSERT, UPDATE or REPLACE queries
+
+`Query` relies on several sub-types: `QuerySource`, `QueryConditions`, `JoinQuery` etc.
 
 ## How Query uses Expressions ?
 
-A query object is designed as a template engine. It contains maps
-of various columns, conditions, joins etc. Query implements `SqlChunk`
-and query itself can be contained inside expression or another query.
-
-Query implements wide range of "with\_\*" methods that can be used to
-manipulate the query. Lets create a query that will select all
-columns from "product" table, where name is "DeLorian Doughnut"
-and age is greater than 30:
+Lets look at some examples, which combine Expressions and Query:
 
 ```rust
 let expr1 = expr!("name = {}", "John");
@@ -129,16 +144,7 @@ writeln!(query.preview());
 // renders into: SELECT id, name FROM users WHERE name = 'John' AND age > 30
 ```
 
-Query does not know anything about the underlying database and therefore
-cannot execute itself. It can only be rendered into a template and
-parameters.
-
-Query is immutable calling `with_*` methods will take the ownership,
-modify and return a new instance, making it perfect for chaining.
-
-Methods like `with_condition` can accept any argument
-that implements `SqlChunk` trait, lets create another query,
-based on the one we had above:
+Lets continue to build out and make `query` part of a bigger `query2`:
 
 ```rust
 // query is from example above
@@ -147,19 +153,26 @@ let query2 = Query::new()
     .with_condition(expr_arc!("user_id in {}",
         query
             .clone()
-            .without_columns()
+            .without_fields()
             .with_column_field("id")
     ));
 
 writeln!(query2.preview());
 
-// renders into: SELECT * FROM orders WHERE user_id in (SELECT id, name, age FROM users WHERE name = 'John' AND age > 30)
+// renders into: SELECT * FROM orders WHERE user_id in (SELECT id FROM users WHERE name = 'John' AND age > 30)
 ```
 
-Importantly - the two parameters which were set (and then cloned)
-for the `query` are kept separate from a final query rendering and
-will be passed into DataSource separately. This ensures that
-SQL injection is never possible.
+## Summary
 
-Next, lets explore some other kinds of `SqlChunk` implementation,
-that are more intuitive to use over Expressions.
+DORM's query system leverages `Expressions` and the `Chunk` trait to build dynamic, safe, and
+composable SQL queries. `Expressions` separate SQL statements from parameters, preventing injection
+risks, while `ExpressionArc` extends this flexibility by supporting nested expressions.
+
+`Queries` are constructed from multiple `Chunk`s, allowing complex operations like subqueries,
+joins, and conditions to be rendered recursively.
+
+`Query` methods like `with_table`, `with_field`, and `with_condition` make query building very
+simple and customizable, while macros like `expr!` and `expr_arc!` simplify additional ways to
+extend queries.
+
+Next, I'll explain how `Expressions` and `Query` can be part of `Table` field expressions.

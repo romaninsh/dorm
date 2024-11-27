@@ -40,7 +40,7 @@ pub struct ExpressionArc {
 }
 
 impl ExpressionArc {
-    pub fn new<'b>(expression: String, parameters: Vec<Arc<Box<dyn Chunk>>>) -> ExpressionArc {
+    pub fn new(expression: String, parameters: Vec<Arc<Box<dyn Chunk>>>) -> ExpressionArc {
         ExpressionArc {
             expression,
             parameters,

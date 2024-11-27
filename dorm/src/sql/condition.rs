@@ -9,7 +9,7 @@ use crate::sql::Chunk;
 
 #[derive(Debug, Clone)]
 enum ConditionOperand {
-    Field(Arc<Column>),
+    Column(Arc<Column>),
     Expression(Box<Expression>),
     Condition(Box<Condition>),
     Value(Value),
@@ -30,7 +30,7 @@ impl Condition {
         value: Arc<Box<dyn Chunk>>,
     ) -> Condition {
         Condition {
-            field: ConditionOperand::Field(field),
+            field: ConditionOperand::Column(field),
             operation: operation.to_string(),
             value,
         }
@@ -60,7 +60,7 @@ impl Condition {
 
     pub fn set_table_alias(&mut self, alias: &str) {
         match &mut self.field {
-            ConditionOperand::Field(field) => {
+            ConditionOperand::Column(field) => {
                 let mut f = field.as_ref().clone();
                 f.set_table_alias(alias.to_string());
                 *field = Arc::new(f);
@@ -80,7 +80,7 @@ impl Condition {
 
     fn render_operand(&self) -> Expression {
         match self.field.clone() {
-            ConditionOperand::Field(field) => field.render_chunk(),
+            ConditionOperand::Column(field) => field.render_chunk(),
             ConditionOperand::Expression(expression) => expression.render_chunk(),
             ConditionOperand::Condition(condition) => condition.render_chunk(),
             ConditionOperand::Value(value) => expr!("{}", value.clone()).render_chunk(),
