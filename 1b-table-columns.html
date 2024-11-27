@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Table and Fields - DORM - The Dry ORM</title>
+        <title>Table Columns - DORM - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -152,126 +152,133 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="table-and-fields"><a class="header" href="#table-and-fields">Table and Fields</a></h1>
-<p>In DORM, you define your business entities by creating a Table. A Table is associated with a
-physical DataSource and a table. Tables will also contain Fields, Conditions, Joins etc.
-Lets start with a simple example:</p>
+                        <h1 id="table-columns"><a class="header" href="#table-columns">Table Columns</a></h1>
+<p><code>Table</code> allows you to define and reference columns. A <code>Column</code> is another struct in DORM.
+Using columns outside of table context is convenient, such as for defining an expression:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use dorm::prelude::*;
-
-let products = Table::new("product", postgres.clone())
-    .with_field("name")
-    .with_field("description")
-    .with_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>Tables are created by calling <code>Table::new()</code> and passing it a table name and a DataSource.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let products = Table::new("product", postgres.clone())
-<span class="boring">}</span></code></pre></pre>
-<p>The following invocations to <code>with_field()</code> are going to replace your "table" instance
-with a new one. Our original code is equivalent to:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let products = products.with_field("name");
-let products = products.with_field("description");
-let products = products.with_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>If you prefer to mutate your table, you can use <code>add_field()</code> instead:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut products = Table::new("product", postgres.clone());
-products.add_field("name");
-products.add_field("description");
-products.add_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>You will see the above method chaining used quite often in DORM. In most cases both methods
-will have the identical arguments, but please check with the documentation.</p>
-<h2 id="datasource"><a class="header" href="#datasource">DataSource</a></h2>
-<p>One of the puproses of DORM is to convert your business logic into a set of queries. Because
-query languages differ between databases (such as Postgres, MySQL, SQLite, etc), DORM
-provides a DataSource abstraction. A DataSource is a trait that defines how to execute
-queries and fetch data.</p>
-<p>A DataSource for Postgress can be created like this:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let postgress_client = tokio_postgres::connect("host=localhost dbname=postgres", NoTls)
-    .await
-    .context("Failed to connect to Postgres")?;
-
-let postgres = Postgres::new(Arc::new(Box::new(postgress_client)));
-<span class="boring">}</span></code></pre></pre>
-<p>When you create a Table, you pass it a clone of your DataSource. You may use different
-DataSources for different tables and DORM will make to execute queries correctly even
-if you are traversing relationships between different DataSources.</p>
-<h2 id="what-exactly-is-a-field"><a class="header" href="#what-exactly-is-a-field">What exactly is a Field?</a></h2>
-<p>In the example above, we used a pretty generic method to create a field.
-In reality, DORM has a very loose definition of what a field is. Lets look at SQL first:</p>
-<pre><code class="language-sql">SELECT id, CONCAT(first_name, ' ', last_name) AS full_name, father.name AS father_name
-FROM person
-JOIN father ON person.father_id = father.id
-</code></pre>
-<p>The above query will return table with 3 columns: id, full_name and father_name. From
-the DORM perspective, all three are valid fields.</p>
-<ul>
-<li>id: This is not only a field, but also a "id" field.</li>
-<li>full_name: This field is represented by a SQL expression.</li>
-<li>father_name: This field is imported from another table.</li>
-</ul>
-<p>Although the DORM code is a bit complex at this point, I'll still include
-it here. Don't worry if you don't understand it all yet, we'll get to
-learning about expressions and joins in later chapters.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let person = Table::new("person", postgres.clone())
-    .with_id_field("id")
-    .with_field("first_name")
-    .with_field("last_name")
-    .with_field("father_id");
-    .with_expression(
-        "full_name",
-        expr_arc!("CONCAT({}, ' ', {})",
-            &amp;person.get_field("first_name").unwrap(),
-            &amp;person.get_field("last_name").unwrap()
+</span>let users = Table::new("users", postgres())
+    .with_column("id")
+    .with_column("name")
+    .with_column("surname")
+    .with_expression("full_name", |t| {
+        expr!(
+            "concat_ws({}, {}, {})",
+            " ",
+            t.get_column("name").unwrap(),
+            t.get_column("surname").unwrap()
         )
-    );
-
-let father = person.clone().with_alias("father");
-
-let person_with_father = person
-    .with_join("father", father, "father_id")
-    .unwrap();
-
-let query = person_with_father.get_select_query_for_field_names(&amp;["id", "full_name", "father_name"]);
-
-writeln!(query.preview());
+    });
 <span class="boring">}</span></code></pre></pre>
-<p>An important takeaway from this example is that we define table along
-with the fileds so that we could generate a query out of it. For now,
-lets simplify the example and talk about the query generation.</p>
+<p>Columns can also be used in conditions:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span>
-<span class="boring">fn main() {
-</span>let person = Table::new("person", postgres.clone())
-    .with_field("id")
-    .with_field("first_name")
-    .with_field("last_name");
-
-let query = person.get_select_query();
-
-writeln!(query.preview());
+</span><span class="boring">fn main() {
+</span>let condition = users.get_column("name").unwrap().eq("John");
+let john = user.with_condition(condition);
 <span class="boring">}</span></code></pre></pre>
-<p>The result of this query should be:</p>
-<pre><code class="language-sql">SELECT id, first_name, last_name FROM person
-</code></pre>
-<p>So what is Query?</p>
+<p>When you use <code>user.get()</code>, with <code>User { name, surname, full_name }</code>, <code>Table</code> needs to
+ensure query would include both columns and expression too. More broadly, lets talk about
+what can be deserialised into a <code>User</code> entity:</p>
+<ol>
+<li><strong>Column</strong> - There is a physical SQL column <code>name</code> and <code>surname</code>.</li>
+<li><strong>Expression</strong> - No physical column, but <code>full_name</code> is defined through a SQL expression.</li>
+<li><strong>Joined Columns</strong> - Table could be joined with another table, combining columns.</li>
+<li><strong>Callback</strong> - Value is calculated after record is fetched using a callback.</li>
+</ol>
+<p>Lets dive into the following example scenario:</p>
+<ol>
+<li><code>users: Table&lt;Postgres, User&gt;</code> has a column <code>name</code> and <code>surname</code>, using table "user"</li>
+<li>I added an expression <code>full_name</code> that combines <code>name</code> and <code>surname</code> columns</li>
+<li>I also joined "user_address" table, that contains <code>street</code> and <code>city</code> columns</li>
+<li>I also define callback for calculating <code>post_code</code> by fetching from external API or cache.</li>
+</ol>
+<p>After above operations the following is true:</p>
+<ul>
+<li><code>users</code> has 3 columns</li>
+<li><code>users</code> has 1 expression</li>
+<li><code>users</code> has 1 joined table, which has another 2 columns</li>
+<li><code>users</code> has 1 callback</li>
+<li><code>users</code> has 6 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>, <code>user_address_city</code></li>
+<li><code>users</code> can deserialise into <code>User</code> struct with 7 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>,
+<code>user_address_city</code> and <code>post_code</code></li>
+</ul>
+<p>Going forward you'll notice <code>column</code> and <code>field</code> terms used interchangeably. Term <code>column</code> referring to a physical column
+in the main table, and term <code>field</code> referring to a logical field.</p>
+<h3 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h3>
+<p>Column operations are implemented in <code>TableWithColumns</code> trait.</p>
+<ul>
+<li><code>add_column</code> - adds a column to the table</li>
+<li><code>columns</code> - returns all physical columns</li>
+<li><code>add_id_column</code> and <code>add_title_column</code> - adds a column but also labels it</li>
+<li><code>id</code> - return <code>id</code> column</li>
+<li><code>title</code> - return <code>title</code> column</li>
+<li><code>id_with_table_alias</code> - return <code>id</code> column with table alias</li>
+<li><code>get_column</code> - return a column by name</li>
+<li><code>get_column_with_table_alias</code> - return a column by name with table alias</li>
+<li><code>search_for_field</code> - similar to <code>get_column</code> but will look for lazy expressions and columns from joined tables.</li>
+</ul>
+<h3 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h3>
+<ul>
+<li><code>with_column</code> - adds a column to the table and returns it</li>
+<li><code>with_title_column</code> - adds a title column to the table and returns it</li>
+<li><code>with_id_column</code> - adds an id column to the table and returns it</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with_id_column("id")
+    .with_title_column("name")
+    .with_column("role_name");
+<span class="boring">}</span></code></pre></pre>
+<p>Using <code>with_</code> is more readable and does not require you to define
+<code>users</code> as mutable.</p>
+<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with(|t| {
+        t.add_column("id");
+        t.add_id_column("name");
+        t.add_title_column("role_name");
+        t.add_condition(t.get_column("name").unwrap().eq("John"));
+    });
+<span class="boring">}</span></code></pre></pre>
+<p>In the later chapters I'll explain to you how to use this properly.</p>
+<h3 id="expressions"><a class="header" href="#expressions">Expressions</a></h3>
+<p>Expressions in a table are lazy. They will not be evaluated unless field
+is explicitly requested.</p>
+<p>To define expression use:</p>
+<ul>
+<li><code>add_expression</code> - define a callback returning Expression for non-physical field</li>
+<li><code>with_expression</code> - just like <code>add_expression</code> but returns modifield Self</li>
+</ul>
+<p>Lets define a field that returns current time:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>table.with_expression("current_time", || expr!("now()"));
+<span class="boring">}</span></code></pre></pre>
+<p>In our introduction example, we came across a field: <code>total</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// lineitem.rs
+table.with_expression("total", |t: &amp;Table&lt;Postgres, LineItem&gt;| {
+    t.price().render_chunk().mul(t.quantity())
+})
+<span class="boring">}</span></code></pre></pre>
+<p><code>fn price()</code> is defined for Table&lt;Postgres, LineItem&gt;, same as <code>fn quantity()</code>.</p>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<p>Ability to specify columns not by name but through a dedicated method makes
+use of Rust type system and avoids typos at compile time. Fields in a query
+can be defined through different means. <code>Table</code> will look into the fields
+present in your Entity and only going to fetch those.</p>
+<p>You might have been puzzled by <code>render_chunk</code> and <code>mul</code> methods, lets talk
+about them next.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="1-dataset.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="1a-table.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -285,7 +292,7 @@ writeln!(query.preview());
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="1-dataset.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="1a-table.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 

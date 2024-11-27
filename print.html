@@ -158,9 +158,15 @@
 <ul>
 <li>You have read the Introduction (README): <a href="https://github.com/romaninsh/dorm">https://github.com/romaninsh/dorm</a></li>
 <li>You have cloned this repository, installed postgres and ran <code>0-intro</code> example.</li>
+<li>You have interest in software development efficiency, safety and maintainability.</li>
 <li>You have a bit of patience to get to the bottom of various components of DORM as they are explained.</li>
 <li>You might need some Rust experience, but I'll try to provide pointers and keep things simple.</li>
 </ul>
+<p>To get us on the same page, I'll need to go over a basic principles of enterprise software
+requirements. Those won't apply to majority of Rust projects, but they are crucial
+in commercial software development.</p>
+<p>If you are familiar with the concepts (such as from work by Martin Fowler or Eric Evans),
+you can skip this section.</p>
 <h2 id="the-purpose-of-separation-of-concerns-and-complexity-abstraction"><a class="header" href="#the-purpose-of-separation-of-concerns-and-complexity-abstraction">The Purpose of separation of concerns and complexity abstraction</a></h2>
 <p>Terms <code>concern separation</code> and <code>complexity abstraction</code> may be new to you, so I'm going to
 look at the enterprise software more generally and also explain why languages such as Java,
@@ -238,21 +244,61 @@ companies are actively looking at.</p>
 <p>DORM addresses many of the challenges of enterprise software development.</p>
 <p>Ready to learn how? The answers are coming.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data-sets"><a class="header" href="#data-sets">Data Sets</a></h1>
-<p>Most of Rust apps operate with data which is readily available in memory. Business apps
-are stateless, loading too much data is an anti-pattern.</p>
-<p>Depending of the capabilities of the underlying data storage layer, you should look to
-create as many requests and retrieve as little data as possible.</p>
-<p><code>DataSet</code> is is a representation of collection of records - stored remotely.</p>
+<p>Traditional ORMs operate with records. If you have used SeaORM or Diesel - you need
+to temporarily "un-learn" those. DORM syntax may look similar, but it's very different to
+the classic ORM pattern:</p>
+<ol>
+<li>
+<p><strong>DORM operates with Data Sets</strong>. A set can contain either a single record, no records or
+a huge number of records. Set represents records in remote database (or API) and does
+not store anything in memory.</p>
+</li>
+<li>
+<p><strong>DORM executes operations remotely</strong>. Changing multiple records in ORM involves
+fetching all the records, modifying them and saving them back. DORM prefers to
+execute changes remotely, if underlying DataSource supports it.</p>
+</li>
+</ol>
+<p>As a developer, you will always know when DORM interacts with the database, because
+those operations are async. Majority of DORM operations - like traversing relationship,
+calculating sub-queries - those are sync.</p>
+<h2 id="sqltable-and-sqlquery"><a class="header" href="#sqltable-and-sqlquery"><code>sql::Table</code> and <code>sql::Query</code></a></h2>
+<p>DORM implements sql::Table and sql::Query - because we all love SQL. However you can
+define other data sources - such as NoSQL, REST API, GraphQL, etc. Those extensions
+do not need to be in same crate as DORM. For the rest of this book I will only
+focus on SQL as a predominant use-case.</p>
+<p>DORM is quite fluid in the way how you use <code>table</code> and <code>query</code>, you can use one to
+compliment or create another, but they serve different purpose:</p>
+<ol>
+<li><code>sql::Table</code> has a structure - fields, joins and relations are defined dynamically.</li>
+<li><code>sql::Query</code> on other hand is transient. It consists of smaller pieces which we call <code>sql::Chunk</code>.</li>
+<li><code>sql::Table</code> can create and return <code>sql::Query</code> object from various methods</li>
+</ol>
+<p><code>sql::Chunk</code> trait that is implemented by <code>sql::Query</code> (or other arbitrary expressions)
+acts as a <strong>glue</strong> betwene tables. For instance when you run traverse relations:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client = Client::table().with_id(1);
+
+let order_lines = client.ref_orders().ref_order_lines();
+<span class="boring">}</span></code></pre></pre>
+<ol>
+<li>DORM executes <code>field query</code> operation on a client set for field <code>id</code>.</li>
+<li>DORM creates <code>orders</code> table and adds <code>condition</code> on <code>client_id</code> field.</li>
+<li>DORM executes <code>field query</code> operation on <code>orders</code> table for field <code>id</code>.</li>
+<li>DORM creates <code>order_lines</code> table and adds <code>condition</code> on <code>order_id</code> field.</li>
+</ol>
+<p>DORM weaves between <code>sql::Table</code> and <code>sql::Query</code> without reaching out to the
+database behind a simple and intuitive code.</p>
 <h2 id="readabledataset-and-writabledataset"><a class="header" href="#readabledataset-and-writabledataset">ReadableDataSet and WritableDataSet</a></h2>
-<p>DORM provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. DORM also provides
-several implementations of these traits:</p>
+<p>DORM provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. As name
+suggests - you can fetch records from Readable set. You can add, modify or delete
+records in Writable set.</p>
+<p>DORM implements those traits:</p>
 <ul>
 <li><code>sql::Table</code> - implements both <code>ReadableDataSet</code> and <code>WritableDataSet</code>.</li>
 <li><code>sql::Query</code> - implements <code>ReadableDataSet</code> only.</li>
 </ul>
-<p>Design of DORM allow you to extend those into NoSQL (like MongoDB or GraphQL sources)
-as well as custom RestAPI sources. Those extensions do not need to be part of DORM,
-they can be implemented as separate crates.</p>
 <h2 id="operating-with-data-sets"><a class="header" href="#operating-with-data-sets">Operating with Data sets</a></h2>
 <p>At the very basic level - you can iterate through a readable data set.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -263,162 +309,405 @@ for client in set_of_clients.get().await? {
     println!("{}", client.name);
 }
 <span class="boring">}</span></code></pre></pre>
-<p>But quite often the advanced persistence layer could allow us to do much more. DORM approach is
-to provide ways how one Data Set can yield a different Data Set. Here are some examples:</p>
+<p>There are more ways to fetch data from <code>ReadableDataSet</code>:</p>
 <ul>
-<li>Get a set containing subset of records - by filtering.</li>
-<li>Converting <code>sql::table</code> into <code>sql::query</code> for further manipulation.</li>
-<li>Execute operation over set, such as calculate sum of a field from all records, or create comma-separated list of values.</li>
-<li>Modify or delete multiple records.</li>
+<li><code>get</code> - returns all records in a Vec using default entity type</li>
+<li><code>get_as</code> - return all records using a custom type</li>
+<li><code>get_all_untyped</code> - return all records as a raw JSON object</li>
+<li><code>get_some</code> and <code>get-some_as</code> - return only one record (or none)</li>
+<li><code>get_row_untyped</code> - return single record as a raw JSON object</li>
+<li><code>get_col_untyped</code> - return only a single column as a raw JSON values</li>
+<li><code>get_one_untyped</code> - return first column of a first row as a raw JSON value</li>
 </ul>
-<p>DORM prefers to off-load operation execution to the persistence layer, but because this may increase
-complexity, DORM also provides a way to abstract this complexity away.</p>
-<h3 id="example---lazy-expression-fields"><a class="header" href="#example---lazy-expression-fields">Example - Lazy expression fields</a></h3>
-<p>In our introduction example, we came across an aggregate field: <code>total</code>:</p>
+<p>In most cases you would use <code>get</code> and <code>get_some</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>table
-  .has_many("line_items", "order_id", || Box::new(LineItem::table()))
-  .with_expression("total", |t| {
-    let item = t.sub_line_items();
-    item.sum(item.total()).render_chunk()
-  })
-<span class="boring">}</span></code></pre></pre>
-<p>Lets examine more generally what is happening here. Use of <code>has_many</code> creates</p>
-<p>This is a very simple example of a lazy expression field. It is a field that is calculated
-by a closure. The closure is passed a reference to the table. The closure can then use
-the table to create a new field.</p>
-<p>The above example is equivalent to this SQL:</p>
-<pre><code class="language-sql">SELECT id,
-    (SELECT SUM((SELECT price FROM product WHERE id = product_id) * quantity)
-    FROM order_line WHERE order_line.order_id = ord.id) AS total
-FROM ord
-</code></pre>
-<p>In this example, we are using a sub-query to calculate the total. The sub-query is
-created by calling <code>sub_line_items()</code> on the table. This method returns a new table
-that is a subset of the original table. The sub-query is then used to create a new
-field called <code>total</code> that is a sum of the price and quantity.</p>
-<p>The implementation
-of <code>sql::Table</code> however provides ability to create new Data Sets from existing ones.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="table-and-fields"><a class="header" href="#table-and-fields">Table and Fields</a></h1>
-<p>In DORM, you define your business entities by creating a Table. A Table is associated with a
-physical DataSource and a table. Tables will also contain Fields, Conditions, Joins etc.
-Lets start with a simple example:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use dorm::prelude::*;
+</span>let client = Client::table().with_id(1);
 
-let products = Table::new("product", postgres.clone())
-    .with_field("name")
-    .with_field("description")
-    .with_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>Tables are created by calling <code>Table::new()</code> and passing it a table name and a DataSource.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let products = Table::new("product", postgres.clone())
-<span class="boring">}</span></code></pre></pre>
-<p>The following invocations to <code>with_field()</code> are going to replace your "table" instance
-with a new one. Our original code is equivalent to:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let products = products.with_field("name");
-let products = products.with_field("description");
-let products = products.with_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>If you prefer to mutate your table, you can use <code>add_field()</code> instead:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut products = Table::new("product", postgres.clone());
-products.add_field("name");
-products.add_field("description");
-products.add_field("default_price");
-<span class="boring">}</span></code></pre></pre>
-<p>You will see the above method chaining used quite often in DORM. In most cases both methods
-will have the identical arguments, but please check with the documentation.</p>
-<h2 id="datasource"><a class="header" href="#datasource">DataSource</a></h2>
-<p>One of the puproses of DORM is to convert your business logic into a set of queries. Because
-query languages differ between databases (such as Postgres, MySQL, SQLite, etc), DORM
-provides a DataSource abstraction. A DataSource is a trait that defines how to execute
-queries and fetch data.</p>
-<p>A DataSource for Postgress can be created like this:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let postgress_client = tokio_postgres::connect("host=localhost dbname=postgres", NoTls)
-    .await
-    .context("Failed to connect to Postgres")?;
+let Some(client_data) = client.get_some().await? else { // fetch single record
+    // handle error
+};
 
-let postgres = Postgres::new(Arc::new(Box::new(postgress_client)));
+for client_order in client.orders().get().await? { // fetch multiple records
+    println!("{}", client_order.id);
+}
 <span class="boring">}</span></code></pre></pre>
-<p>When you create a Table, you pass it a clone of your DataSource. You may use different
-DataSources for different tables and DORM will make to execute queries correctly even
-if you are traversing relationships between different DataSources.</p>
-<h2 id="what-exactly-is-a-field"><a class="header" href="#what-exactly-is-a-field">What exactly is a Field?</a></h2>
-<p>In the example above, we used a pretty generic method to create a field.
-In reality, DORM has a very loose definition of what a field is. Lets look at SQL first:</p>
-<pre><code class="language-sql">SELECT id, CONCAT(first_name, ' ', last_name) AS full_name, father.name AS father_name
-FROM person
-JOIN father ON person.father_id = father.id
-</code></pre>
-<p>The above query will return table with 3 columns: id, full_name and father_name. From
-the DORM perspective, all three are valid fields.</p>
+<h2 id="creating-queries-from-tables"><a class="header" href="#creating-queries-from-tables">Creating Queries from Tables</a></h2>
+<p>Sometimes you do not want result, but would prefer a query object instead. This gives you
+a chance to tweak a query or use it elsewhere.</p>
+<p>DORM provides trait TableWithQueries that generates Query objects for you:</p>
 <ul>
-<li>id: This is not only a field, but also a "id" field.</li>
-<li>full_name: This field is represented by a SQL expression.</li>
-<li>father_name: This field is imported from another table.</li>
+<li><code>get_empty_query</code> - returns a query with conditions and joins, but no fields</li>
+<li><code>get_select_query</code> - like <code>get_empty_query</code> but adds all physical fields</li>
+<li><code>get_select_query_for_field_names</code> - Provided with a slice of field names and expressions, only includes those into a query.</li>
+<li><code>get_select_query_for_field</code> - Provided a query for individual field or
+expression, which you have to pass through an argument.</li>
+<li><code>get_select_query_for_fields</code> - Provided a query for multiple fields</li>
 </ul>
-<p>Although the DORM code is a bit complex at this point, I'll still include
-it here. Don't worry if you don't understand it all yet, we'll get to
-learning about expressions and joins in later chapters.</p>
+<p>There are generally two things you can do with a query:</p>
+<ol>
+<li>Tweak and execute it</li>
+<li>Use it as a <code>Chunk</code> elsewhere</li>
+</ol>
+<h3 id="tweaking-and-executing-a-query"><a class="header" href="#tweaking-and-executing-a-query">Tweaking and Executing a query</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let person = Table::new("person", postgres.clone())
-    .with_id_field("id")
-    .with_field("first_name")
-    .with_field("last_name")
-    .with_field("father_id");
-    .with_expression(
-        "full_name",
-        expr_arc!("CONCAT({}, ' ', {})",
-            &amp;person.get_field("first_name").unwrap(),
-            &amp;person.get_field("last_name").unwrap()
-        )
-    );
+</span>let vip_orders = Client::table().add_condition(Client::table().is_vip().eq(true)).ref_orders();
 
-let father = person.clone().with_alias("father");
+let query = vip_orders
+    .get_select_query_for_field_names(&amp;["id", "client_id", "client"]) // excluding `total` here
+    .with_column("total".to_string(), expr!("sum({})", vip_orders.total())) // add as aggregate
+    .with_column("order_count".to_string(), expr!("count(*)"))
+    .with_group_by(vip_orders.client_id());
 
-let person_with_father = person
-    .with_join("father", father, "father_id")
-    .unwrap();
-
-let query = person_with_father.get_select_query_for_field_names(&amp;["id", "full_name", "father_name"]);
-
-writeln!(query.preview());
+let result = postgres().query_raw(&amp;query).await?;
 <span class="boring">}</span></code></pre></pre>
-<p>An important takeaway from this example is that we define table along
-with the fileds so that we could generate a query out of it. For now,
-lets simplify the example and talk about the query generation.</p>
+<h3 id="using-a-query-as-a-chunk-elsewhere"><a class="header" href="#using-a-query-as-a-chunk-elsewhere">Using a query as a <code>Chunk</code> elsewhere</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span>
+</span><span class="boring">fn main() {
+</span>// TODO - hypothetical example, not implemented in bakery_model
+
+let product_123 = Product::table().with_code("PRD-123");
+let john = Client::table().with_email("john@example.com");
+
+let new_order = Order::table()
+    .insert(Order {
+        product: product_123,
+        client: john,
+        quantity: 1,
+    }).await?;
+<span class="boring">}</span></code></pre></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// TODO: test
+let john = Client::table().with_email("john@example.com");
+
+let order = Order::table()
+    .with_condition(Order::table().client_id().in(john.get_select_query_for_field(john.id())))
+<span class="boring">}</span></code></pre></pre>
+<p>Method <code>get_ref()</code> does exactly that, when you traverse relationships.</p>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<p>DataSet is a powerful concept that sets aside DORM from the usual ORM pattern.
+<code>sql::Table</code> and <code>sql::Query</code> are the building blocks you interract with most
+often in DORM.</p>
+<p>Understanding this would allow you to implement missing features (such as table grouping)
+and eventually devleop extensions for your data model.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="table"><a class="header" href="#table">Table</a></h1>
+<p>I have introduced <code>sql::Table</code> in context of <a href="./1-dataset.html">Data Sets</a>, however before
+diving deep into <code>Table</code> I must introduce <code>SqlTable</code> trait - a dyn-safe version of <code>Table</code>.</p>
+<p><code>Table</code> type takes 2 generic parameters: <code>DataSource</code> and <code>Entity</code>. This is similar to
+<code>Vec&lt;T&gt;</code> where <code>T</code> is a generic parameter. In other words <code>Table&lt;Postgres, User&gt;</code> is
+not the same as <code>Table&lt;Postgres, Order&gt;</code>.</p>
+<p><code>Table</code> also have methods returning <code>Self</code> for example <code>with_column</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres());
+let users = users.with_column("id"); // users has same type
+<span class="boring">}</span></code></pre></pre>
+<p>Generic parameters and methods that return <code>Self</code> cannot be defined in dyn-safe traits.
+(See <a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety">https://doc.rust-lang.org/reference/items/traits.html#object-safety</a> for more info),
+whihc is why I created <code>sql::SqlTable</code> trait.</p>
+<p><code>Table</code> gives you convenience and you get unique type for your business entities,
+but if you need to deal with generic <code>Table</code> you can use <code>SqlTable</code> trait:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn get_some_table() -&gt; Box&lt;dyn SqlTable&gt; {
+    if some_condition() {
+        Box::new(Table::new("users", postgres()))
+    } else {
+        Box::new(Table::new("orders", postgres()))
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>To convert <code>Box&lt;dyn SqlTable&gt;</code> back to <code>Table&lt;Postgres, User&gt;</code>, you can use downcasting:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let user: Table&lt;Postgres, User&gt; = get_some_table().as_any_ref().downcast_ref().unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>If <code>some_condition()</code> was false and "orders" table was returned you get type missmatch and downcast
+will fail. That's just how Rust type system works, so only downcast when you are 100% sure that you
+are using the right type.</p>
+<p>This works really for defining custom <code>ref_*</code> methods for entity traversal:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn ref_orders(users: &amp;Table&lt;Postgres, User&gt;) -&gt; Table&lt;Postgres, Order&gt; {
+    users.get_ref("orders").unwrap().as_any_ref().downcast_ref().unwrap()
+    //       ^ returns Box&lt;dyn SqlTable&gt;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>There is a more convenient method <code>get_ref_as</code>, that would downcast it for you:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn ref_orders(users: &amp;Table&lt;Postgres, User&gt;) -&gt; Table&lt;Postgres, Order&gt; {
+    users.get_ref_as("orders").unwrap()
+    //       ^ returns Table&lt;Postgres, _&gt;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Let me collect some facts about <code>Table</code> and <code>SqlTable</code>:</p>
+<ol>
+<li><code>sql::SqlTable</code> is a dyn-safe trait implementing most basic features of a table</li>
+<li><code>sql::Table</code> is a struct implementing <code>SqlTable</code> trait and some additional features (such as ReadableDataSet)</li>
+<li>When Table must refer to another table in a generic way, it will be using <code>dyn SqlTable</code></li>
+<li><code>sql::Table</code> type relies on 2 generic parameters: <code>DataSource</code> and <code>Entity</code></li>
+<li><code>DataSource</code> describes your SQL flavour and can affect how queries are built etc.</li>
+<li><code>Entity</code> can be implemented by any struct.</li>
+</ol>
+<p>To reinforce your understanding of how this all works together, lets compare 3 examples.
+First I define a function that generates a report for <code>Table&lt;Postgres, Order&gt;</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn generate_order_report(orders: &amp;Table&lt;Postgres, Order&gt;) -&gt; Result&lt;String&gt; {
+    ...
+}
+
+generate_order_report(Order::table()); // Table&lt;Postgres, Order&gt;
+// generate_order_report(Client::table());
+// does not compile ^
+<span class="boring">}</span></code></pre></pre>
+<p>I'd like to test my method using <code>MockDataSource</code> and therefore I want it to work with
+any <code>DataSource</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>async fn generate_order_report&lt;D: DataSource&gt;(orders: Table&lt;D, Order&gt;) -&gt; Result&lt;String&gt; {
+    ...
+}
+
+let orders = Order::mock_table(&amp;mock_orders);
+generate_any_report(orders).await?;  // Table&lt;MockDataSource, Order&gt;
+
+<span class="boring">}</span></code></pre></pre>
+<p>What if my code should work with any entity, but I don't wish to deal with <code>SqlTable</code>?</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn generate_any_report&lt;D: DataSource, E: Entity&gt;(table: Table&lt;D, E&gt;) -&gt; Result&lt;String&gt; {
+    ...
+}
+
+generate_any_report(Order::table()).await?;  // Table&lt;Postgres, Order&gt;
+generate_any_report(Client::table()).await?; // Table&lt;Postgres, Client&gt;
+
+let orders = Order::mock_table(&amp;mock_data);
+generate_any_report(orders).await?;  // Table&lt;MockDataSource, Order&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>(The nerdy explanation here is that Rust compiler will create 3 copies of <code>generate_any_report</code>
+function for each <code>D</code> and <code>E</code> combinations you use in the code).</p>
+<h2 id="creating"><a class="header" href="#creating">Creating</a></h2>
+<p>A simplest way to create a table object would be Table::new:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+<span class="boring">}</span></code></pre></pre>
+<p>The type of <code>users</code> variable shall be <code>Table&lt;Postgres, EmptyEntity&gt;</code>. If instead of <code>EmptyEntity</code>
+you'd like to use <code>User</code> you can use <code>new_with_entity</code> method.</p>
+<p><code>DataSource</code> type is inferred from the second argument to new() - return type of
+<code>postgres()</code> function.</p>
+<p>Lets look at how we can define our own Entity:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+struct User {
+    id: i64,
+    name: String,
+}
+impl Entity for User {}
+
+let users = Table::new_with_entity::&lt;User&gt;("users", postgres());
+<span class="boring">}</span></code></pre></pre>
+<p>Rust will infer type when it can, so:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn user_table() -&gt; Table&lt;Postgres, User&gt; {
+    Table::new_with_entity("users", postgres())
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Finally, rather than implementing a stand-alone method like that, we can implement it on the <code>User</code>
+struct:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl User {
+    fn table() -&gt; Table&lt;Postgres, User&gt; {
+        Table::new_with_entity("users", postgres())
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Since table structure is the same throughout the application, lets add columns
+into the table:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl User {
+    pub fn table() -&gt; Table&lt;Postgres, User&gt; {
+        Table::new_with_entity("users", postgres())
+            .with_column("id")
+            .with_column("name")
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="implementing-custom-traits-for-the-entity"><a class="header" href="#implementing-custom-traits-for-the-entity">Implementing custom traits for the entity</a></h2>
+<p>In Rust you can define an arbitrary trait and implement it on any type.
+Lets define trait <code>UserTable</code> and implement it on <code>Table&lt;Postgres, User&gt;</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait UserTable: SqlTable {
+    fn name(&amp;self) -&gt; Arc&lt;Column&gt; {
+        self.get_column("name").unwrap()
+    }
+}
+impl UserTable for Table&lt;Postgres, User&gt; {}
+<span class="boring">}</span></code></pre></pre>
+<p>Now we can call <code>name()</code> method on type <code>Table&lt;Postgres, User&gt;</code> to access <code>name</code> column more directly:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let user = User::table();
+let name_column = user.name();
+<span class="boring">}</span></code></pre></pre>
+<p>We can also modify our <code>generate_order_report()</code> function into a custom trait:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span>#![allow(async_fn_in_trait)]
 <span class="boring">fn main() {
-</span>let person = Table::new("person", postgres.clone())
-    .with_field("id")
-    .with_field("first_name")
-    .with_field("last_name");
+</span>pub trait OrderTableReports {
+    async fn generate_report(&amp;self) -&gt; Result&lt;String&gt;;
+}
 
-let query = person.get_select_query();
+// was: async fn generate_order_report&lt;D: DataSource&gt;(orders: Table&lt;D, Order&gt;) -&gt; Result&lt;String&gt;
 
-writeln!(query.preview());
+impl&lt;D: DataSource&gt; OrderTableReports for Table&lt;D, Order&gt; {
+    async fn generate_report(&amp;self) -&gt; Result&lt;String&gt; {
+        ...
+    }
+}
 <span class="boring">}</span></code></pre></pre>
-<p>The result of this query should be:</p>
-<pre><code class="language-sql">SELECT id, first_name, last_name FROM person
-</code></pre>
-<p>So what is Query?</p>
+<h2 id="conclusion-1"><a class="header" href="#conclusion-1">Conclusion</a></h2>
+<p>I have explained about <code>sql::Table</code> struct and <code>SqlTable</code> trait and which of the two should be used.
+Also I have explained how to create custom traits and extend <code>Table</code> for specific entity type.</p>
+<p>In my next chapters I'll refer to <code>Table</code> but in most cases you should understand that most
+features would also work with <code>SqlTable</code> trait.</p>
+<p>This chapter was Rust-intensive, but you should now understand how entity types are used in DORM.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="table-columns"><a class="header" href="#table-columns">Table Columns</a></h1>
+<p><code>Table</code> allows you to define and reference columns. A <code>Column</code> is another struct in DORM.
+Using columns outside of table context is convenient, such as for defining an expression:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with_column("id")
+    .with_column("name")
+    .with_column("surname")
+    .with_expression("full_name", |t| {
+        expr!(
+            "concat_ws({}, {}, {})",
+            " ",
+            t.get_column("name").unwrap(),
+            t.get_column("surname").unwrap()
+        )
+    });
+<span class="boring">}</span></code></pre></pre>
+<p>Columns can also be used in conditions:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let condition = users.get_column("name").unwrap().eq("John");
+let john = user.with_condition(condition);
+<span class="boring">}</span></code></pre></pre>
+<p>When you use <code>user.get()</code>, with <code>User { name, surname, full_name }</code>, <code>Table</code> needs to
+ensure query would include both columns and expression too. More broadly, lets talk about
+what can be deserialised into a <code>User</code> entity:</p>
+<ol>
+<li><strong>Column</strong> - There is a physical SQL column <code>name</code> and <code>surname</code>.</li>
+<li><strong>Expression</strong> - No physical column, but <code>full_name</code> is defined through a SQL expression.</li>
+<li><strong>Joined Columns</strong> - Table could be joined with another table, combining columns.</li>
+<li><strong>Callback</strong> - Value is calculated after record is fetched using a callback.</li>
+</ol>
+<p>Lets dive into the following example scenario:</p>
+<ol>
+<li><code>users: Table&lt;Postgres, User&gt;</code> has a column <code>name</code> and <code>surname</code>, using table "user"</li>
+<li>I added an expression <code>full_name</code> that combines <code>name</code> and <code>surname</code> columns</li>
+<li>I also joined "user_address" table, that contains <code>street</code> and <code>city</code> columns</li>
+<li>I also define callback for calculating <code>post_code</code> by fetching from external API or cache.</li>
+</ol>
+<p>After above operations the following is true:</p>
+<ul>
+<li><code>users</code> has 3 columns</li>
+<li><code>users</code> has 1 expression</li>
+<li><code>users</code> has 1 joined table, which has another 2 columns</li>
+<li><code>users</code> has 1 callback</li>
+<li><code>users</code> has 6 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>, <code>user_address_city</code></li>
+<li><code>users</code> can deserialise into <code>User</code> struct with 7 fields: <code>id</code>, <code>name</code>, <code>surname</code>, <code>full_name</code>, <code>user_address_street</code>,
+<code>user_address_city</code> and <code>post_code</code></li>
+</ul>
+<p>Going forward you'll notice <code>column</code> and <code>field</code> terms used interchangeably. Term <code>column</code> referring to a physical column
+in the main table, and term <code>field</code> referring to a logical field.</p>
+<h3 id="working-with-table-columns-sqltable"><a class="header" href="#working-with-table-columns-sqltable">Working with Table Columns: SqlTable</a></h3>
+<p>Column operations are implemented in <code>TableWithColumns</code> trait.</p>
+<ul>
+<li><code>add_column</code> - adds a column to the table</li>
+<li><code>columns</code> - returns all physical columns</li>
+<li><code>add_id_column</code> and <code>add_title_column</code> - adds a column but also labels it</li>
+<li><code>id</code> - return <code>id</code> column</li>
+<li><code>title</code> - return <code>title</code> column</li>
+<li><code>id_with_table_alias</code> - return <code>id</code> column with table alias</li>
+<li><code>get_column</code> - return a column by name</li>
+<li><code>get_column_with_table_alias</code> - return a column by name with table alias</li>
+<li><code>search_for_field</code> - similar to <code>get_column</code> but will look for lazy expressions and columns from joined tables.</li>
+</ul>
+<h3 id="working-with-table-columns-tabled-e"><a class="header" href="#working-with-table-columns-tabled-e">Working with Table Columns: Table&lt;D, E&gt;</a></h3>
+<ul>
+<li><code>with_column</code> - adds a column to the table and returns it</li>
+<li><code>with_title_column</code> - adds a title column to the table and returns it</li>
+<li><code>with_id_column</code> - adds an id column to the table and returns it</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with_id_column("id")
+    .with_title_column("name")
+    .with_column("role_name");
+<span class="boring">}</span></code></pre></pre>
+<p>Using <code>with_</code> is more readable and does not require you to define
+<code>users</code> as mutable.</p>
+<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = Table::new("users", postgres())
+    .with(|t| {
+        t.add_column("id");
+        t.add_id_column("name");
+        t.add_title_column("role_name");
+        t.add_condition(t.get_column("name").unwrap().eq("John"));
+    });
+<span class="boring">}</span></code></pre></pre>
+<p>In the later chapters I'll explain to you how to use this properly.</p>
+<h3 id="expressions"><a class="header" href="#expressions">Expressions</a></h3>
+<p>Expressions in a table are lazy. They will not be evaluated unless field
+is explicitly requested.</p>
+<p>To define expression use:</p>
+<ul>
+<li><code>add_expression</code> - define a callback returning Expression for non-physical field</li>
+<li><code>with_expression</code> - just like <code>add_expression</code> but returns modifield Self</li>
+</ul>
+<p>Lets define a field that returns current time:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>table.with_expression("current_time", || expr!("now()"));
+<span class="boring">}</span></code></pre></pre>
+<p>In our introduction example, we came across a field: <code>total</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// lineitem.rs
+table.with_expression("total", |t: &amp;Table&lt;Postgres, LineItem&gt;| {
+    t.price().render_chunk().mul(t.quantity())
+})
+<span class="boring">}</span></code></pre></pre>
+<p><code>fn price()</code> is defined for Table&lt;Postgres, LineItem&gt;, same as <code>fn quantity()</code>.</p>
+<h2 id="conclusion-2"><a class="header" href="#conclusion-2">Conclusion</a></h2>
+<p>Ability to specify columns not by name but through a dedicated method makes
+use of Rust type system and avoids typos at compile time. Fields in a query
+can be defined through different means. <code>Table</code> will look into the fields
+present in your Entity and only going to fetch those.</p>
+<p>You might have been puzzled by <code>render_chunk</code> and <code>mul</code> methods, lets talk
+about them next.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="queries"><a class="header" href="#queries">Queries</a></h1>
 <p>In DORM, query is a dynamic representation of a SQL query. You already
 saw how to create a query in the previous chapter, but now we will
 learn how to create query from scratch.</p>
-<h2 id="expressions"><a class="header" href="#expressions">Expressions</a></h2>
+<h2 id="expressions-1"><a class="header" href="#expressions-1">Expressions</a></h2>
 <p>Expression is a building block of a query as well as a template engine
 for your query parameters. Lets start with a simple example:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
