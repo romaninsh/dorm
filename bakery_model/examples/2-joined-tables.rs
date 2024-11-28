@@ -19,11 +19,6 @@ async fn create_bootstrap_db() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
-async fn test_abc() {
-    panic!("aoeu");
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
