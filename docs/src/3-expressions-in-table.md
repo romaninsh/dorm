@@ -138,25 +138,12 @@ let condition = column.eq(&"John")
 let condition = expr!("now()").lt(&yesterday)
 ```
 
-####################################################################
+Conditions created by the operation can be used in `with_condition()` method.
 
----
+## Conclusion
 
-####################################################################
+In DORM - expressions and operations create a powerful way to extend of high-level `Table` features
+such as conditions and expression fields.
 
-Using `with_` is more readable and does not require you to define
-`users` as mutable.
-
-There is also a `with` method if you want to define table inside a closure.
-
-```rust
-let users = Table::new("users", postgres())
-    .with(|t| {
-        t.add_column("id");
-        t.add_id_column("name");
-        t.add_title_column("role_name");
-        t.add_condition(t.get_column("name").unwrap().eq("John"));
-    });
-```
-
-In the later chapters I'll explain to you how to use this properly.
+Functionality is composable of underlying components. If `Table` does not implement a feature you
+like, you can easily build it using Expressions and Operations.
