@@ -5,7 +5,6 @@
   - [Tables](./1a-table.md)
   - [Table Columns](./1b-table-columns.md)
   - [Expressions and Queries](./2-expressions-and-queries.md)
-  - [References](./2-references.md)
   - [Expressions in table](./3-expressions-in-table.md)
   - [Joins](./6-joins.md)
   - [Fetching Data](./7-fetching-data.md)
