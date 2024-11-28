@@ -266,33 +266,22 @@ implement <code>Operations</code>, this allows this:</p>
 
 let condition = expr!("now()").lt(&amp;yesterday)
 <span class="boring">}</span></code></pre></pre>
-<p>####################################################################</p>
-<hr />
-<p>####################################################################</p>
-<p>Using <code>with_</code> is more readable and does not require you to define
-<code>users</code> as mutable.</p>
-<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let users = Table::new("users", postgres())
-    .with(|t| {
-        t.add_column("id");
-        t.add_id_column("name");
-        t.add_title_column("role_name");
-        t.add_condition(t.get_column("name").unwrap().eq("John"));
-    });
-<span class="boring">}</span></code></pre></pre>
-<p>In the later chapters I'll explain to you how to use this properly.</p>
+<p>Conditions created by the operation can be used in <code>with_condition()</code> method.</p>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<p>In DORM - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
+such as conditions and expression fields.</p>
+<p>Functionality is composable of underlying components. If <code>Table</code> does not implement a feature you
+like, you can easily build it using Expressions and Operations.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="2-expressions-and-queries.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="2-references.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="2-references.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="6-joins.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -302,11 +291,11 @@ let condition = expr!("now()").lt(&amp;yesterday)
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="2-expressions-and-queries.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="2-references.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="2-references.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="6-joins.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

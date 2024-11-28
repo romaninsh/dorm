@@ -846,6 +846,109 @@ joins, and conditions to be rendered recursively.</p>
 simple and customizable, while macros like <code>expr!</code> and <code>expr_arc!</code> simplify additional ways to
 extend queries.</p>
 <p>Next, I'll explain how <code>Expressions</code> and <code>Query</code> can be part of <code>Table</code> field expressions.</p>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="table-references"><a class="header" href="#table-references">Table references</a></h2>
+<p>DORM allows you to connect tables together:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let users = ClientSet::new(postgres.clone())
+    .with_many("orders", OrderSet::new(postgres.clone()), "user_id", "id")
+<span class="boring">}</span></code></pre></pre>
+<p>Your "users" table is now connected to orders through a relationship. Remember that since
+you are operating with Sets, when you traverse, you get a resulting Set, not a single record.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let vip_users = users.with_condition(users.field("is_vip").eq(true));
+let vip_orders = vip_users.get_ref("orders").unwrap();
+
+let total_order_amount = vip_orders.sum(vip_orders.field("amount")).get_one().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>It makes sense to create a bi-directional relationship. Here is how we could define static data sets:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ClientSet {}
+impl ClientSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        ClientSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("client", postgres())
+                .with_id_field("id")
+                .with_field("name")
+                .with_field("contact_details")
+                .with_field("bakery_id")
+                .has_many("orders", "client_id", || OrderSet::new())
+        })
+    }
+}
+pub struct OrderSet {}
+impl OrderSet {
+    pub fn new() -&gt; Table&lt;Postgres&gt; {
+        OrderSet::table().clone()
+    }
+    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
+        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
+
+        TABLE.get_or_init(|| {
+            Table::new("ord", postgres())
+                .with_field("product_id")
+                .with_field("client_id")
+                //.has_one("product", "product_id", || Products::new().table())
+                .has_one("client", "client_id", || ClientSet::new())
+        })
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Since we are opearting with Sets, traversing one-to-many or many-to-one relationship is identical:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let my_order = OrderSet::new().with_id(123);
+let client_data = my_order.get_ref("client").get_row().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>On an SQL level, the following happens:</p>
+<ol>
+<li>A query is generated for the OrderSet</li>
+<li>order query is used as a condition for a client query</li>
+<li>client query is executed</li>
+</ol>
+<pre><code class="language-sql">SELECT client_id, name, contact_details FROM client WHERE (order_id IN (SELECT id FROM ord WHERE (product_id = 123)));
+</code></pre>
+<p>If your OrderSet contains multiple orders, then "get_ref" set would also contain multiple clients.
+This can be useful, for example, lets see how many different clients currently have placed orders:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let total_clients = OrderSet::new().get_ref("client").count().get_one().await.unwrap();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="subqueries"><a class="header" href="#subqueries">Subqueries</a></h2>
+<p>Knowing relationships between tables can also be useful for creating subqureies. Since those are expensive,
+those would be defined as "lazy expressions". Lets look at a simple example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        bakery_model::order::OrderSet::new()
+            .with_condition(bakery_model::order::OrderSet::client_id().eq(&amp;t.id()))
+            .count()
+            .render_chunk()
+    });
+
+for row in client_set.get_fields(&amp;["name", "orders_count"]).await.unwrap() {
+    println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
+}
+<span class="boring">}</span></code></pre></pre>
+<p>You might notice that the call-back code here is using &amp;t.id(), however is not using t.get_ref("client") in any way.</p>
+<p>This is because - get_ref here would have returned a set of orders for ALL clients, using "client_id IN (SELECT id FROM client)".
+Instead, our condition should be "client_id = client.id()" and to achieve that we should use "get_ref_related("client")". We can
+simplify our code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let client_set = ClientSet::new()
+    .with_expression_before_query("orders_count", move |t| {
+        t.get_ref_related("client").count().render_chunk()
+    });
+<span class="boring">}</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="expressions-in-a-table"><a class="header" href="#expressions-in-a-table">Expressions in a Table</a></h1>
 <p>We now know, that Query can accept expressions pretty much anywhere, but
 what about <code>Table</code>?</p>
@@ -960,353 +1063,12 @@ implement <code>Operations</code>, this allows this:</p>
 
 let condition = expr!("now()").lt(&amp;yesterday)
 <span class="boring">}</span></code></pre></pre>
-<p>####################################################################</p>
-<hr />
-<p>####################################################################</p>
-<p>Using <code>with_</code> is more readable and does not require you to define
-<code>users</code> as mutable.</p>
-<p>There is also a <code>with</code> method if you want to define table inside a closure.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let users = Table::new("users", postgres())
-    .with(|t| {
-        t.add_column("id");
-        t.add_id_column("name");
-        t.add_title_column("role_name");
-        t.add_condition(t.get_column("name").unwrap().eq("John"));
-    });
-<span class="boring">}</span></code></pre></pre>
-<p>In the later chapters I'll explain to you how to use this properly.</p>
-<div style="break-before: page; page-break-before: always;"></div><h2 id="table-references"><a class="header" href="#table-references">Table references</a></h2>
-<p>DORM allows you to connect tables together:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let users = ClientSet::new(postgres.clone())
-    .with_many("orders", OrderSet::new(postgres.clone()), "user_id", "id")
-<span class="boring">}</span></code></pre></pre>
-<p>Your "users" table is now connected to orders through a relationship. Remember that since
-you are operating with Sets, when you traverse, you get a resulting Set, not a single record.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let vip_users = users.with_condition(users.field("is_vip").eq(true));
-let vip_orders = vip_users.get_ref("orders").unwrap();
-
-let total_order_amount = vip_orders.sum(vip_orders.field("amount")).get_one().await.unwrap();
-<span class="boring">}</span></code></pre></pre>
-<p>It makes sense to create a bi-directional relationship. Here is how we could define static data sets:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct ClientSet {}
-impl ClientSet {
-    pub fn new() -&gt; Table&lt;Postgres&gt; {
-        ClientSet::table().clone()
-    }
-    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
-        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
-
-        TABLE.get_or_init(|| {
-            Table::new("client", postgres())
-                .with_id_field("id")
-                .with_field("name")
-                .with_field("contact_details")
-                .with_field("bakery_id")
-                .has_many("orders", "client_id", || OrderSet::new())
-        })
-    }
-}
-pub struct OrderSet {}
-impl OrderSet {
-    pub fn new() -&gt; Table&lt;Postgres&gt; {
-        OrderSet::table().clone()
-    }
-    pub fn table() -&gt; &amp;'static Table&lt;Postgres&gt; {
-        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
-
-        TABLE.get_or_init(|| {
-            Table::new("ord", postgres())
-                .with_field("product_id")
-                .with_field("client_id")
-                //.has_one("product", "product_id", || Products::new().table())
-                .has_one("client", "client_id", || ClientSet::new())
-        })
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Since we are opearting with Sets, traversing one-to-many or many-to-one relationship is identical:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let my_order = OrderSet::new().with_id(123);
-let client_data = my_order.get_ref("client").get_row().await.unwrap();
-<span class="boring">}</span></code></pre></pre>
-<p>On an SQL level, the following happens:</p>
-<ol>
-<li>A query is generated for the OrderSet</li>
-<li>order query is used as a condition for a client query</li>
-<li>client query is executed</li>
-</ol>
-<pre><code class="language-sql">SELECT client_id, name, contact_details FROM client WHERE (order_id IN (SELECT id FROM ord WHERE (product_id = 123)));
-</code></pre>
-<p>If your OrderSet contains multiple orders, then "get_ref" set would also contain multiple clients.
-This can be useful, for example, lets see how many different clients currently have placed orders:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let total_clients = OrderSet::new().get_ref("client").count().get_one().await.unwrap();
-<span class="boring">}</span></code></pre></pre>
-<h2 id="subqueries"><a class="header" href="#subqueries">Subqueries</a></h2>
-<p>Knowing relationships between tables can also be useful for creating subqureies. Since those are expensive,
-those would be defined as "lazy expressions". Lets look at a simple example:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let client_set = ClientSet::new()
-    .with_expression_before_query("orders_count", move |t| {
-        bakery_model::order::OrderSet::new()
-            .with_condition(bakery_model::order::OrderSet::client_id().eq(&amp;t.id()))
-            .count()
-            .render_chunk()
-    });
-
-for row in client_set.get_fields(&amp;["name", "orders_count"]).await.unwrap() {
-    println!(" name: {}  orders: {}", row["name"], row["orders_count"]);
-}
-<span class="boring">}</span></code></pre></pre>
-<p>You might notice that the call-back code here is using &amp;t.id(), however is not using t.get_ref("client") in any way.</p>
-<p>This is because - get_ref here would have returned a set of orders for ALL clients, using "client_id IN (SELECT id FROM client)".
-Instead, our condition should be "client_id = client.id()" and to achieve that we should use "get_ref_related("client")". We can
-simplify our code:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let client_set = ClientSet::new()
-    .with_expression_before_query("orders_count", move |t| {
-        t.get_ref_related("client").count().render_chunk()
-    });
-<span class="boring">}</span></code></pre></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="fields-and-operations"><a class="header" href="#fields-and-operations">Fields and Operations</a></h1>
-<p>Well, Query stores columns as a Map&lt;Arc&lt;Box<dyn Column>&gt;&gt;
-and there are several types that implement <code>Column</code> trait,
-but the simplest would be a <code>Field</code> type:</p>
-<p>To add a <code>Field</code> to your <code>Query</code> you can call <code>with_column_field</code>
-method:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let query = Query::new()
-    .with_table("product")
-    .with_column_field("name")
-<span class="boring">}</span></code></pre></pre>
-<p>Another type that implements <code>Column</code> trait is <code>Expression</code>. Lets
-modify our query by adding an expression by invoking <code>with_column</code> method.
-This method is more generic than "with_column_field" and will accept
-two arguments - a name of the column and a static <code>Column</code> object.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let person = person
-    .with_column("name_caps".to_string(), expr!("UPPER(name)"));
-<span class="boring">}</span></code></pre></pre>
-<p>If you call <code>preview()</code> on your query now, you should see this:</p>
-<pre><code class="language-sql">SELECT name, UPPER(name) AS name_caps FROM product
-</code></pre>
-<p>Query is not very long-lived. Once created, it can be executed,
-but that's it. More interesting for us - Table objects can
-convert themselves into a Query object.</p>
-<p>This is our <code>Table</code> object from earlier:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span>
-<span class="boring">fn main() {
-</span>let product = Table::new("product", postgres.clone())
-    .with_field("id")
-    .with_field("name");
-<span class="boring">}</span></code></pre></pre>
-<p>You already know that <code>Table</code> can produce a <code>Query</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let query = product.get_select_query();
-writeln!(query.preview());
-
-// renders into: SELECT id, name FROM product
-<span class="boring">}</span></code></pre></pre>
-<p>There should be a way to add a "expression" to our query by
-defining it in our table, right?</p>
-<p>As it turns out, tables are quite lazy when it comes to expressions.
-They do not recognize them as fields, and instead will pop them
-into your "select_query" just at the last moment and only when
-you explicitly need that expresison field. This allows you to
-have wide range of expressions in your table and optimize select
-query automatically.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let product = product
-    .with_expression(
-        "name_caps",
-        |t| expr_arc!("UPPER({})", t.get_field("name").unwrap())
-    );
-<span class="boring">}</span></code></pre></pre>
-<p>You have probably noticed, that rather then hard-coding name in
-the expression, we are using <code>get_field</code> method. This method
-will return a &amp;Field object, which we can include in our
-ExpressionArc. Field implements <code>SqlChunk</code>, right?</p>
-<p>Executing <code>get_select_query()</code> will will not include <code>name_caps</code>
-by default. You can explicitly ask which fields you'd like to see
-by usign <code>with_select_query_for_field_names</code> method:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let query = product.get_select_query_for_field_names(&amp;["name", "name_caps"]);
-writeln!(query.preview());
-
-// renders into: SELECT name, UPPER(name) AS name_caps FROM product
-<span class="boring">}</span></code></pre></pre>
-<h2 id="operations-1"><a class="header" href="#operations-1">Operations</a></h2>
-<p>Relying ot an arbitrary expression macro sometimes is not very
-convenient. DORM offers an <code>Operations</code> trait, that can be used
-to generate some commonly used expressions:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let product = product
-    .with_expression(
-        "name_caps",
-        |t| t.get_field("name").unwrap().upper()
-    );
-<span class="boring">}</span></code></pre></pre>
-<p>Operations can also be used for generating conditions, lets
-look into that next.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="conditions"><a class="header" href="#conditions">Conditions</a></h1>
-<p>By default, when you create a <code>Table</code> object, it will represent
-a set of all rows in the table. Sometimes you want to filter
-the rows. Our <code>product</code> SQL table contains a <code>calories</code> column,
-so lets define it and use it for filtering:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let product = Table::new("product", postgres.clone())
-    .with_field("id")
-    .with_field("name")
-    .with_field("calories");
-
-let low_cal_products = product
-    .with_condition(
-        product
-            .get_field("calories")
-            .unwrap()
-            .lt(100)
-    );
-
-let query = low_cal_products.get_select_query();
-writeln!(query.preview());
-
-// renders into: SELECT id, name, calories FROM product WHERE (calories &lt; 100)
-<span class="boring">}</span></code></pre></pre>
-<p>Condition can be created from various other types, but the most
-convenient way is through the use of Operator.</p>
-<ol>
-<li>get_field returns a Option&lt;Arc<Field>&gt; object</li>
-<li>unwrap() as we know for sure field exists</li>
-<li>Arc<Field> implements Operator trait</li>
-<li>Operator::lt() returns a Condition object</li>
-<li>Condition implements SqlChunk, so it can be part of a query</li>
-</ol>
-<p>DORM capabilities allow you to be very flexible with defining
-your entities and we are just scratching the surface here.</p>
-<p>Before we continue, let me address one annoying bit here. So far
-each chapter we have been re-creating our <code>product</code> table.</p>
-<p>In the real world, you would typically have a pre-defined table
-structure, so that no matter how many times you need to operate
-with a <code>product</code> table, you can easily create it.</p>
-<p>DORM has a recommended pattern for generating tables and we
-will explore it next.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="entity-model"><a class="header" href="#entity-model">Entity Model</a></h1>
-<p>So we need to conveniently create a <code>product</code> table objects,
-but we don't want to re-populate all the fields and conditions
-every time.</p>
-<p>DORM recommends you to have a object called <code>Product</code> that
-would vend <code>Table</code> objects. We will place the code inside
-a <code>model</code> subfolder.</p>
-<p>While we are building our <code>Product</code> type, lets also create
-a static instance of our DataSource:</p>
-<p>inside your model/mod.rs:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use dorm::prelude::Postgres;
-
-pub mod products;
-pub use products::*;
-
-static POSTGRESS: OnceLock&lt;Postgres&gt; = OnceLock::new();
-
-pub fn set_postgres(postgres: Postgres) -&gt; Result&lt;()&gt; {
-    POSTGRESS
-        .set(postgres)
-        .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))
-}
-
-pub fn postgres() -&gt; Postgres {
-    POSTGRESS
-        .get()
-        .expect("Postgres has not been initialized")
-        .clone()
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Now you would need to call set_postgress() when your
-tokio_postgress client is ready and you can import and
-call postgress() from your models.</p>
-<p>Lets create file <code>models/products.rs</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use dorm::prelude::*;
-use crate::postgres;
-
-pub struct Product {}
-impl Product {
-    pub fn table() -&gt; Table&lt;Postgres&gt; {
-        Product::static_table().clone()
-    }
-    pub fn static_table() -&gt; &amp;'static Table&lt;Postgres&gt; {
-        static TABLE: OnceLock&lt;Table&lt;Postgres&gt;&gt; = OnceLock::new();
-
-        TABLE.get_or_init(|| {
-            Table::new("product", postgres())
-                .with_id_field("id")
-                .with_field("name")
-        })
-    }
-
-    pub fn name() -&gt; Arc&lt;Field&gt; {
-        Product::static_table().get_field("name").unwrap()
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Now that you have created a Product type, we can reference
-it in your application like this:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use model;
-
-let products = model::Product::table();
-writeln!(products.get_select_query().preview());
-
-// renders into: SELECT id, name FROM product
-
-let low_cal_products = model::Product::table()
-    .with_condition(
-        model::Products::calories().lt(100)
-    );
-writeln!(low_cal_products.get_select_query().preview());
-
-// renders into: SELECT id, name, calories FROM product WHERE (calories &lt; 100)
-<span class="boring">}</span></code></pre></pre>
-<p>This is already much more portable, but we can do better.
-Add this to your <code>model/products.rs</code> and</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct LowCalProduct {}
-impl LowCalProduct {
-    pub fn table() -&gt; Table&lt;Postgres&gt; {
-        Product::table().with_condition(
-            Product::calories().lt(100)
-        )
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<p>You can addopt a different approach here, those are just
-a few recommendations. Later we will explore a way to
-create a dynamic business entity pattern, but now
-we will focus on something more fun - joins.</p>
+<p>Conditions created by the operation can be used in <code>with_condition()</code> method.</p>
+<h2 id="conclusion-3"><a class="header" href="#conclusion-3">Conclusion</a></h2>
+<p>In DORM - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
+such as conditions and expression fields.</p>
+<p>Functionality is composable of underlying components. If <code>Table</code> does not implement a feature you
+like, you can easily build it using Expressions and Operations.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="joins"><a class="header" href="#joins">Joins</a></h1>
 <p>Join can happen between two tables with one-to-some(one) relationship.</p>
 <p>A good example for us is if we add a new table called <code>inventory</code> that
