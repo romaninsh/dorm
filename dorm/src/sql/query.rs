@@ -6,10 +6,12 @@ use serde_json::Value;
 pub use with_traits::SqlQuery;
 
 use crate::{
-    expr_arc,
-    sql::chunk::Chunk,
-    sql::expression::{Expression, ExpressionArc},
-    sql::table::Column,
+    expr, expr_arc,
+    sql::{
+        chunk::Chunk,
+        expression::{Expression, ExpressionArc},
+        table::Column,
+    },
     traits::column::SqlField,
 };
 
@@ -29,6 +31,9 @@ pub struct Query {
     where_conditions: QueryConditions,
     having_conditions: QueryConditions,
     joins: Vec<JoinQuery>,
+
+    skip_items: Option<i64>,
+    limit_items: Option<i64>,
 
     group_by: Vec<Expression>,
     order_by: Vec<Expression>,
@@ -54,6 +59,10 @@ impl Query {
             where_conditions: QueryConditions::where_(),
             having_conditions: QueryConditions::having(),
             joins: Vec::new(),
+
+            skip_items: None,
+            limit_items: None,
+
             group_by: Vec::new(),
             order_by: Vec::new(),
         }
@@ -79,6 +88,22 @@ impl Query {
 
     pub fn with_source(mut self, source: QuerySource) -> Self {
         self.set_source(source);
+        self
+    }
+
+    pub fn with_skip(mut self, skip: i64) -> Self {
+        self.add_skip(Some(skip));
+        self
+    }
+
+    pub fn with_limit(mut self, limit: i64) -> Self {
+        self.add_limit(Some(limit));
+        self
+    }
+
+    pub fn with_skip_and_limit(mut self, skip: i64, limit: i64) -> Self {
+        self.add_limit(Some(limit));
+        self.add_skip(Some(skip));
         self
     }
 
@@ -183,6 +208,21 @@ impl Query {
         }
     }
 
+    fn render_pagination(&self) -> Expression {
+        if self.skip_items.is_none() && self.limit_items.is_none() {
+            Expression::empty()
+        } else {
+            let mut rev_vec = Vec::new();
+            if let Some(skip) = self.skip_items {
+                rev_vec.push(expr!(" OFFSET {}::int4", skip));
+            }
+            if let Some(limit) = self.limit_items {
+                rev_vec.push(expr!(" LIMIT {}::int4", limit));
+            }
+            Expression::from_vec(rev_vec, "")
+        }
+    }
+
     fn render_select(&self) -> Result<Expression> {
         let fields = if self.fields.len() > 0 {
             Expression::from_vec(
@@ -201,7 +241,7 @@ impl Query {
 
         Ok(expr_arc!(
             format!(
-                "{{}}SELECT{} {{}} {{}}{{}}{{}}{{}}{{}}{{}}",
+                "{{}}SELECT{} {{}} {{}}{{}}{{}}{{}}{{}}{{}}{{}}",
                 if self.distinct { " DISTINCT" } else { "" }
             ),
             self.render_with(),
@@ -211,6 +251,7 @@ impl Query {
             self.where_conditions.render_chunk(),
             self.render_group_by(),
             self.render_order_by(),
+            self.render_pagination(),
             self.having_conditions.render_chunk()
         )
         .render_chunk())
@@ -349,6 +390,12 @@ impl SqlQuery for Query {
     }
     fn add_order_by(&mut self, order_by: Expression) {
         self.order_by.push(order_by);
+    }
+    fn add_limit(&mut self, limit: Option<i64>) {
+        self.limit_items = limit;
+    }
+    fn add_skip(&mut self, skip: Option<i64>) {
+        self.skip_items = skip;
     }
     fn set_field_value(&mut self, field: &str, value: Value) {
         match self.query_type {
@@ -533,5 +580,80 @@ mod tests {
             "SELECT id, name, age FROM users GROUP BY name ORDER BY age DESC"
         );
         assert_eq!(params.len(), 0);
+    }
+
+    #[test]
+    fn test_render_pagination() {
+        let query = Query::new()
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column_field("age")
+            .with_skip_and_limit(10, 20);
+
+        let (sql, params) = query.render_pagination().render_chunk().split();
+
+        assert_eq!(sql, " OFFSET {}::int4 LIMIT {}::int4");
+        assert_eq!(params.len(), 2);
+        assert_eq!(
+            query.render_pagination().preview(),
+            " OFFSET 10::int4 LIMIT 20::int4"
+        );
+        assert_eq!(
+            expr_arc!("SELECT x{}", query.render_pagination())
+                .render_chunk()
+                .preview(),
+            "SELECT x OFFSET 10::int4 LIMIT 20::int4"
+        );
+    }
+
+    #[test]
+    fn test_limit() {
+        let query = Query::new()
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column_field("age")
+            .with_limit(20);
+
+        let (sql, params) = query.render_chunk().split();
+
+        assert_eq!(sql, "SELECT id, name, age FROM users LIMIT {}::int4");
+        assert_eq!(params.len(), 1);
+        assert_eq!(
+            query.render_chunk().preview(),
+            "SELECT id, name, age FROM users LIMIT 20::int4"
+        );
+    }
+
+    #[test]
+    fn test_skip() {
+        let query = Query::new()
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column_field("age")
+            .with_skip(10);
+
+        assert_eq!(
+            query.render_chunk().preview(),
+            "SELECT id, name, age FROM users OFFSET 10::int4"
+        );
+    }
+
+    #[test]
+    fn test_skip_and_limit() {
+        let mut query = Query::new()
+            .with_table("users", None)
+            .with_column_field("id")
+            .with_column_field("name")
+            .with_column_field("age");
+        query.add_skip(Some(10));
+        query.add_limit(Some(20));
+
+        assert_eq!(
+            query.render_chunk().preview(),
+            "SELECT id, name, age FROM users OFFSET 10::int4 LIMIT 20::int4"
+        );
     }
 }

@@ -21,5 +21,7 @@ pub trait SqlQuery {
     fn add_join(&mut self, join: JoinQuery);
     fn add_group_by(&mut self, group_by: Expression);
     fn add_order_by(&mut self, order_by: Expression);
+    fn add_limit(&mut self, limit: Option<i64>);
+    fn add_skip(&mut self, skip: Option<i64>);
     fn set_field_value(&mut self, field: &str, value: Value);
 }

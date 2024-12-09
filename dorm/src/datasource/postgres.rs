@@ -1,16 +1,18 @@
 #![allow(dead_code)]
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::dataset::ReadableDataSet;
-use crate::prelude::EmptyEntity;
+use crate::prelude::{EmptyEntity, Entity};
 use crate::sql::chunk::Chunk;
 use crate::sql::expression::{Expression, ExpressionArc};
+use crate::sql::query::SqlQuery;
 use crate::sql::Query;
 use crate::traits::datasource::DataSource;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
+use futures::{pin_mut, TryStreamExt};
 use indexmap::IndexMap;
 use rust_decimal::Decimal;
 use serde_json::json;
@@ -114,22 +116,23 @@ impl Postgres {
         let params_tosql = query_rendered
             .params()
             .iter()
-            .map(|v| self.convert_value_tosql(v.clone()))
-            .collect::<Vec<_>>();
+            .map(|v| self.convert_value_tosql(v.clone()));
 
-        let params_tosql_refs = params_tosql
-            .iter()
-            .map(|b| b.as_ref())
-            .collect::<Vec<&(dyn ToSql + Sync)>>();
+        // let params_tosql_refs = params_tosql
+        //     .iter()
+        //     .map(|b| b.as_ref())
+        //     .collect::<Vec<&(dyn ToSql + Sync)>>();
 
         let result = self
             .client
-            .query(&query_rendered.sql_final(), params_tosql_refs.as_slice())
+            .query_raw(&query_rendered.sql_final(), params_tosql)
             .await
             .context(anyhow!("Error in query {}", query.preview()))?;
 
+        pin_mut!(result);
         let mut results = Vec::new();
-        for row in result {
+        while let Some(row) = result.try_next().await? {
+            // for row in result {
             results.push(self.convert_value_fromsql(row)?);
         }
 
@@ -335,22 +338,48 @@ impl<T: DataSource> AssociatedExpressionArc<T> {
 /// [`DataSource`]: crate::traits::datasource::DataSource
 /// [`glue()`]: Table::glue
 ///
-#[derive(Debug, Clone)]
-pub struct AssociatedQuery<T: DataSource> {
+#[derive(Clone)]
+pub struct AssociatedQuery<T: DataSource, E: Entity> {
     pub query: Query,
     pub ds: T,
+    pub _phantom: std::marker::PhantomData<E>,
 }
-impl<T: DataSource> Deref for AssociatedQuery<T> {
+impl<T: DataSource, E: Entity> Deref for AssociatedQuery<T, E> {
     type Target = Query;
 
     fn deref(&self) -> &Self::Target {
         &self.query
     }
 }
+impl<T: DataSource, E: Entity> DerefMut for AssociatedQuery<T, E> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.query
+    }
+}
 
-impl<T: DataSource> AssociatedQuery<T> {
+impl<T: DataSource, E: Entity> AssociatedQuery<T, E> {
     pub fn new(query: Query, ds: T) -> Self {
-        Self { query, ds }
+        Self {
+            query,
+            ds,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn with_skip(mut self, skip: i64) -> Self {
+        self.query.add_skip(Some(skip));
+        self
+    }
+
+    pub fn with_limit(mut self, limit: i64) -> Self {
+        self.query.add_limit(Some(limit));
+        self
+    }
+
+    pub fn with_skip_and_limit(mut self, skip: i64, limit: i64) -> Self {
+        self.query.add_limit(Some(limit));
+        self.query.add_skip(Some(skip));
+        self
     }
 
     /// Presented with another AssociatedQuery - calculate if queries
@@ -358,7 +387,7 @@ impl<T: DataSource> AssociatedQuery<T> {
     ///
     /// The same - return expression as-is.
     /// Different - execute the query and return the result as a vector of values.
-    async fn glue(&self, other: AssociatedQuery<T>) -> Result<Expression> {
+    async fn glue(&self, other: AssociatedQuery<T, E>) -> Result<Expression> {
         if self.ds.eq(&other.ds) {
             Ok(other.query.render_chunk())
         } else {
@@ -368,12 +397,20 @@ impl<T: DataSource> AssociatedQuery<T> {
         }
     }
 }
-impl<T: DataSource + Sync> Chunk for AssociatedQuery<T> {
+impl<D: DataSource + Sync, E: Entity> Chunk for AssociatedQuery<D, E> {
     fn render_chunk(&self) -> Expression {
         self.query.render_chunk()
     }
 }
-impl<T: DataSource + Sync> ReadableDataSet<EmptyEntity> for AssociatedQuery<T> {
+impl<D: DataSource, E: Entity> std::fmt::Debug for AssociatedQuery<D, E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AssociatedQuery")
+            .field("query", &self.query)
+            .field("ds", &self.ds)
+            .finish()
+    }
+}
+impl<T: DataSource + Sync, E: Entity> ReadableDataSet<E> for AssociatedQuery<T, E> {
     async fn get_all_untyped(&self) -> Result<Vec<Map<String, Value>>> {
         self.ds.query_fetch(&self.query).await
     }
@@ -390,7 +427,7 @@ impl<T: DataSource + Sync> ReadableDataSet<EmptyEntity> for AssociatedQuery<T> {
         self.ds.query_col(&self.query).await
     }
 
-    async fn get(&self) -> Result<Vec<EmptyEntity>> {
+    async fn get(&self) -> Result<Vec<E>> {
         let data = self.get_all_untyped().await?;
         Ok(data
             .into_iter()
@@ -406,7 +443,7 @@ impl<T: DataSource + Sync> ReadableDataSet<EmptyEntity> for AssociatedQuery<T> {
             .collect())
     }
 
-    async fn get_some(&self) -> Result<Option<EmptyEntity>> {
+    async fn get_some(&self) -> Result<Option<E>> {
         let data = self.ds.query_fetch(&self.query).await?;
         if data.len() > 0 {
             let row = data[0].clone();

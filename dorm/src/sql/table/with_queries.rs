@@ -74,11 +74,34 @@ impl<T: DataSource, E: Entity> TableWithQueries for Table<T, E> {
 }
 
 impl<D: DataSource, E: Entity> Table<D, E> {
-    /// Obsolete: use get_select_query_for_field() instead
-    pub fn field_query(&self, field: Arc<Column>) -> AssociatedQuery<D> {
+    pub fn field_query(&self, field: Arc<Column>) -> AssociatedQuery<D, E> {
         // let query = self.get_select_query_for_field(field);
         let query = self.get_empty_query().with_field(field.name(), field);
         AssociatedQuery::new(query, self.data_source.clone())
+    }
+
+    pub fn query(&self) -> AssociatedQuery<D, E> {
+        AssociatedQuery::new(
+            self.get_select_query_for_struct(E::default()),
+            self.data_source.clone(),
+        )
+    }
+
+    pub fn query_for_fields(
+        &self,
+        fields: IndexMap<String, Arc<Box<dyn SqlField>>>,
+    ) -> AssociatedQuery<D, E> {
+        AssociatedQuery::new(
+            self.get_select_query_for_fields(fields),
+            self.data_source.clone(),
+        )
+    }
+
+    pub fn query_for_field_names(&self, field_names: &[&str]) -> AssociatedQuery<D, E> {
+        AssociatedQuery::new(
+            self.get_select_query_for_field_names(field_names),
+            self.data_source.clone(),
+        )
     }
 
     pub fn get_select_query_for_struct<R: Serialize>(&self, default: R) -> Query {

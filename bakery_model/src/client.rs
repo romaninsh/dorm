@@ -1,10 +1,7 @@
 use crate::{order::Order, postgres, Bakery};
 use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{
-    ops::Deref,
-    sync::{Arc, OnceLock},
-};
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Client {
@@ -23,6 +20,7 @@ impl Client {
             Table::new_with_entity("client", postgres())
                 .with_id_column("id")
                 .with_column("name")
+                .with_title_column("email")
                 .with_column("contact_details")
                 .with_column("is_paying_client")
                 .with_column("bakery_id")
@@ -38,6 +36,9 @@ impl Client {
 pub trait ClientTable: SqlTable {
     fn name(&self) -> Arc<Column> {
         self.get_column("name").unwrap()
+    }
+    fn email(&self) -> Arc<Column> {
+        self.get_column("email").unwrap()
     }
     fn contact_details(&self) -> Arc<Column> {
         self.get_column("contact_details").unwrap()

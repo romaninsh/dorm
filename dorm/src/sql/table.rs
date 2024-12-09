@@ -81,7 +81,7 @@ pub trait AnyTable: Any + Send + Sync {
 ///
 ///
 pub trait RelatedTable<T: DataSource>: SqlTable {
-    fn column_query(&self, column: Arc<Column>) -> AssociatedQuery<T>;
+    fn column_query(&self, column: Arc<Column>) -> AssociatedQuery<T, EmptyEntity>;
     fn add_columns_into_query(&self, query: Query, alias_prefix: Option<&str>) -> Query;
     fn get_join(&self, table_alias: &str) -> Option<Arc<Join<T>>>;
 
@@ -210,7 +210,7 @@ impl<T: DataSource, E: Entity> AnyTable for Table<T, E> {
 }
 
 impl<T: DataSource, E: Entity> RelatedTable<T> for Table<T, E> {
-    fn column_query(&self, column: Arc<Column>) -> AssociatedQuery<T> {
+    fn column_query(&self, column: Arc<Column>) -> AssociatedQuery<T, EmptyEntity> {
         let query = self.get_empty_query().with_field(column.name(), column);
         AssociatedQuery::new(query, self.data_source.clone())
     }
@@ -411,7 +411,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         self.data_source.query_fetch(&self.get_select_query()).await
     }
 
-    pub fn sum<C>(&self, column: C) -> AssociatedQuery<T>
+    pub fn sum<C>(&self, column: C) -> AssociatedQuery<T, EmptyEntity>
     where
         C: Chunk,
     {
@@ -422,7 +422,7 @@ impl<T: DataSource, E: Entity> Table<T, E> {
         AssociatedQuery::new(query, self.data_source.clone())
     }
 
-    pub fn count(&self) -> AssociatedQuery<T> {
+    pub fn count(&self) -> AssociatedQuery<T, EmptyEntity> {
         let mut query = self
             .get_empty_query()
             .with_field("count".to_string(), expr_arc!("COUNT(*)"));
@@ -454,7 +454,7 @@ pub trait TableDelegate<T: DataSource, E: Entity>: TableWithColumns {
     fn add_condition(&self, condition: Condition) -> Table<T, E> {
         self.table().clone().with_condition(condition)
     }
-    fn sum(&self, column: Arc<Column>) -> AssociatedQuery<T> {
+    fn sum(&self, column: Arc<Column>) -> AssociatedQuery<T, EmptyEntity> {
         self.table().sum(column)
     }
 }
