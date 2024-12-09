@@ -91,9 +91,19 @@ impl Query {
         self
     }
 
-    pub fn with_skip_and_limit(mut self, skip: Option<i64>, limit: Option<i64>) -> Self {
-        self.add_limit(limit);
-        self.add_skip(skip);
+    pub fn with_skip(mut self, skip: i64) -> Self {
+        self.add_skip(Some(skip));
+        self
+    }
+
+    pub fn with_limit(mut self, limit: i64) -> Self {
+        self.add_limit(Some(limit));
+        self
+    }
+
+    pub fn with_skip_and_limit(mut self, skip: i64, limit: i64) -> Self {
+        self.add_limit(Some(limit));
+        self.add_skip(Some(skip));
         self
     }
 
@@ -579,18 +589,21 @@ mod tests {
             .with_column_field("id")
             .with_column_field("name")
             .with_column_field("age")
-            .with_skip_and_limit(Some(10), Some(20));
+            .with_skip_and_limit(10, 20);
 
         let (sql, params) = query.render_pagination().render_chunk().split();
 
-        assert_eq!(sql, " OFFSET {} LIMIT {}");
+        assert_eq!(sql, " OFFSET {}::int4 LIMIT {}::int4");
         assert_eq!(params.len(), 2);
-        assert_eq!(query.render_pagination().preview(), " OFFSET 10 LIMIT 20");
+        assert_eq!(
+            query.render_pagination().preview(),
+            " OFFSET 10::int4 LIMIT 20::int4"
+        );
         assert_eq!(
             expr_arc!("SELECT x{}", query.render_pagination())
                 .render_chunk()
                 .preview(),
-            "SELECT x OFFSET 10 LIMIT 20"
+            "SELECT x OFFSET 10::int4 LIMIT 20::int4"
         );
     }
 
@@ -601,15 +614,15 @@ mod tests {
             .with_column_field("id")
             .with_column_field("name")
             .with_column_field("age")
-            .with_skip_and_limit(None, Some(20));
+            .with_limit(20);
 
         let (sql, params) = query.render_chunk().split();
 
-        assert_eq!(sql, "SELECT id, name, age FROM users LIMIT {}");
+        assert_eq!(sql, "SELECT id, name, age FROM users LIMIT {}::int4");
         assert_eq!(params.len(), 1);
         assert_eq!(
             query.render_chunk().preview(),
-            "SELECT id, name, age FROM users LIMIT 20"
+            "SELECT id, name, age FROM users LIMIT 20::int4"
         );
     }
 
@@ -620,11 +633,11 @@ mod tests {
             .with_column_field("id")
             .with_column_field("name")
             .with_column_field("age")
-            .with_skip_and_limit(Some(10), None);
+            .with_skip(10);
 
         assert_eq!(
             query.render_chunk().preview(),
-            "SELECT id, name, age FROM users OFFSET 10"
+            "SELECT id, name, age FROM users OFFSET 10::int4"
         );
     }
 
@@ -640,7 +653,7 @@ mod tests {
 
         assert_eq!(
             query.render_chunk().preview(),
-            "SELECT id, name, age FROM users OFFSET 10 LIMIT 20"
+            "SELECT id, name, age FROM users OFFSET 10::int4 LIMIT 20::int4"
         );
     }
 }

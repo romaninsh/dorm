@@ -7,6 +7,7 @@ use crate::dataset::ReadableDataSet;
 use crate::prelude::{EmptyEntity, Entity};
 use crate::sql::chunk::Chunk;
 use crate::sql::expression::{Expression, ExpressionArc};
+use crate::sql::query::SqlQuery;
 use crate::sql::Query;
 use crate::traits::datasource::DataSource;
 use anyhow::Context;
@@ -363,6 +364,22 @@ impl<T: DataSource, E: Entity> AssociatedQuery<T, E> {
             ds,
             _phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn with_skip(mut self, skip: i64) -> Self {
+        self.query.add_skip(Some(skip));
+        self
+    }
+
+    pub fn with_limit(mut self, limit: i64) -> Self {
+        self.query.add_limit(Some(limit));
+        self
+    }
+
+    pub fn with_skip_and_limit(mut self, skip: i64, limit: i64) -> Self {
+        self.query.add_limit(Some(limit));
+        self.query.add_skip(Some(skip));
+        self
     }
 
     /// Presented with another AssociatedQuery - calculate if queries
