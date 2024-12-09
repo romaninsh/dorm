@@ -30,13 +30,13 @@ static POSTGRESS: OnceLock<Postgres> = OnceLock::new();
 pub fn set_postgres(postgres: Postgres) -> Result<()> {
     POSTGRESS
         .set(postgres)
-        .map_err(|_| anyhow::anyhow!("Failed to set Postgres instance"))
+        .map_err(|e| anyhow::anyhow!("Failed to set Postgres instance: {:?}", e))
 }
 
 pub fn postgres() -> Postgres {
     POSTGRESS
         .get()
-        .expect("Postgres has not been initialized")
+        .expect("Postgres has not been initialized. use connect_postgress()")
         .clone()
 }
 

@@ -61,6 +61,44 @@ the rules defined in the [bakery_model](bakery_model/src/), like "soft-delete en
 actually stored in product table" and "order has multiple line items" to generate a single
 and efficient SQL query.
 
+### Practical use for Rest API
+
+Although DSQL is a generic framework, as an example, we can use it with Axum to build
+API handler like this:
+
+```rust
+async fn list_orders(
+    client: axum::extract::Query<OrderRequest>,
+    pager: axum::extract::Query<Pagination>,
+) -> impl IntoResponse {
+    let orders = Client::table()
+        .with_id(client.client_id.into())
+        .ref_orders();
+
+    let mut query = orders.query();
+
+    // Tweak the query to include pagination
+    query.add_limit(Some(pager.per_page));
+    if pager.page > 0 {
+        query.add_skip(Some(pager.per_page * pager.page));
+    }
+
+    // Actual query happens here!
+    Json(query.get().await.unwrap())
+}
+```
+
+API response for `GET /orders?client_id=2&page=1`
+
+```json
+[
+  { "client_id": 2, "client_name": "Doc Brown", "id": 2, "total": 220 },
+  { "client_id": 2, "client_name": "Doc Brown", "id": 3, "total": 995 }
+]
+```
+
+Compare to [SQLx](https://github.com/launchbadge/realworld-axum-sqlx/blob/main/src/http/articles/listing.rs#L79), which is more readable?
+
 ## Key Features
 
 - 🦀 **Rust-first Design** - Leverages Rust's type system for your business entities
