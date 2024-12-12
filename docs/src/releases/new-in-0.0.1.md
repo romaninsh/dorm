@@ -94,7 +94,7 @@ assert_eq!(
 Initial implementation of conditions is very limited - no way to specify a field. A new implementation
 is going to store field reference, operation and value.
 
-## Apr 18: Name changed to `vantage` and early syntax added in README:
+## Apr 18: Name changed to `dorm` and early syntax added in README:
 
 This is how early syntax looked like:
 
