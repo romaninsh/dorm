@@ -15,7 +15,7 @@
 //!  - queries - ability to generate [`AssociatedQuery`] (such as [`count()`] or [`sum()`]) from your current table and its conditions
 //!  - fetching - ability to interract with the table as a [`ReadableDataSet`] and [`WritableDataSet`]
 //!
-//! For more information on how to use [`Table`] see <https://romaninsh.github.io/dorm/1-table-and-fields.html>
+//! For more information on how to use [`Table`] see <https://romaninsh.github.io/vantage/1-table-and-fields.html>
 //!
 //! [`ReadableDataSet`]: crate::dataset::ReadableDataSet
 //! [`WritableDataSet`]: crate::dataset::WritableDataSet
@@ -99,7 +99,7 @@ pub trait RelatedTable<T: DataSource>: SqlTable {
 /// Represents a table in the SQL DataSource (potentially with joins and sub-queries)
 ///
 /// ```
-/// use dorm::prelude::*;
+/// use vantage::prelude::*;
 ///
 /// let users = Table::new("users", postgres())
 ///     .with_id_column("id")
@@ -107,7 +107,7 @@ pub trait RelatedTable<T: DataSource>: SqlTable {
 /// ```
 ///
 /// To avoid repetition when defining a table, use Entity definition pattern as described in
-/// <https://romaninsh.github.io/dorm/5-entity-model.html>
+/// <https://romaninsh.github.io/vantage/5-entity-model.html>
 ///
 /// # Deciding on `add_` vs `with_` method use
 ///

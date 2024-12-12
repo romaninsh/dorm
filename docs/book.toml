@@ -3,4 +3,4 @@ authors = ["Romans Malinovskis"]
 language = "en"
 multilingual = false
 src = "src"
-title = "DORM - The Dry ORM"
+title = "Vantage - The Dry ORM"

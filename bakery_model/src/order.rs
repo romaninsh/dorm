@@ -2,8 +2,8 @@
 use anyhow::Result;
 use std::sync::{Arc, OnceLock};
 
-use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
+use vantage::prelude::*;
 
 use crate::{
     lineitem::{LineItem, LineItemTable},

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dorm::prelude::*;
+use vantage::prelude::*;
 
 use bakery_model::*;
 use serde::{Deserialize, Serialize};
@@ -9,8 +9,8 @@ async fn create_bootstrap_db() -> Result<()> {
     bakery_model::connect_postgres().await?;
 
     // Get the postgres client for batch execution
-    let dorm_client = bakery_model::postgres();
-    let client = dorm_client.client();
+    let vantage_client = bakery_model::postgres();
+    let client = vantage_client.client();
 
     // Read the schema from the file and execute it
     let schema = tokio::fs::read_to_string("bakery_model/schema-pg.sql").await?;

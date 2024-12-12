@@ -920,7 +920,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dorm"
+name = "vantage"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -84,5 +84,5 @@ let diet_clients = clients
 Finally to clean things up a bit, we can move some of this logic
 into our `model/*.rs` files.
 
-Overall, you are now familiar with the basics of DORM and can start
+Overall, you are now familiar with the basics of Vantage and can start
 building business model abstractions for your application.

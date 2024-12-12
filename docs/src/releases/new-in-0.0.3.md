@@ -1,6 +1,6 @@
 # What's new in 0.0.3
 
-We are now starting major refactoring inside the `dorm` crate itself. A huge problem was the size of `Table` struct (exactly 1000 lines).
+We are now starting major refactoring inside the `vantage` crate itself. A huge problem was the size of `Table` struct (exactly 1000 lines).
 It's possible to repeat `impl Table` several times, and ability to include `mod` and `use` statemetns to group
 things from multtiple files.
 

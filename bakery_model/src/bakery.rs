@@ -1,7 +1,7 @@
 use crate::{client::*, postgres, product::*};
-use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
+use vantage::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Bakery {

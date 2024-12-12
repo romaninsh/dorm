@@ -73,11 +73,11 @@ if let Some(product) = model::Product::with_inventory().load::<ProductInventory>
 }
 ```
 
-DORM will automatically understand, which fields you have changed (stock)
-and will only update those fields. DORM will also delete the row from
+Vantage will automatically understand, which fields you have changed (stock)
+and will only update those fields. Vantage will also delete the row from
 both "product" and "inventory" tables if stock is 0.
 
-Your code remains intuitive, while DORM takes care of the rest, but
+Your code remains intuitive, while Vantage takes care of the rest, but
 lets make the code even better:
 
 ```rust
@@ -107,5 +107,5 @@ product.sell(10).await?;
 
 Rust never looked so good!
 
-But hey, that's not all. DORM also supports associations between two tables.
+But hey, that's not all. Vantage also supports associations between two tables.
 Keep reading!

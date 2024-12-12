@@ -18,11 +18,11 @@ use super::AnyTable;
 ///
 /// Unlike a [`Query`], the [`Table`] will have a fixed set of columns, that you
 /// should define and later reference. Typically column structure is defined in
-/// your Entity model definition: <https://romaninsh.github.io/dorm/5-entity-model.html>,
+/// your Entity model definition: <https://romaninsh.github.io/vantage/5-entity-model.html>,
 /// however in the examples below, we will define the columns ad-hoc.
 ///
 /// ```
-/// use dorm::prelude::*;
+/// use vantage::prelude::*;
 ///
 /// let users = Table::new("users", postgres())
 ///     .with_id_column("id")
@@ -176,7 +176,7 @@ impl<T: DataSource, E: Entity> TableWithColumns for Table<T, E> {
     /// The more broad scope requires us to use a [`Column`] trait rather than
     /// a [`Column`].
     ///
-    /// [`Column`]: dorm::sql::Column
+    /// [`Column`]: vantage::sql::Column
     fn search_for_field(&self, field_name: &str) -> Option<Box<dyn SqlField>> {
         // perhaps we have a field like this?
         if let Some(column) = self.get_column(field_name) {

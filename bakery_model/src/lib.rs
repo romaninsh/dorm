@@ -8,7 +8,7 @@ use std::{
 use anyhow::Result;
 use tokio_postgres::NoTls;
 
-use dorm::prelude::Postgres;
+use vantage::prelude::Postgres;
 
 pub mod bakery;
 pub use bakery::*;

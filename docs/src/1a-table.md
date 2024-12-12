@@ -216,4 +216,4 @@ Also I have explained how to create custom traits and extend `Table` for specifi
 In my next chapters I'll refer to `Table` but in most cases you should understand that most
 features would also work with `SqlTable` trait.
 
-This chapter was Rust-intensive, but you should now understand how entity types are used in DORM.
+This chapter was Rust-intensive, but you should now understand how entity types are used in Vantage.

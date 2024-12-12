@@ -86,8 +86,8 @@ were dropped later on.
 
 ## restructuring into crates
 
-`dorm`, `bakery_model` and `docs` are now three folders in a root of a repository. Keeping bakery model out
-so that if someone is to use `dorm` - they wouldn't need to deal with `bakery_model'.
+`vantage`, `bakery_model` and `docs` are now three folders in a root of a repository. Keeping bakery model out
+so that if someone is to use `vantage` - they wouldn't need to deal with `bakery_model'.
 
 ## Added CI process
 

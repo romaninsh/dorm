@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use dorm::prelude::*;
-use dorm::sql::query;
 use serde_json::json;
+use vantage::prelude::*;
+use vantage::sql::query;
 
 use anyhow::Result;
 
@@ -15,7 +15,7 @@ use sqlformat::QueryParams;
 // use syntect::util::as_24_bit_terminal_escaped;
 // use syntect::util::LinesWithEndings;
 
-extern crate dorm;
+extern crate vantage;
 
 pub fn format_query(q: &Query) -> String {
     let qs = q.render_chunk().split();

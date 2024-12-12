@@ -1,6 +1,6 @@
 use axum::{response::IntoResponse, routing::get, Json, Router};
 use bakery_model::product::Product;
-use dorm::prelude::*;
+use vantage::prelude::*;
 
 pub fn router_products() -> Router {
     Router::new().route("/", get(list_products))

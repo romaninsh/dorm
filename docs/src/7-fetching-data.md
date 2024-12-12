@@ -26,7 +26,7 @@ condition, this will return a count of rows that match
 the condition.
 
 You could use count().preview() still to confirm,
-that DORM won't attept to fetch all records and iterate
+that Vantage won't attept to fetch all records and iterate
 over them, but instead will use a SUM() function to count rows:
 
 ```sql
