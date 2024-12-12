@@ -5,8 +5,8 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Romans Malinovskis <me@nearly.guru>"]
 description = "A type-safe, ergonomic database toolkit for Rust that focuses on developer productivity without compromising performance. It allows you to work with your database using Rust's strong type system while abstracting away the complexity of SQL queries."
-documentation = "https://romaninsh.github.io/vantage"
-homepage = "https://github.com/romaninsh/vantage"
+documentation = "https://docs.rs/vantage"
+homepage = "https://romaninsh.github.io/vantage"
 repository = "https://github.com/romaninsh/vantage"
 readme = "../README.md"
 
