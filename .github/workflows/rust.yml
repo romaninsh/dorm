@@ -35,6 +35,6 @@ jobs:
       - name: Build
         run: cargo build
       - name: Run tests
-        run: cd dorm && cargo test
+        run: cd vantage && cargo test
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
