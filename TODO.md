@@ -1,10 +1,13 @@
+# v0.1 (eta December 2024)
+
+- [ ] Implement "Realworld" example application in a separate repository
+
 # v0.2 (eta January 2025)
 
 - [ ] Add thread safety (currently tests in bakery_api fail)
 - [ ] Implement transaction support
 - [ ] Add MySQL support
 - [ ] Add a proper database integration test-suite
-- [ ] Implement "Realworld" example application (backend)
 - [ ] Implement all basic SQL types
 - [ ] Implement more operations
 - [ ] Fully implement joins
