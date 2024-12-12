@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Associated Entities - DORM - The Dry ORM</title>
+        <title>Associated Entities - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -220,10 +220,10 @@ if let Some(product) = model::Product::with_inventory().load::&lt;ProductInvento
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>DORM will automatically understand, which fields you have changed (stock)
-and will only update those fields. DORM will also delete the row from
+<p>Vantage will automatically understand, which fields you have changed (stock)
+and will only update those fields. Vantage will also delete the row from
 both "product" and "inventory" tables if stock is 0.</p>
-<p>Your code remains intuitive, while DORM takes care of the rest, but
+<p>Your code remains intuitive, while Vantage takes care of the rest, but
 lets make the code even better:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span>
@@ -250,7 +250,7 @@ lets make the code even better:</p>
 product.sell(10).await?;
 <span class="boring">}</span></code></pre></pre>
 <p>Rust never looked so good!</p>
-<p>But hey, that's not all. DORM also supports associations between two tables.
+<p>But hey, that's not all. Vantage also supports associations between two tables.
 Keep reading!</p>
 
                     </main>

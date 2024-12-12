@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Data Sets - DORM - The Dry ORM</title>
+        <title>Data Sets - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -154,29 +154,29 @@
                     <main>
                         <h1 id="data-sets"><a class="header" href="#data-sets">Data Sets</a></h1>
 <p>Traditional ORMs operate with records. If you have used SeaORM or Diesel - you need
-to temporarily "un-learn" those. DORM syntax may look similar, but it's very different to
+to temporarily "un-learn" those. Vantage syntax may look similar, but it's very different to
 the classic ORM pattern:</p>
 <ol>
 <li>
-<p><strong>DORM operates with Data Sets</strong>. A set can contain either a single record, no records or
+<p><strong>Vantage operates with Data Sets</strong>. A set can contain either a single record, no records or
 a huge number of records. Set represents records in remote database (or API) and does
 not store anything in memory.</p>
 </li>
 <li>
-<p><strong>DORM executes operations remotely</strong>. Changing multiple records in ORM involves
-fetching all the records, modifying them and saving them back. DORM prefers to
+<p><strong>Vantage executes operations remotely</strong>. Changing multiple records in ORM involves
+fetching all the records, modifying them and saving them back. Vantage prefers to
 execute changes remotely, if underlying DataSource supports it.</p>
 </li>
 </ol>
-<p>As a developer, you will always know when DORM interacts with the database, because
-those operations are async. Majority of DORM operations - like traversing relationship,
+<p>As a developer, you will always know when Vantage interacts with the database, because
+those operations are async. Majority of Vantage operations - like traversing relationship,
 calculating sub-queries - those are sync.</p>
 <h2 id="sqltable-and-sqlquery"><a class="header" href="#sqltable-and-sqlquery"><code>sql::Table</code> and <code>sql::Query</code></a></h2>
-<p>DORM implements sql::Table and sql::Query - because we all love SQL. However you can
+<p>Vantage implements sql::Table and sql::Query - because we all love SQL. However you can
 define other data sources - such as NoSQL, REST API, GraphQL, etc. Those extensions
-do not need to be in same crate as DORM. For the rest of this book I will only
+do not need to be in same crate as Vantage. For the rest of this book I will only
 focus on SQL as a predominant use-case.</p>
-<p>DORM is quite fluid in the way how you use <code>table</code> and <code>query</code>, you can use one to
+<p>Vantage is quite fluid in the way how you use <code>table</code> and <code>query</code>, you can use one to
 compliment or create another, but they serve different purpose:</p>
 <ol>
 <li><code>sql::Table</code> has a structure - fields, joins and relations are defined dynamically.</li>
@@ -192,18 +192,18 @@ acts as a <strong>glue</strong> betwene tables. For instance when you run traver
 let order_lines = client.ref_orders().ref_order_lines();
 <span class="boring">}</span></code></pre></pre>
 <ol>
-<li>DORM executes <code>field query</code> operation on a client set for field <code>id</code>.</li>
-<li>DORM creates <code>orders</code> table and adds <code>condition</code> on <code>client_id</code> field.</li>
-<li>DORM executes <code>field query</code> operation on <code>orders</code> table for field <code>id</code>.</li>
-<li>DORM creates <code>order_lines</code> table and adds <code>condition</code> on <code>order_id</code> field.</li>
+<li>Vantage executes <code>field query</code> operation on a client set for field <code>id</code>.</li>
+<li>Vantage creates <code>orders</code> table and adds <code>condition</code> on <code>client_id</code> field.</li>
+<li>Vantage executes <code>field query</code> operation on <code>orders</code> table for field <code>id</code>.</li>
+<li>Vantage creates <code>order_lines</code> table and adds <code>condition</code> on <code>order_id</code> field.</li>
 </ol>
-<p>DORM weaves between <code>sql::Table</code> and <code>sql::Query</code> without reaching out to the
+<p>Vantage weaves between <code>sql::Table</code> and <code>sql::Query</code> without reaching out to the
 database behind a simple and intuitive code.</p>
 <h2 id="readabledataset-and-writabledataset"><a class="header" href="#readabledataset-and-writabledataset">ReadableDataSet and WritableDataSet</a></h2>
-<p>DORM provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. As name
+<p>Vantage provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. As name
 suggests - you can fetch records from Readable set. You can add, modify or delete
 records in Writable set.</p>
-<p>DORM implements those traits:</p>
+<p>Vantage implements those traits:</p>
 <ul>
 <li><code>sql::Table</code> - implements both <code>ReadableDataSet</code> and <code>WritableDataSet</code>.</li>
 <li><code>sql::Query</code> - implements <code>ReadableDataSet</code> only.</li>
@@ -244,7 +244,7 @@ for client_order in client.orders().get().await? { // fetch multiple records
 <h2 id="creating-queries-from-tables"><a class="header" href="#creating-queries-from-tables">Creating Queries from Tables</a></h2>
 <p>Sometimes you do not want result, but would prefer a query object instead. This gives you
 a chance to tweak a query or use it elsewhere.</p>
-<p>DORM provides trait TableWithQueries that generates Query objects for you:</p>
+<p>Vantage provides trait TableWithQueries that generates Query objects for you:</p>
 <ul>
 <li><code>get_empty_query</code> - returns a query with conditions and joins, but no fields</li>
 <li><code>get_select_query</code> - like <code>get_empty_query</code> but adds all physical fields</li>
@@ -296,9 +296,9 @@ let order = Order::table()
 <span class="boring">}</span></code></pre></pre>
 <p>Method <code>get_ref()</code> does exactly that, when you traverse relationships.</p>
 <h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
-<p>DataSet is a powerful concept that sets aside DORM from the usual ORM pattern.
+<p>DataSet is a powerful concept that sets aside Vantage from the usual ORM pattern.
 <code>sql::Table</code> and <code>sql::Query</code> are the building blocks you interract with most
-often in DORM.</p>
+often in Vantage.</p>
 <p>Understanding this would allow you to implement missing features (such as table grouping)
 and eventually devleop extensions for your data model.</p>
 

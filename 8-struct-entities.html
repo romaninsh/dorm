@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Struct Entities - DORM - The Dry ORM</title>
+        <title>Struct Entities - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -188,12 +188,12 @@ but map() will also store data back to the database. You
 just need to remember to have <code>id</code> field in your struct. Here
 is what happens:</p>
 <ol>
-<li>DORM determines the type of your struct (Product)</li>
-<li>DORM will fetch row from a query that includes your condition</li>
-<li>DORM will deserialize the row into your struct</li>
-<li>DORM will call your closure</li>
-<li>DORM will serialize your struct back to a row</li>
-<li>DORM will replace row in the database with the new values</li>
+<li>Vantage determines the type of your struct (Product)</li>
+<li>Vantage will fetch row from a query that includes your condition</li>
+<li>Vantage will deserialize the row into your struct</li>
+<li>Vantage will call your closure</li>
+<li>Vantage will serialize your struct back to a row</li>
+<li>Vantage will replace row in the database with the new values</li>
 </ol>
 <p>The map() method does not know if you have changed struct, so
 it will always try to execute "REPLACE" query and based on

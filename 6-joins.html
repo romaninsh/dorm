@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Joins - DORM - The Dry ORM</title>
+        <title>Joins - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -189,16 +189,16 @@ writeln!(prod_inv.get_select_query().preview());
 
 // renders into: SELECT p.id, p.name, i.stock FROM product p LEFT JOIN inventory i ON (p.id = i.product_id)
 <span class="boring">}</span></code></pre></pre>
-<p>How is that possible? Well, DORM's "with_join" method will
+<p>How is that possible? Well, Vantage's "with_join" method will
 consume the table object that you pass and will move its
 fields into the original table. The joined table will be
 wrapped into a Join object and will instruct query builder
 to add join into your query.</p>
 <p>There are ways to create different kind of joins too, but
 api for that is not yet stable.</p>
-<p>As you will see later, DORM operates with joined tables
+<p>As you will see later, Vantage operates with joined tables
 just as good as with a single table.</p>
-<p>Now is probably a great time to look into DORMs capabilities
+<p>Now is probably a great time to look into Vantages capabilities
 of operating with your entities.</p>
 <p>So far we only used Table to create select queries, but
 we can in fact hydrate our entities with data from the

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Expressions and Queries - DORM - The Dry ORM</title>
+        <title>Expressions and Queries - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -153,7 +153,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="expressions-and-queries"><a class="header" href="#expressions-and-queries">Expressions and Queries</a></h1>
-<p>In DORM, query is a dynamic representation of a SQL query. You already saw how <code>sql::Table</code> is
+<p>In Vantage, query is a dynamic representation of a SQL query. You already saw how <code>sql::Table</code> is
 creating <code>sql::Query</code>, now it's time to learn how <code>sql::Query</code> works.</p>
 <p>Query owes it's flexibility to <code>Expressions</code> or more specifically to a <code>Chunk</code> trait. Any type
 implementing <code>Chunk</code> can be part of a Query. <code>Expression</code> is just a simplest implementation of
@@ -294,7 +294,7 @@ writeln!(query2.preview());
 // renders into: SELECT * FROM orders WHERE user_id in (SELECT id FROM users WHERE name = 'John' AND age &gt; 30)
 <span class="boring">}</span></code></pre></pre>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<p>DORM's query system leverages <code>Expressions</code> and the <code>Chunk</code> trait to build dynamic, safe, and
+<p>Vantage's query system leverages <code>Expressions</code> and the <code>Chunk</code> trait to build dynamic, safe, and
 composable SQL queries. <code>Expressions</code> separate SQL statements from parameters, preventing injection
 risks, while <code>ExpressionArc</code> extends this flexibility by supporting nested expressions.</p>
 <p><code>Queries</code> are constructed from multiple <code>Chunk</code>s, allowing complex operations like subqueries,

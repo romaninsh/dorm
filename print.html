@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>DORM - The Dry ORM</title>
+        <title>Vantage - The Dry ORM</title>
         <meta name="robots" content="noindex">
 
 
@@ -121,7 +121,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -154,12 +154,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
-<p>Welcome to this Book on DORM. Before we dive in, few assumptions:</p>
+<p>Welcome to this Book on Vantage. Before we dive in, few assumptions:</p>
 <ul>
-<li>You have read the Introduction (README): <a href="https://github.com/romaninsh/dorm">https://github.com/romaninsh/dorm</a></li>
+<li>You have read the Introduction (README): <a href="https://github.com/romaninsh/vantage">https://github.com/romaninsh/vantage</a></li>
 <li>You have cloned this repository, installed postgres and ran <code>0-intro</code> example.</li>
 <li>You have interest in software development efficiency, safety and maintainability.</li>
-<li>You have a bit of patience to get to the bottom of various components of DORM as they are explained.</li>
+<li>You have a bit of patience to get to the bottom of various components of Vantage as they are explained.</li>
 <li>You might need some Rust experience, but I'll try to provide pointers and keep things simple.</li>
 </ul>
 <p>To get us on the same page, I'll need to go over a basic principles of enterprise software
@@ -214,7 +214,7 @@ complexity abstraction first hand. You saw a simple and readable code, that was 
 complexity through abstraction.</p>
 <p>Rust is a complex language. Rust also does not provide any obvious way to implement
 complexity abstraction.</p>
-<p>DORM has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
+<p>Vantage has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
 could provide <code>retry safety</code> for your delete operation.</p>
 <h3 id="safety-and-performance"><a class="header" href="#safety-and-performance">Safety and Performance</a></h3>
 <p>In my opinion, the most important aspect of enterprise software is safety. As humans
@@ -222,12 +222,12 @@ we all make mistakes. Quite often in a pursuit of performance, we sacrifice safe
 <p>A seasoned developer may write a chunk of SQL code that quickly and efficiently
 performs a complex aggregation. When junior developer comes in, they may introduce
 a serious safety bug just by trying to tweak or replicate this complex SQL code.</p>
-<p>DORM offers a way to generate performant SQL code without sacrificing safety.</p>
+<p>Vantage offers a way to generate performant SQL code without sacrificing safety.</p>
 <h3 id="impact-of-change"><a class="header" href="#impact-of-change">Impact of Change</a></h3>
 <p>I've seen many projects which were stuck with a "legacy" data structure because
 the codebase was riddled with hardcoded SQL queries. As business logic evolves,
 it will require changes in the data structure.</p>
-<p>Persistence abstraction of DORM creates a layer for backward-compatibility. Operations
+<p>Persistence abstraction of Vantage creates a layer for backward-compatibility. Operations
 like splitting a table into two tables, moving columns between tables can be
 handled without affecting change in business logic.</p>
 <h3 id="testability"><a class="header" href="#testability">Testability</a></h3>
@@ -235,39 +235,39 @@ handled without affecting change in business logic.</p>
 works when it has access to the data. The <code>integration tests</code> usually provides
 test-data to a test-suite. Generally those are slow, they can't track code
 coverage and they are hard to debug.</p>
-<p>DORM provides a way to test business logic through <code>unit tests</code>. By mocking your
+<p>Vantage provides a way to test business logic through <code>unit tests</code>. By mocking your
 data source, you can focus on the business logic. More importantly you can adopt
 <code>test-driven development</code> and create standards for your code with test coverage.
 Use of faster <code>unit-tests</code> also reduces your release cycle time - a metric that
 companies are actively looking at.</p>
-<h2 id="business-appps-with-dorm"><a class="header" href="#business-appps-with-dorm">Business Appps with DORM</a></h2>
-<p>DORM addresses many of the challenges of enterprise software development.</p>
+<h2 id="business-appps-with-vantage"><a class="header" href="#business-appps-with-vantage">Business Appps with Vantage</a></h2>
+<p>Vantage addresses many of the challenges of enterprise software development.</p>
 <p>Ready to learn how? The answers are coming.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data-sets"><a class="header" href="#data-sets">Data Sets</a></h1>
 <p>Traditional ORMs operate with records. If you have used SeaORM or Diesel - you need
-to temporarily "un-learn" those. DORM syntax may look similar, but it's very different to
+to temporarily "un-learn" those. Vantage syntax may look similar, but it's very different to
 the classic ORM pattern:</p>
 <ol>
 <li>
-<p><strong>DORM operates with Data Sets</strong>. A set can contain either a single record, no records or
+<p><strong>Vantage operates with Data Sets</strong>. A set can contain either a single record, no records or
 a huge number of records. Set represents records in remote database (or API) and does
 not store anything in memory.</p>
 </li>
 <li>
-<p><strong>DORM executes operations remotely</strong>. Changing multiple records in ORM involves
-fetching all the records, modifying them and saving them back. DORM prefers to
+<p><strong>Vantage executes operations remotely</strong>. Changing multiple records in ORM involves
+fetching all the records, modifying them and saving them back. Vantage prefers to
 execute changes remotely, if underlying DataSource supports it.</p>
 </li>
 </ol>
-<p>As a developer, you will always know when DORM interacts with the database, because
-those operations are async. Majority of DORM operations - like traversing relationship,
+<p>As a developer, you will always know when Vantage interacts with the database, because
+those operations are async. Majority of Vantage operations - like traversing relationship,
 calculating sub-queries - those are sync.</p>
 <h2 id="sqltable-and-sqlquery"><a class="header" href="#sqltable-and-sqlquery"><code>sql::Table</code> and <code>sql::Query</code></a></h2>
-<p>DORM implements sql::Table and sql::Query - because we all love SQL. However you can
+<p>Vantage implements sql::Table and sql::Query - because we all love SQL. However you can
 define other data sources - such as NoSQL, REST API, GraphQL, etc. Those extensions
-do not need to be in same crate as DORM. For the rest of this book I will only
+do not need to be in same crate as Vantage. For the rest of this book I will only
 focus on SQL as a predominant use-case.</p>
-<p>DORM is quite fluid in the way how you use <code>table</code> and <code>query</code>, you can use one to
+<p>Vantage is quite fluid in the way how you use <code>table</code> and <code>query</code>, you can use one to
 compliment or create another, but they serve different purpose:</p>
 <ol>
 <li><code>sql::Table</code> has a structure - fields, joins and relations are defined dynamically.</li>
@@ -283,18 +283,18 @@ acts as a <strong>glue</strong> betwene tables. For instance when you run traver
 let order_lines = client.ref_orders().ref_order_lines();
 <span class="boring">}</span></code></pre></pre>
 <ol>
-<li>DORM executes <code>field query</code> operation on a client set for field <code>id</code>.</li>
-<li>DORM creates <code>orders</code> table and adds <code>condition</code> on <code>client_id</code> field.</li>
-<li>DORM executes <code>field query</code> operation on <code>orders</code> table for field <code>id</code>.</li>
-<li>DORM creates <code>order_lines</code> table and adds <code>condition</code> on <code>order_id</code> field.</li>
+<li>Vantage executes <code>field query</code> operation on a client set for field <code>id</code>.</li>
+<li>Vantage creates <code>orders</code> table and adds <code>condition</code> on <code>client_id</code> field.</li>
+<li>Vantage executes <code>field query</code> operation on <code>orders</code> table for field <code>id</code>.</li>
+<li>Vantage creates <code>order_lines</code> table and adds <code>condition</code> on <code>order_id</code> field.</li>
 </ol>
-<p>DORM weaves between <code>sql::Table</code> and <code>sql::Query</code> without reaching out to the
+<p>Vantage weaves between <code>sql::Table</code> and <code>sql::Query</code> without reaching out to the
 database behind a simple and intuitive code.</p>
 <h2 id="readabledataset-and-writabledataset"><a class="header" href="#readabledataset-and-writabledataset">ReadableDataSet and WritableDataSet</a></h2>
-<p>DORM provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. As name
+<p>Vantage provides two traits: <code>ReadableDataSet</code> and <code>WritableDataSet</code>. As name
 suggests - you can fetch records from Readable set. You can add, modify or delete
 records in Writable set.</p>
-<p>DORM implements those traits:</p>
+<p>Vantage implements those traits:</p>
 <ul>
 <li><code>sql::Table</code> - implements both <code>ReadableDataSet</code> and <code>WritableDataSet</code>.</li>
 <li><code>sql::Query</code> - implements <code>ReadableDataSet</code> only.</li>
@@ -335,7 +335,7 @@ for client_order in client.orders().get().await? { // fetch multiple records
 <h2 id="creating-queries-from-tables"><a class="header" href="#creating-queries-from-tables">Creating Queries from Tables</a></h2>
 <p>Sometimes you do not want result, but would prefer a query object instead. This gives you
 a chance to tweak a query or use it elsewhere.</p>
-<p>DORM provides trait TableWithQueries that generates Query objects for you:</p>
+<p>Vantage provides trait TableWithQueries that generates Query objects for you:</p>
 <ul>
 <li><code>get_empty_query</code> - returns a query with conditions and joins, but no fields</li>
 <li><code>get_select_query</code> - like <code>get_empty_query</code> but adds all physical fields</li>
@@ -387,9 +387,9 @@ let order = Order::table()
 <span class="boring">}</span></code></pre></pre>
 <p>Method <code>get_ref()</code> does exactly that, when you traverse relationships.</p>
 <h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
-<p>DataSet is a powerful concept that sets aside DORM from the usual ORM pattern.
+<p>DataSet is a powerful concept that sets aside Vantage from the usual ORM pattern.
 <code>sql::Table</code> and <code>sql::Query</code> are the building blocks you interract with most
-often in DORM.</p>
+often in Vantage.</p>
 <p>Understanding this would allow you to implement missing features (such as table grouping)
 and eventually devleop extensions for your data model.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="table"><a class="header" href="#table">Table</a></h1>
@@ -581,9 +581,9 @@ impl&lt;D: DataSource&gt; OrderTableReports for Table&lt;D, Order&gt; {
 Also I have explained how to create custom traits and extend <code>Table</code> for specific entity type.</p>
 <p>In my next chapters I'll refer to <code>Table</code> but in most cases you should understand that most
 features would also work with <code>SqlTable</code> trait.</p>
-<p>This chapter was Rust-intensive, but you should now understand how entity types are used in DORM.</p>
+<p>This chapter was Rust-intensive, but you should now understand how entity types are used in Vantage.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="table-columns"><a class="header" href="#table-columns">Table Columns</a></h1>
-<p><code>Table</code> allows you to define and reference columns. A <code>Column</code> is another struct in DORM.
+<p><code>Table</code> allows you to define and reference columns. A <code>Column</code> is another struct in Vantage.
 Using columns outside of table context is convenient, such as for defining an expression:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -696,7 +696,7 @@ can be defined through different means.</p>
 without changing the code, also you can bring columns from across the
 entities, but for that we will need to learn more about Expressions</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="expressions-and-queries"><a class="header" href="#expressions-and-queries">Expressions and Queries</a></h1>
-<p>In DORM, query is a dynamic representation of a SQL query. You already saw how <code>sql::Table</code> is
+<p>In Vantage, query is a dynamic representation of a SQL query. You already saw how <code>sql::Table</code> is
 creating <code>sql::Query</code>, now it's time to learn how <code>sql::Query</code> works.</p>
 <p>Query owes it's flexibility to <code>Expressions</code> or more specifically to a <code>Chunk</code> trait. Any type
 implementing <code>Chunk</code> can be part of a Query. <code>Expression</code> is just a simplest implementation of
@@ -837,7 +837,7 @@ writeln!(query2.preview());
 // renders into: SELECT * FROM orders WHERE user_id in (SELECT id FROM users WHERE name = 'John' AND age &gt; 30)
 <span class="boring">}</span></code></pre></pre>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<p>DORM's query system leverages <code>Expressions</code> and the <code>Chunk</code> trait to build dynamic, safe, and
+<p>Vantage's query system leverages <code>Expressions</code> and the <code>Chunk</code> trait to build dynamic, safe, and
 composable SQL queries. <code>Expressions</code> separate SQL statements from parameters, preventing injection
 risks, while <code>ExpressionArc</code> extends this flexibility by supporting nested expressions.</p>
 <p><code>Queries</code> are constructed from multiple <code>Chunk</code>s, allowing complex operations like subqueries,
@@ -925,7 +925,7 @@ through expression again, as we don't have a physical column fro it:</p>
 <p>I haven't defined method like <code>sub_line_items</code> before, so I'm using <code>get_subquery_as</code> directly.
 There is also <code>get_subquery</code> but it returns Box<dyn SqlTable>. I want to use <code>product.price()</code> so
 instead I'm using <code>get_subquery_as</code> and specifying entity type explicitly.</p>
-<p>As far as DORM is concerned, it sees <code>with_one</code> and <code>with_many</code> relationships equally. I need to
+<p>As far as Vantage is concerned, it sees <code>with_one</code> and <code>with_many</code> relationships equally. I need to
 think about this though. If subquery could return multiple rows, I'd need to have them limited,
 aggregated or wrapped into a string somehow (like using ExpressionArc::fx())</p>
 <p>In this case I don't have to worry about that. I just need to query a single field (that happens to
@@ -962,7 +962,7 @@ let condition = expr!("now()").lt(&amp;yesterday)
 <span class="boring">}</span></code></pre></pre>
 <p>Conditions created by the operation can be used in <code>with_condition()</code> method.</p>
 <h2 id="conclusion-3"><a class="header" href="#conclusion-3">Conclusion</a></h2>
-<p>In DORM - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
+<p>In Vantage - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
 such as conditions and expression fields.</p>
 <p>Functionality is composable of underlying components. If <code>Table</code> does not implement a feature you
 like, you can easily build it using Expressions and Operations.</p>
@@ -1003,16 +1003,16 @@ writeln!(prod_inv.get_select_query().preview());
 
 // renders into: SELECT p.id, p.name, i.stock FROM product p LEFT JOIN inventory i ON (p.id = i.product_id)
 <span class="boring">}</span></code></pre></pre>
-<p>How is that possible? Well, DORM's "with_join" method will
+<p>How is that possible? Well, Vantage's "with_join" method will
 consume the table object that you pass and will move its
 fields into the original table. The joined table will be
 wrapped into a Join object and will instruct query builder
 to add join into your query.</p>
 <p>There are ways to create different kind of joins too, but
 api for that is not yet stable.</p>
-<p>As you will see later, DORM operates with joined tables
+<p>As you will see later, Vantage operates with joined tables
 just as good as with a single table.</p>
-<p>Now is probably a great time to look into DORMs capabilities
+<p>Now is probably a great time to look into Vantages capabilities
 of operating with your entities.</p>
 <p>So far we only used Table to create select queries, but
 we can in fact hydrate our entities with data from the
@@ -1039,7 +1039,7 @@ rows in a table. Because our LowCalProducts contains a
 condition, this will return a count of rows that match
 the condition.</p>
 <p>You could use count().preview() still to confirm,
-that DORM won't attept to fetch all records and iterate
+that Vantage won't attept to fetch all records and iterate
 over them, but instead will use a SUM() function to count rows:</p>
 <pre><code class="language-sql">SELECT COUNT(*) FROM "product" WHERE "calories" &lt;= 100
 </code></pre>
@@ -1116,12 +1116,12 @@ but map() will also store data back to the database. You
 just need to remember to have <code>id</code> field in your struct. Here
 is what happens:</p>
 <ol>
-<li>DORM determines the type of your struct (Product)</li>
-<li>DORM will fetch row from a query that includes your condition</li>
-<li>DORM will deserialize the row into your struct</li>
-<li>DORM will call your closure</li>
-<li>DORM will serialize your struct back to a row</li>
-<li>DORM will replace row in the database with the new values</li>
+<li>Vantage determines the type of your struct (Product)</li>
+<li>Vantage will fetch row from a query that includes your condition</li>
+<li>Vantage will deserialize the row into your struct</li>
+<li>Vantage will call your closure</li>
+<li>Vantage will serialize your struct back to a row</li>
+<li>Vantage will replace row in the database with the new values</li>
 </ol>
 <p>The map() method does not know if you have changed struct, so
 it will always try to execute "REPLACE" query and based on
@@ -1231,10 +1231,10 @@ if let Some(product) = model::Product::with_inventory().load::&lt;ProductInvento
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>DORM will automatically understand, which fields you have changed (stock)
-and will only update those fields. DORM will also delete the row from
+<p>Vantage will automatically understand, which fields you have changed (stock)
+and will only update those fields. Vantage will also delete the row from
 both "product" and "inventory" tables if stock is 0.</p>
-<p>Your code remains intuitive, while DORM takes care of the rest, but
+<p>Your code remains intuitive, while Vantage takes care of the rest, but
 lets make the code even better:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span>
@@ -1261,10 +1261,10 @@ lets make the code even better:</p>
 product.sell(10).await?;
 <span class="boring">}</span></code></pre></pre>
 <p>Rust never looked so good!</p>
-<p>But hey, that's not all. DORM also supports associations between two tables.
+<p>But hey, that's not all. Vantage also supports associations between two tables.
 Keep reading!</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="references"><a class="header" href="#references">References</a></h1>
-<p>DORM allows you to connect tables together. Lets create two new tables
+<p>Vantage allows you to connect tables together. Lets create two new tables
 in addition to "Product" that we have already:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1324,7 +1324,7 @@ impl Client {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>Given one Table, DORM lets you traverse relationships between tables.
+<p>Given one Table, Vantage lets you traverse relationships between tables.
 Lets say we want to see how many orders does product with id=4 have:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1351,7 +1351,7 @@ let low_cal_orders = product.get_ref("orders").unwrap().count().get_one().await?
 <p>Resulting query now looks like this:</p>
 <pre><code class="language-sql">SELECT COUNT(*) FROM order WHERE (product_id IN (SELECT id FROM product WHERE (calories &lt; 100)));
 </code></pre>
-<p>In DORM relationship traversal is always converting one "set" into another "set".</p>
+<p>In Vantage relationship traversal is always converting one "set" into another "set".</p>
 <p>In fact - if you want to calculate how many clients have placed orders for
 Low Calory Products, you can do it like this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1382,7 +1382,7 @@ for client in clients_on_diet.get&lt;Client&gt;().await? {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Imagine all the other things you could do. Yet once again,
-DORM has more surprises for you.</p>
+Vantage has more surprises for you.</p>
 <p>We have learned about expressions before, right? Well, expressions
 can be built from subqueries.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="subquery-expressions"><a class="header" href="#subquery-expressions">Subquery Expressions</a></h1>
@@ -1463,7 +1463,7 @@ to calculate conditions:</p>
 <span class="boring">}</span></code></pre></pre>
 <p>Finally to clean things up a bit, we can move some of this logic
 into our <code>model/*.rs</code> files.</p>
-<p>Overall, you are now familiar with the basics of DORM and can start
+<p>Overall, you are now familiar with the basics of Vantage and can start
 building business model abstractions for your application.</p>
 
                     </main>

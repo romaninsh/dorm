@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Expressions in table - DORM - The Dry ORM</title>
+        <title>Expressions in table - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -231,7 +231,7 @@ through expression again, as we don't have a physical column fro it:</p>
 <p>I haven't defined method like <code>sub_line_items</code> before, so I'm using <code>get_subquery_as</code> directly.
 There is also <code>get_subquery</code> but it returns Box<dyn SqlTable>. I want to use <code>product.price()</code> so
 instead I'm using <code>get_subquery_as</code> and specifying entity type explicitly.</p>
-<p>As far as DORM is concerned, it sees <code>with_one</code> and <code>with_many</code> relationships equally. I need to
+<p>As far as Vantage is concerned, it sees <code>with_one</code> and <code>with_many</code> relationships equally. I need to
 think about this though. If subquery could return multiple rows, I'd need to have them limited,
 aggregated or wrapped into a string somehow (like using ExpressionArc::fx())</p>
 <p>In this case I don't have to worry about that. I just need to query a single field (that happens to
@@ -268,7 +268,7 @@ let condition = expr!("now()").lt(&amp;yesterday)
 <span class="boring">}</span></code></pre></pre>
 <p>Conditions created by the operation can be used in <code>with_condition()</code> method.</p>
 <h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
-<p>In DORM - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
+<p>In Vantage - expressions and operations create a powerful way to extend of high-level <code>Table</code> features
 such as conditions and expression fields.</p>
 <p>Functionality is composable of underlying components. If <code>Table</code> does not implement a feature you
 like, you can easily build it using Expressions and Operations.</p>

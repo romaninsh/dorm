@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>References - DORM - The Dry ORM</title>
+        <title>References - Vantage - The Dry ORM</title>
 
 
         <!-- Custom HTML head -->
@@ -120,7 +120,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DORM - The Dry ORM</h1>
+                    <h1 class="menu-title">Vantage - The Dry ORM</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -153,7 +153,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="references"><a class="header" href="#references">References</a></h1>
-<p>DORM allows you to connect tables together. Lets create two new tables
+<p>Vantage allows you to connect tables together. Lets create two new tables
 in addition to "Product" that we have already:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -213,7 +213,7 @@ impl Client {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>Given one Table, DORM lets you traverse relationships between tables.
+<p>Given one Table, Vantage lets you traverse relationships between tables.
 Lets say we want to see how many orders does product with id=4 have:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -240,7 +240,7 @@ let low_cal_orders = product.get_ref("orders").unwrap().count().get_one().await?
 <p>Resulting query now looks like this:</p>
 <pre><code class="language-sql">SELECT COUNT(*) FROM order WHERE (product_id IN (SELECT id FROM product WHERE (calories &lt; 100)));
 </code></pre>
-<p>In DORM relationship traversal is always converting one "set" into another "set".</p>
+<p>In Vantage relationship traversal is always converting one "set" into another "set".</p>
 <p>In fact - if you want to calculate how many clients have placed orders for
 Low Calory Products, you can do it like this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -271,7 +271,7 @@ for client in clients_on_diet.get&lt;Client&gt;().await? {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Imagine all the other things you could do. Yet once again,
-DORM has more surprises for you.</p>
+Vantage has more surprises for you.</p>
 <p>We have learned about expressions before, right? Well, expressions
 can be built from subqueries.</p>
 
