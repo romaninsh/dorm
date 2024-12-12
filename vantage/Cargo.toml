@@ -2,18 +2,21 @@
 name = "vantage"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Romans Malinovskis <me@nearly.guru>"]
+description = "A type-safe, ergonomic database toolkit for Rust that focuses on developer productivity without compromising performance. It allows you to work with your database using Rust's strong type system while abstracting away the complexity of SQL queries."
+documentation = "https://romaninsh.github.io/vantage"
+homepage = "https://github.com/romaninsh/vantage"
+repository = "https://github.com/romaninsh/vantage"
 
 [lib]
 doctest = false
 
 [dependencies]
 rust_decimal = { version = "1", features = ["db-postgres"] }
-# async-trait = "0.1.80"
 tokio-postgres = { version = "*", features = ["with-serde_json-1"] }
 indexmap = { version = "2.2.6", features = ["serde"] }
-rusqlite = "0.32.0"
 tokio = { version = "1", features = ["full"] }
-rust_decimal_macros = "1"
 serde_json = { version = "1", features = [
     "preserve_order",
     "raw_value",
@@ -23,12 +26,10 @@ serde = { version = "1", features = ["derive"] }
 chrono = "0.4.38"
 anyhow = "1.0.82"
 futures = "0.3.30"
-pretty_dbg = "1.0.54"
-regex = "1.10.4"
-# syntect = "5.2.0"
-lazy_static = "1.4.0"
-# cargo-nextest = { version = "0.9.72", features = [ "experimental-tokio-console", ] }
-pretty_assertions = "1.4.0"
 
 [dev-dependencies]
-bakery_model = { path = "../bakery_model" }
+pretty_assertions = "1.4.0"
+# syntect = "5.2.0"
+# cargo-nextest = { version = "0.9.72", features = [ "experimental-tokio-console", ] }
+
+[features]
