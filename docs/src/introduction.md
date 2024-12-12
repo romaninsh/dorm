@@ -1,11 +1,11 @@
 # Introduction
 
-Welcome to this Book on DORM. Before we dive in, few assumptions:
+Welcome to this Book on Vantage. Before we dive in, few assumptions:
 
-- You have read the Introduction (README): <https://github.com/romaninsh/dorm>
+- You have read the Introduction (README): <https://github.com/romaninsh/vantage>
 - You have cloned this repository, installed postgres and ran `0-intro` example.
 - You have interest in software development efficiency, safety and maintainability.
-- You have a bit of patience to get to the bottom of various components of DORM as they are explained.
+- You have a bit of patience to get to the bottom of various components of Vantage as they are explained.
 - You might need some Rust experience, but I'll try to provide pointers and keep things simple.
 
 To get us on the same page, I'll need to go over a basic principles of enterprise software
@@ -82,7 +82,7 @@ complexity through abstraction.
 Rust is a complex language. Rust also does not provide any obvious way to implement
 complexity abstraction.
 
-DORM has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
+Vantage has a ready-to-use way to do this in a consistent way - for instance SoftDelete extension
 could provide `retry safety` for your delete operation.
 
 ### Safety and Performance
@@ -94,7 +94,7 @@ A seasoned developer may write a chunk of SQL code that quickly and efficiently
 performs a complex aggregation. When junior developer comes in, they may introduce
 a serious safety bug just by trying to tweak or replicate this complex SQL code.
 
-DORM offers a way to generate performant SQL code without sacrificing safety.
+Vantage offers a way to generate performant SQL code without sacrificing safety.
 
 ### Impact of Change
 
@@ -102,7 +102,7 @@ I've seen many projects which were stuck with a "legacy" data structure because
 the codebase was riddled with hardcoded SQL queries. As business logic evolves,
 it will require changes in the data structure.
 
-Persistence abstraction of DORM creates a layer for backward-compatibility. Operations
+Persistence abstraction of Vantage creates a layer for backward-compatibility. Operations
 like splitting a table into two tables, moving columns between tables can be
 handled without affecting change in business logic.
 
@@ -113,14 +113,14 @@ works when it has access to the data. The `integration tests` usually provides
 test-data to a test-suite. Generally those are slow, they can't track code
 coverage and they are hard to debug.
 
-DORM provides a way to test business logic through `unit tests`. By mocking your
+Vantage provides a way to test business logic through `unit tests`. By mocking your
 data source, you can focus on the business logic. More importantly you can adopt
 `test-driven development` and create standards for your code with test coverage.
 Use of faster `unit-tests` also reduces your release cycle time - a metric that
 companies are actively looking at.
 
-## Business Appps with DORM
+## Business Appps with Vantage
 
-DORM addresses many of the challenges of enterprise software development.
+Vantage addresses many of the challenges of enterprise software development.
 
 Ready to learn how? The answers are coming.

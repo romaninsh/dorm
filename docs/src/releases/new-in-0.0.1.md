@@ -94,7 +94,7 @@ assert_eq!(
 Initial implementation of conditions is very limited - no way to specify a field. A new implementation
 is going to store field reference, operation and value.
 
-## Apr 18: Name changed to `dorm` and early syntax added in README:
+## Apr 18: Name changed to `vantage` and early syntax added in README:
 
 This is how early syntax looked like:
 
@@ -310,7 +310,7 @@ and OneCell to find a best solution for this.
 
 ## Added Bakery example and use clone everywhere
 
-It wolud be nice to have an example as a part of `dorm` itself and reference example entities in the documentation.
+It wolud be nice to have an example as a part of `vantage` itself and reference example entities in the documentation.
 Bakery was already partially there, but now it got extended, and ER diagram is also included.
 
 DataSource is now OnceLock and is cloned every time `postgres()` is called.

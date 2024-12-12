@@ -1,6 +1,6 @@
 # References
 
-DORM allows you to connect tables together. Lets create two new tables
+Vantage allows you to connect tables together. Lets create two new tables
 in addition to "Product" that we have already:
 
 ```rust
@@ -62,7 +62,7 @@ impl Client {
 }
 ```
 
-Given one Table, DORM lets you traverse relationships between tables.
+Given one Table, Vantage lets you traverse relationships between tables.
 Lets say we want to see how many orders does product with id=4 have:
 
 ```rust
@@ -96,7 +96,7 @@ Resulting query now looks like this:
 SELECT COUNT(*) FROM order WHERE (product_id IN (SELECT id FROM product WHERE (calories < 100)));
 ```
 
-In DORM relationship traversal is always converting one "set" into another "set".
+In Vantage relationship traversal is always converting one "set" into another "set".
 
 In fact - if you want to calculate how many clients have placed orders for
 Low Calory Products, you can do it like this:
@@ -130,7 +130,7 @@ for client in clients_on_diet.get<Client>().await? {
 ```
 
 Imagine all the other things you could do. Yet once again,
-DORM has more surprises for you.
+Vantage has more surprises for you.
 
 We have learned about expressions before, right? Well, expressions
 can be built from subqueries.

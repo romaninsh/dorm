@@ -1,29 +1,29 @@
 # Data Sets
 
 Traditional ORMs operate with records. If you have used SeaORM or Diesel - you need
-to temporarily "un-learn" those. DORM syntax may look similar, but it's very different to
+to temporarily "un-learn" those. Vantage syntax may look similar, but it's very different to
 the classic ORM pattern:
 
-1. **DORM operates with Data Sets**. A set can contain either a single record, no records or
+1. **Vantage operates with Data Sets**. A set can contain either a single record, no records or
    a huge number of records. Set represents records in remote database (or API) and does
    not store anything in memory.
 
-2. **DORM executes operations remotely**. Changing multiple records in ORM involves
-   fetching all the records, modifying them and saving them back. DORM prefers to
+2. **Vantage executes operations remotely**. Changing multiple records in ORM involves
+   fetching all the records, modifying them and saving them back. Vantage prefers to
    execute changes remotely, if underlying DataSource supports it.
 
-As a developer, you will always know when DORM interacts with the database, because
-those operations are async. Majority of DORM operations - like traversing relationship,
+As a developer, you will always know when Vantage interacts with the database, because
+those operations are async. Majority of Vantage operations - like traversing relationship,
 calculating sub-queries - those are sync.
 
 ## `sql::Table` and `sql::Query`
 
-DORM implements sql::Table and sql::Query - because we all love SQL. However you can
+Vantage implements sql::Table and sql::Query - because we all love SQL. However you can
 define other data sources - such as NoSQL, REST API, GraphQL, etc. Those extensions
-do not need to be in same crate as DORM. For the rest of this book I will only
+do not need to be in same crate as Vantage. For the rest of this book I will only
 focus on SQL as a predominant use-case.
 
-DORM is quite fluid in the way how you use `table` and `query`, you can use one to
+Vantage is quite fluid in the way how you use `table` and `query`, you can use one to
 compliment or create another, but they serve different purpose:
 
 1. `sql::Table` has a structure - fields, joins and relations are defined dynamically.
@@ -39,21 +39,21 @@ let client = Client::table().with_id(1);
 let order_lines = client.ref_orders().ref_order_lines();
 ```
 
-1. DORM executes `field query` operation on a client set for field `id`.
-2. DORM creates `orders` table and adds `condition` on `client_id` field.
-3. DORM executes `field query` operation on `orders` table for field `id`.
-4. DORM creates `order_lines` table and adds `condition` on `order_id` field.
+1. Vantage executes `field query` operation on a client set for field `id`.
+2. Vantage creates `orders` table and adds `condition` on `client_id` field.
+3. Vantage executes `field query` operation on `orders` table for field `id`.
+4. Vantage creates `order_lines` table and adds `condition` on `order_id` field.
 
-DORM weaves between `sql::Table` and `sql::Query` without reaching out to the
+Vantage weaves between `sql::Table` and `sql::Query` without reaching out to the
 database behind a simple and intuitive code.
 
 ## ReadableDataSet and WritableDataSet
 
-DORM provides two traits: `ReadableDataSet` and `WritableDataSet`. As name
+Vantage provides two traits: `ReadableDataSet` and `WritableDataSet`. As name
 suggests - you can fetch records from Readable set. You can add, modify or delete
 records in Writable set.
 
-DORM implements those traits:
+Vantage implements those traits:
 
 - `sql::Table` - implements both `ReadableDataSet` and `WritableDataSet`.
 - `sql::Query` - implements `ReadableDataSet` only.
@@ -99,7 +99,7 @@ for client_order in client.orders().get().await? { // fetch multiple records
 Sometimes you do not want result, but would prefer a query object instead. This gives you
 a chance to tweak a query or use it elsewhere.
 
-DORM provides trait TableWithQueries that generates Query objects for you:
+Vantage provides trait TableWithQueries that generates Query objects for you:
 
 - `get_empty_query` - returns a query with conditions and joins, but no fields
 - `get_select_query` - like `get_empty_query` but adds all physical fields
@@ -155,9 +155,9 @@ Method `get_ref()` does exactly that, when you traverse relationships.
 
 ## Conclusion
 
-DataSet is a powerful concept that sets aside DORM from the usual ORM pattern.
+DataSet is a powerful concept that sets aside Vantage from the usual ORM pattern.
 `sql::Table` and `sql::Query` are the building blocks you interract with most
-often in DORM.
+often in Vantage.
 
 Understanding this would allow you to implement missing features (such as table grouping)
 and eventually devleop extensions for your data model.

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dorm::prelude::*;
+use vantage::prelude::*;
 
 use bakery_model::*;
 use serde::{Deserialize, Serialize};
@@ -9,8 +9,8 @@ async fn create_bootstrap_db() -> Result<()> {
     //  > psql -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER"
     //
     bakery_model::connect_postgres().await?;
-    let dorm_client = bakery_model::postgres();
-    let client = dorm_client.client();
+    let vantage_client = bakery_model::postgres();
+    let client = vantage_client.client();
     let schema = tokio::fs::read_to_string("bakery_model/schema-pg.sql").await?;
     client.batch_execute(&schema).await?;
 
@@ -21,7 +21,7 @@ async fn create_bootstrap_db() -> Result<()> {
 async fn main() -> Result<()> {
     create_bootstrap_db().await?;
 
-    // This example is explained in README.md <https://github.com/romaninsh/dorm>.
+    // This example is explained in README.md <https://github.com/romaninsh/vantage>.
     //
     // Use a set of our clients as a type:
     let set_of_clients = Client::table();
@@ -110,6 +110,6 @@ async fn main() -> Result<()> {
             .preview()
     );
 
-    // To continue learning, visit: <https://romaninsh.github.io/dorm>, Ok?
+    // To continue learning, visit: <https://romaninsh.github.io/vantage>, Ok?
     Ok(())
 }

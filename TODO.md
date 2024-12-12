@@ -148,15 +148,15 @@ let vip_total = clients.clone()
 
 ```rust
 
-#[dorm::table]
+#[vantage::table]
 struct Client {
     name: String,
     is_vip: bool,
 }
 
-#[dorm::table]
+#[vantage::table]
 struct Order {
-    #[dorm::has_one(Client, "id"))]
+    #[vantage::has_one(Client, "id"))]
     user_id: i32,
     total: f64,
 }
@@ -178,7 +178,7 @@ id-tracked conditioning. The model will know where it was loaded from and
 will be able to update itself if changed, which can even be done on drop.
 
 ```rust
-#[dorm::persistence(id = "my_id")]
+#[vantage::persistence(id = "my_id")]
 struct Client {
     my_id: i32,
     name: String,

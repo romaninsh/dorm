@@ -39,12 +39,12 @@ but map() will also store data back to the database. You
 just need to remember to have `id` field in your struct. Here
 is what happens:
 
-1.  DORM determines the type of your struct (Product)
-2.  DORM will fetch row from a query that includes your condition
-3.  DORM will deserialize the row into your struct
-4.  DORM will call your closure
-5.  DORM will serialize your struct back to a row
-6.  DORM will replace row in the database with the new values
+1.  Vantage determines the type of your struct (Product)
+2.  Vantage will fetch row from a query that includes your condition
+3.  Vantage will deserialize the row into your struct
+4.  Vantage will call your closure
+5.  Vantage will serialize your struct back to a row
+6.  Vantage will replace row in the database with the new values
 
 The map() method does not know if you have changed struct, so
 it will always try to execute "REPLACE" query and based on

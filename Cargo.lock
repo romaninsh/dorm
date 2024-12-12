@@ -260,7 +260,6 @@ dependencies = [
  "axum",
  "bakery_model",
  "clap",
- "dorm",
  "dotenv",
  "env_logger",
  "fake",
@@ -274,6 +273,7 @@ dependencies = [
  "tower-http",
  "tower-test",
  "tracing-subscriber",
+ "vantage",
 ]
 
 [[package]]
@@ -281,7 +281,6 @@ name = "bakery_model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "dorm",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -289,6 +288,7 @@ dependencies = [
  "testcontainers-modules",
  "tokio",
  "tokio-postgres",
+ "vantage",
 ]
 
 [[package]]
@@ -678,28 +678,6 @@ dependencies = [
  "base64 0.21.7",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "dorm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bakery_model",
- "chrono",
- "futures",
- "indexmap 2.2.6",
- "lazy_static",
- "pretty_assertions",
- "pretty_dbg",
- "regex",
- "rusqlite",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "tokio",
- "tokio-postgres",
 ]
 
 [[package]]
@@ -2966,6 +2944,28 @@ name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
+
+[[package]]
+name = "vantage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bakery_model",
+ "chrono",
+ "futures",
+ "indexmap 2.2.6",
+ "lazy_static",
+ "pretty_assertions",
+ "pretty_dbg",
+ "regex",
+ "rusqlite",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
+]
 
 [[package]]
 name = "vcpkg"

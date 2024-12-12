@@ -1,6 +1,6 @@
 # What does this code do?
 
-This is a Rust library called "dorm" (likely standing for Database ORM - Object-Relational Mapping) that provides a framework for working with databases in Rust. Here are the key components and features:
+This is a Rust library called "vantage" (likely standing for Database ORM - Object-Relational Mapping) that provides a framework for working with databases in Rust. Here are the key components and features:
 
 1. Dataset Module
 
@@ -126,7 +126,7 @@ pub trait AnyTable: Any + Send + Sync {
 - Could benefit from a dedicated error type:
 
 ```rust
-pub enum DormError {
+pub enum VantageError {
     DatabaseError(String),
     ValidationError(String),
     QueryBuildError(String),
@@ -165,7 +165,7 @@ pub trait WritableDataSet<E> {
 async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>>;
 
 // Could be more specific with error types
-async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>, DormError>;
+async fn query_fetch(&self, query: &Query) -> Result<Vec<Map<String, Value>>, VantageError>;
 ```
 
 8. Clone Implementation:

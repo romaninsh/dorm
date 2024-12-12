@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, routing::get, Json, Router};
 use bakery_model::*;
-use dorm::{prelude::*, sql::query::SqlQuery};
 use serde::Deserialize;
+use vantage::{prelude::*, sql::query::SqlQuery};
 
 #[derive(Deserialize)]
 struct OrderRequest {

@@ -95,7 +95,7 @@ I haven't defined method like `sub_line_items` before, so I'm using `get_subquer
 There is also `get_subquery` but it returns Box<dyn SqlTable>. I want to use `product.price()` so
 instead I'm using `get_subquery_as` and specifying entity type explicitly.
 
-As far as DORM is concerned, it sees `with_one` and `with_many` relationships equally. I need to
+As far as Vantage is concerned, it sees `with_one` and `with_many` relationships equally. I need to
 think about this though. If subquery could return multiple rows, I'd need to have them limited,
 aggregated or wrapped into a string somehow (like using ExpressionArc::fx())
 
@@ -142,7 +142,7 @@ Conditions created by the operation can be used in `with_condition()` method.
 
 ## Conclusion
 
-In DORM - expressions and operations create a powerful way to extend of high-level `Table` features
+In Vantage - expressions and operations create a powerful way to extend of high-level `Table` features
 such as conditions and expression fields.
 
 Functionality is composable of underlying components. If `Table` does not implement a feature you

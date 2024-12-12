@@ -42,7 +42,7 @@ writeln!(prod_inv.get_select_query().preview());
 // renders into: SELECT p.id, p.name, i.stock FROM product p LEFT JOIN inventory i ON (p.id = i.product_id)
 ```
 
-How is that possible? Well, DORM's "with_join" method will
+How is that possible? Well, Vantage's "with_join" method will
 consume the table object that you pass and will move its
 fields into the original table. The joined table will be
 wrapped into a Join object and will instruct query builder
@@ -51,10 +51,10 @@ to add join into your query.
 There are ways to create different kind of joins too, but
 api for that is not yet stable.
 
-As you will see later, DORM operates with joined tables
+As you will see later, Vantage operates with joined tables
 just as good as with a single table.
 
-Now is probably a great time to look into DORMs capabilities
+Now is probably a great time to look into Vantages capabilities
 of operating with your entities.
 
 So far we only used Table to create select queries, but

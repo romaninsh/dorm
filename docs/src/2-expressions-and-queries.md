@@ -1,6 +1,6 @@
 # Expressions and Queries
 
-In DORM, query is a dynamic representation of a SQL query. You already saw how `sql::Table` is
+In Vantage, query is a dynamic representation of a SQL query. You already saw how `sql::Table` is
 creating `sql::Query`, now it's time to learn how `sql::Query` works.
 
 Query owes it's flexibility to `Expressions` or more specifically to a `Chunk` trait. Any type
@@ -164,7 +164,7 @@ writeln!(query2.preview());
 
 ## Summary
 
-DORM's query system leverages `Expressions` and the `Chunk` trait to build dynamic, safe, and
+Vantage's query system leverages `Expressions` and the `Chunk` trait to build dynamic, safe, and
 composable SQL queries. `Expressions` separate SQL statements from parameters, preventing injection
 risks, while `ExpressionArc` extends this flexibility by supporting nested expressions.
 

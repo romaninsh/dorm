@@ -1,7 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
-use dorm::prelude::*;
 use serde::{Deserialize, Serialize};
+use vantage::prelude::*;
 
 use crate::{order::Order, postgres, Product, ProductTable};
 

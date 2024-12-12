@@ -1,6 +1,6 @@
 # Table Columns
 
-`Table` allows you to define and reference columns. A `Column` is another struct in DORM.
+`Table` allows you to define and reference columns. A `Column` is another struct in Vantage.
 Using columns outside of table context is convenient, such as for defining an expression:
 
 ```rust
