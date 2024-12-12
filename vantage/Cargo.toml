@@ -1,6 +1,6 @@
 [package]
 name = "vantage"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Romans Malinovskis <me@nearly.guru>"]
@@ -8,6 +8,7 @@ description = "A type-safe, ergonomic database toolkit for Rust that focuses on 
 documentation = "https://romaninsh.github.io/vantage"
 homepage = "https://github.com/romaninsh/vantage"
 repository = "https://github.com/romaninsh/vantage"
+readme = "../README.md"
 
 [lib]
 doctest = false
