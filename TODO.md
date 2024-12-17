@@ -1,9 +1,6 @@
-# v0.1 (eta December 2024)
-
-- [ ] Implement "Realworld" example application in a separate repository
-
 # v0.2 (eta January 2025)
 
+- [ ] Swap to sqlx
 - [ ] Add thread safety (currently tests in bakery_api fail)
 - [ ] Implement transaction support
 - [ ] Add MySQL support
@@ -14,6 +11,9 @@
 - [ ] Implement and Document Disjoint Subtypes pattern
 - [ ] Add and document more hooks
 - [ ] Comprehensive documentation for mock data testing
+- [ ] Implement "Realworld" example application in a separate repository
+- [ ] Implement Uuid support
+- [ ] with_id() shouldn't need into()
 
 # v0.3
 
