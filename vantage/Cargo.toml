@@ -27,6 +27,10 @@ serde = { version = "1", features = ["derive"] }
 chrono = "0.4.38"
 anyhow = "1.0.82"
 futures = "0.3.30"
+sqlx = { version = "0.8.2", features = ["json", "postgres", "sqlite"], default-features = false }
+tracing = "0.1.41"
+env_logger = "0.11.5"
+log = "0.4.22"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
